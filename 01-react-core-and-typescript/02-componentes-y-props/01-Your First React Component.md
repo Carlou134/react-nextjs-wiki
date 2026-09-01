@@ -170,38 +170,6 @@ Por supuesto, esto todavía no hace que `<button>Back To Home</button>` se muest
 
 ------
 
-## The Return Keyword in Functional Components
-
-Cuando definimos un componente funcional, básicamente estamos definiendo una **fábrica** que puede construir la combinación adecuada de elementos cada vez que hacemos referencia a su nombre. Lo hace consultando un conjunto de instrucciones que tú debes proporcionar.
-
-Si estás pensando: *“Eso suena exactamente a para qué sirve una función normal de JavaScript”*, entonces tienes razón. Los componentes funcionales pueden entenderse de forma muy similar a las funciones normales de JavaScript, excepto que su trabajo es ensamblar una parte de la interfaz basándose en las instrucciones dadas.
-
-Hablemos un poco más sobre estas instrucciones.
-
-Para empezar, estas instrucciones deben tomar la forma del cuerpo de una función. Eso significa que estarán delimitadas por llaves, como en este ejemplo:
-
-```js
-function Button() {
-  // Las instrucciones van aquí, entre las llaves.
-}
-```
-
-Nuestras instrucciones pueden incluir una combinación de marcado, CSS y JavaScript para producir el resultado deseado. La única cosa que siempre debemos incluir es una sentencia **return**.
-
-Se espera que la función produzca código **JSX** que pueda usarse para renderizar algo en la pantalla del navegador. Por lo tanto, cuando definimos componentes funcionales, debemos devolver un elemento JSX.
-
-```js
-function BackButton() {
-  return <button>Back To Home</button>;
-}
-```
-
-Por supuesto, esto todavía no hace que `<button>Back To Home</button>` se muestre en la pantalla del navegador. Solo hemos definido nuestro componente.
-
-¡Sigamos adelante para ver cómo renderizarlo y por qué la sentencia `return` era necesaria! 🚀
-
-----
-
 ## Importing and Exporting React Components
 
 Hay un poco más de trabajo que debemos hacer antes de poder usar nuestro componente definido y lograr que se renderice en el DOM.

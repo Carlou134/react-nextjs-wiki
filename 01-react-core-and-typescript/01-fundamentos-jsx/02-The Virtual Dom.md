@@ -42,6 +42,24 @@ Una vez que React sabe qué objetos del virtual DOM han cambiado, actualiza **so
 
 ¡Esto hace una gran diferencia! React puede actualizar **solo las partes necesarias del DOM**. La reputación de React por su rendimiento proviene en gran parte de esta innovación.
 
+Para verlo con código: supongamos que este componente renderiza la lista de diez tareas del ejemplo anterior, y el usuario marca la primera como completada.
+
+```jsx
+function TaskList({ tasks }) {
+  return (
+    <ul>
+      {tasks.map((task) => (
+        <li key={task.id}>
+          {task.done ? <s>{task.text}</s> : task.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+Antes de marcar la tarea, el virtual DOM tiene diez nodos `<li>`, todos con `task.done` en `false`. Al marcar la primera tarea, el estado cambia y `TaskList` se vuelve a ejecutar: React genera un **nuevo** árbol de virtual DOM completo, con los diez `<li>` de nuevo. Ahí es donde entra el **diffing**: React compara ese árbol nuevo con la instantánea anterior, nodo por nodo, y encuentra que solo el primer `<li>` cambió de contenido. En el DOM real, solo ese `<li>` se actualiza — los otros nueve ni se tocan, aunque React acabó de "recalcular" los diez en el virtual DOM.
+
 ---
 
 **En resumen, esto es lo que sucede cuando intentas actualizar el DOM en React:**

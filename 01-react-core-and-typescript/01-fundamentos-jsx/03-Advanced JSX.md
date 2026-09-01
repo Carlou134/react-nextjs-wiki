@@ -82,11 +82,20 @@ Puedes hacer esto **envolviendo tu código entre llaves `{}`**.
 
 **¡Ahora puedes inyectar JavaScript normal dentro de expresiones JSX!** Esto será extremadamente útil.
 
-En el editor de código, puedes ver una expresión JSX que muestra los primeros veinte dígitos de pi.
+Acá tenés una expresión JSX que muestra los primeros veinte dígitos de pi:
+
+```jsx
+const pi = (
+  <div>
+    <h1>PI, a Special Number</h1>
+    <p>The number pi is an important number. It is approximately {Math.PI.toFixed(20)}</p>
+  </div>
+);
+```
 
 Estudia la expresión y observa lo siguiente:
 * El código está escrito en un archivo JavaScript. Por defecto, todo se tratará como JavaScript normal.
-* Busca `<div>` en la línea 5. Desde ahí y hasta `</div>`, el código se tratará como JSX.
+* Busca `<div>` en la primera línea del `return`. Desde ahí y hasta `</div>`, el código se tratará como JSX.
 * Busca `Math`. Desde ahí y hasta `(20)`, el código volverá a tratarse como JavaScript normal.
 * Las llaves `{}` en sí mismas no se tratarán ni como JSX ni como JavaScript. Son marcadores que señalan el inicio y el final de una inyección de JavaScript dentro de JSX, de forma similar a como las comillas señalan los límites de una cadena de texto.
 
@@ -158,8 +167,6 @@ Las propiedades de objetos también se usan a menudo para establecer atributos:
 > ); 
 > ```
 
-Si quieres, puedo explicarte el ejemplo paso a paso o adaptarlo a React moderno 👍
-
 ----
 
 ## Event Listeners in JSX
@@ -220,9 +227,26 @@ Tienes muchas opciones. En las próximas lecciones exploraremos algunas formas s
 
 Una opción es escribir una sentencia `if` y **no** inyectarla dentro de **JSX**.
 
-Mira el archivo `if.js`. Sigue la sentencia `if` desde la línea 8 hasta la línea 20.
+```jsx
+function ConcertInfo({ price }) {
+  let ticketInfo;
 
-`if.js` funciona porque las palabras `if` y `else` no están inyectadas entre etiquetas JSX. La sentencia `if` está por fuera, y no es necesaria ninguna inyección de JavaScript.
+  if (price === 0) {
+    ticketInfo = <h2>Entrada gratuita</h2>;
+  } else {
+    ticketInfo = <h2>Entrada: ${price}</h2>;
+  }
+
+  return (
+    <div>
+      <h1>Próximo show</h1>
+      {ticketInfo}
+    </div>
+  );
+}
+```
+
+Este componente funciona porque las palabras `if` y `else` no están inyectadas entre etiquetas JSX: la sentencia `if` está por fuera, en su propia declaración de variable, y solo la variable resultante (`ticketInfo`) se inyecta con llaves dentro del JSX. No es necesaria ninguna inyección de JavaScript de la sentencia `if` en sí.
 
 Esta es una forma común de expresar condicionales en JSX.
 

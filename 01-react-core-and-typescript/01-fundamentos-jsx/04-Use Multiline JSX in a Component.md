@@ -20,9 +20,27 @@ Mira este HTML:
 
 ¿Cómo podrías hacer que un componente de React devuelva este HTML?
 
-Selecciona **QuoteMaker.js** para ver una manera de hacerlo.
+Así se vería un componente `QuoteMaker` que devuelve exactamente ese HTML:
 
-Lo más importante a notar en **QuoteMaker** son los paréntesis en la sentencia `return`, en las líneas 4 y 16. Hasta ahora, las sentencias `return` de tus componentes funcionales se veían así, sin paréntesis:
+```jsx
+function QuoteMaker() {
+  return (
+    <blockquote>
+      <p>
+        The world is full of objects, more or less interesting; I do not wish to add any more.
+      </p>
+      <cite>
+        <a target="_blank"
+          href="https://en.wikipedia.org/wiki/Douglas_Huebler">
+          Douglas Huebler
+        </a>
+      </cite>
+    </blockquote>
+  );
+}
+```
+
+Lo más importante a notar en **QuoteMaker** son los paréntesis en la sentencia `return`, en la primera y última línea del bloque. Hasta ahora, las sentencias `return` de tus componentes funcionales se veían así, sin paréntesis:
 
 ```js
 return <h1>Hello world</h1>;
@@ -46,9 +64,27 @@ const redPanda = {
 
 ¿Cómo podrías renderizar un componente de React con una imagen de **redPanda** y sus propiedades?
 
-Selecciona **RedPanda.js** para ver una manera de hacerlo.
+```jsx
+const redPanda = {
+  src: 'https://upload.wikimedia.org/wikipedia/commons/b/b2/Endangered_Red_Panda.jpg',
+  alt: 'Red Panda',
+  width: '200px'
+};
 
-Fíjate en todas las **inserciones de JavaScript entre llaves** dentro de la sentencia `return`. Puedes, y a menudo lo harás, **inyectar JavaScript dentro de JSX** dentro de la sentencia `return`.
+function RedPanda() {
+  return (
+    <div>
+      <h1>Cute Red Panda</h1>
+      <img
+        src={redPanda.src}
+        alt={redPanda.alt}
+        width={redPanda.width} />
+    </div>
+  );
+}
+```
+
+Fíjate en todas las **inserciones de JavaScript entre llaves** (`{redPanda.src}`, `{redPanda.alt}`, `{redPanda.width}`) dentro de la sentencia `return`. Puedes, y a menudo lo harás, **inyectar JavaScript dentro de JSX** dentro de la sentencia `return`.
 
 ------
 
@@ -88,9 +124,21 @@ En el ejemplo anterior, la línea con la declaración `const n` causará un **er
 
 ¿Cómo podrías usar una **sentencia condicional** dentro de un componente funcional?
 
-Selecciona **TodaysPlan.js** para ver una manera de hacerlo.
+```jsx
+function TodaysPlan() {
+  let task;
 
-Fíjate en que la sentencia **if** se encuentra dentro del componente funcional, pero **antes de la sentencia return**.
+  if (!Boolean(Date.now() % 2)) {
+    task = 'learn React.js!';
+  } else {
+    task = 'take a nap.';
+  }
+
+  return <h1>Today I am going to {task}</h1>;
+}
+```
+
+Fíjate en que la sentencia **if** se encuentra dentro del componente funcional, pero **antes de la sentencia return**: primero decide el valor de la variable `task`, y recién después esa variable se inyecta en el JSX que se devuelve.
 
 -------
 
