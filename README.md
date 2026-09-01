@@ -6,37 +6,38 @@ Repositorio personal de apuntes, guías rápidas (*cheatsheets*) y patrones de d
 
 ## 📂 Estructura de Apuntes
 
-### 1. React Core (`/01-react-core-and-typescript`)
+### 1. React Core & TypeScript (`/01-react-core-and-typescript`)
 
+- **00-typescript-fundamentals** — Types, tsconfig, funciones, arrays, tipos personalizados, union types, type narrowing y object types (TypeScript puro, sin React).
 - **01-fundamentos-jsx** — JSX, Virtual DOM, JSX avanzado y multilínea.
 - **02-componentes-y-props** — Primer componente, composición y Props.
 - **03-tooling-y-devtools** — Vite/CRA y React Developer Tools.
-- **04-hooks-y-context** — useState, useEffect, Custom Hooks y Context API.
-- **05-patrones-estilos-lifecycle** — Patrones de diseño, estilos y ciclo de vida de clases.
+- **04-hooks-y-context** — useState, useEffect, useLayoutEffect, Custom Hooks y Context API.
+- **05-patrones-estilos-lifecycle** — HOC, Render Props, composición, estilos (CSS/Sass/styled-components/Tailwind) y ciclo de vida de clases.
 - **06-forms** — Formularios controlados y componentes no controlados.
 - **07-routing** — React Router v6.
 - **08-manejo-de-errores** — Error Boundaries.
-- **09-performance** — React Profiler y técnicas de optimización.
+- **09-performance** — React Profiler, memoización y técnicas de optimización.
 - **10-fetching-de-datos** — Fetch con useEffect, estados de carga/error, re-fetch por dependencias.
-- **11-manejo-de-estado-global** — Zustand vs. Redux vs. Context, y React Query.
-- **12-typescript-y-react** — Tipado de props, estado, useReducer y Context API.
-- **13-react-19** — Server Components, Actions y los nuevos hooks de React 19.
+- **11-typescript-y-react** — Tipado de props, estado, useReducer y Context API.
+- **12-react-19** — Server Components, Actions y los nuevos hooks de React 19.
 
-### 2. Next.js App Router (`/02-nextjs-app-router`) — *próximamente*
+### 2. Next.js App Router (`/02-nextjs-app-router`)
+- Conceptos core, enrutamiento y Layouts.
 - Server Components (RSC) vs. Client Components.
-- Enrutamiento, Layouts anidados, `Suspense` y manejo de errores.
-- Fetching de datos, Server Actions, Caching e ISR/SSR.
-- Optimización con `<Image>`, Fonts y SEO (Metadata API).
+- Fetching de datos (paralelo, secuencial, Suspense, loading UI).
+- Optimización.
 
-### 3. State Management & Server State (`/03-state-management-and-data`) — *próximamente*
-- Estado global de UI ligero con **Zustand**.
-- Manejo de estado del servidor, caché y mutaciones con **TanStack Query** (React Query).
+### 3. State Management & Server State (`/03-state-management-and-data`)
+- Zustand vs. Redux vs. Context: cuándo usar cada uno.
+- Redux: core concepts, API, estado complejo, Redux Toolkit, middleware y thunks.
+- React Query: caché, mutaciones y actualizaciones optimistas.
 
 ### 4. Testing & UI (`/04-testing-and-ui`) — *próximamente*
 - Pruebas unitarias e integración de UI con **Vitest / Jest** y **React Testing Library**.
 - Componentización accesible con **Tailwind CSS** y **Shadcn/UI**.
 
-> Las carpetas marcadas *próximamente* todavía no tienen notas — se crean cuando el contenido correspondiente exista, para no dejar directorios vacíos en el repo.
+> La carpeta marcada *próximamente* todavía no tiene notas — se crea cuando el contenido correspondiente exista, para no dejar directorios vacíos en el repo.
 
 ---
 
