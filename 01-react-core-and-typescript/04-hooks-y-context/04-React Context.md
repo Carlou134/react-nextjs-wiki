@@ -62,6 +62,19 @@ const ChildComponent = () => {
 
 El hook `useContext()` acepta el objeto de contexto como argumento y devuelve el valor actual del contexto. ¡Regocíjate, ya no es necesario perforar (prop drilling) ese valor!
 
+> **En TypeScript:** `createContext()` necesita un valor por defecto, y ese valor determina el tipo del contexto. El problema es que casi nunca tenés un valor por defecto "real" con sentido — la práctica más común es pasar `undefined` explícitamente y tipar el contexto como `MyContextType | undefined`:
+>
+> ```tsx
+> type ThemeContextType = {
+>   theme: string;
+>   setTheme: (theme: string) => void;
+> };
+>
+> const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+> ```
+>
+> Esto es justamente lo que hace seguro el patrón del hook personalizado que vamos a ver más abajo, en "Buenas prácticas y antipatrones": como el tipo incluye `| undefined`, TypeScript te **obliga** a manejar ese caso (con el chequeo `if (context === undefined) throw ...`) antes de dejarte usar `context.theme` — así el error de "usar el contexto fuera de su Provider" se atrapa en tiempo de compilación, no en producción.
+
 **Nota:** Si un componente intenta usar un contexto que no es proporcionado por uno de sus ancestros, `useContext()` devolverá `undefined`.
 
 **Nota:** En algunas aplicaciones React antiguas, es posible que en su lugar veas `SomeContext.Consumer` utilizado para suscribirse a un Contexto. Esa alternativa generalmente se considera una mala práctica y se evita por ser demasiado verbosa y difícil de trabajar.

@@ -64,6 +64,19 @@ Aquí, asignamos **Hi, ${name}** como el valor de **document.title**.
 
 El evento **onChange** hace que el componente **PageTitle** se vuelva a renderizar cada vez que el usuario escribe en el campo de texto. En consecuencia, esto activa **useEffect()** y cambia el título del documento.
 
+> **En TypeScript:** un error muy común (y que a primera vista parece que "debería" funcionar) es escribir directamente `useEffect(async () => { ... })`. TypeScript lo rechaza, porque el tipo del efecto solo acepta que la función devuelva `void` o una función de limpieza — nunca una `Promise`, que es justamente lo que devuelve toda función `async`. La solución es definir la función asíncrona **adentro** del efecto y llamarla enseguida, dejando que el propio `useEffect()` no sea `async`:
+>
+> ```tsx
+> useEffect(() => {
+>   async function loadData() {
+>     const data = await fetchData();
+>     setData(data);
+>   }
+>
+>   loadData();
+> }, []);
+> ```
+
 Observa cómo usamos el estado actual dentro de nuestro efecto. Aunque el efecto se ejecuta después de que el componente se renderiza, ¡seguimos teniendo acceso a las variables dentro del alcance de nuestro componente funcional! Cuando React renderiza nuestro componente, actualiza el DOM como de costumbre y luego ejecuta nuestro efecto después de que el DOM ha sido actualizado. Esto ocurre en cada renderizado, incluyendo el primero y el último.
 
 -----
@@ -182,41 +195,6 @@ useEffect(() => {
 ```
 
 En segundo lugar, los Hooks solo pueden usarse en **funciones de React**. Hemos estado trabajando con **useState()** y **useEffect()** dentro de componentes funcionales, y este es el uso más común. El único otro lugar donde se pueden usar Hooks es dentro de **Hooks personalizados (custom hooks)**. Los Hooks personalizados son increíblemente útiles para organizar y reutilizar lógica con estado entre componentes funcionales.
-
-----
-
-## Reglas de los Hooks
-
-Hay **dos reglas principales** que se deben tener en cuenta al usar Hooks:
-
-1. **Solo llamar a Hooks en el nivel superior.**
-2. **Solo llamar a Hooks desde funciones de React.**
-
-Como hemos estado practicando con el **Hook de Estado** y el **Hook de Efecto**, hemos seguido estas reglas con facilidad, pero es útil tenerlas presentes a medida que llevas tu nuevo entendimiento de los Hooks al uso real y comienzas a utilizar más Hooks en tus aplicaciones de React.
-
-Cuando React construye el **DOM Virtual**, la librería llama repetidamente a las funciones que definen nuestros componentes a medida que el usuario interactúa con la interfaz. React lleva un registro de los datos y funciones que gestionamos con Hooks basándose en **el orden en que aparecen dentro de la definición del componente funcional**. Por esta razón, siempre llamamos a nuestros Hooks en el nivel superior; **nunca** llamamos Hooks dentro de bucles, condiciones o funciones anidadas.
-
-En lugar de confundir a React con código como este:
-
-```js
-if (userName !== '') {
-  useEffect(() => {
-    localStorage.setItem('savedUserName', userName);
-  });
-}
-```
-
-Podemos lograr el mismo objetivo llamando al Hook de forma consistente en cada renderizado:
-
-```js
-useEffect(() => {
-  if (userName !== '') {
-    localStorage.setItem('savedUserName', userName);
-  }
-});
-```
-
-En segundo lugar, los Hooks solo pueden usarse en **funciones de React**. Hemos estado trabajando con **useState()** y **useEffect()** en componentes funcionales, y este es el uso más común. El único otro lugar donde se pueden usar Hooks es dentro de **Hooks personalizados (custom hooks)**. Los Hooks personalizados son extremadamente útiles para organizar y reutilizar lógica con estado entre componentes funcionales.
 
 ----
 

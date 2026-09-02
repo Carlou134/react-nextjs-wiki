@@ -124,6 +124,16 @@ export const useToggle = (initialState = false) => {
 }
 ```
 
+> **En TypeScript:** este hook devuelve `[state, toggle]` esperando que quien lo use haga `const [state, toggle] = useToggle(true)`, exactamente como con `useState()`. Pero hay una trampa: si anotás el tipo de retorno con `Array<boolean | (() => void)>` (o dejás que TypeScript lo infiera solo), el compilador no sabe que la primera posición siempre es el booleano y la segunda siempre la función — trata ambas posiciones como si pudieran contener cualquiera de los dos tipos, y `toggle()` en la posición 0 no daría error. Para que se comporte como una **tupla** (orden y tipos fijos, igual que el retorno real de `useState()`), hay que anotarlo explícitamente:
+>
+> ```tsx
+> export const useToggle = (initialState = false): [boolean, () => void] => {
+>   const [state, setState] = useState(initialState);
+>   const toggle = () => setState((state) => !state);
+>   return [state, toggle];
+> };
+> ```
+
 En este ejemplo, creamos un hook personalizado llamado `useToggle()` que:
 
 *   Usa **useState()** para gestionar un valor de estado de tipo "toggle" (encendido/apagado).
@@ -172,6 +182,8 @@ navigator.geolocation.getCurrentPosition((pos) => {
   console.log('Ubicación Actual', pos.coords); // ← registra la posición actual del dispositivo
 });
 ```
+
+> **En TypeScript:** no hace falta tipar a mano el objeto `position` ni el `error` de la API de Geolocalización — TypeScript los incluye de fábrica a través de la librería `lib.dom.d.ts` que trae el propio compilador, con los tipos `GeolocationPosition` y `GeolocationPositionError`. Alcanza con anotar el parámetro del callback: `(pos: GeolocationPosition) => { ... pos.coords ... }`, y vas a tener autocompletado real de `pos.coords.latitude`, `pos.coords.longitude`, etc., sin instalar ningún paquete de tipos adicional.
 
 Opcionalmente, se puede pasar una **función de callback de error** como segundo argumento que se ejecutará si la llamada a la API falla.
 

@@ -43,6 +43,17 @@ Esta línea tiene tres partes que conviene distinguir con claridad:
 
 Al igual que con cualquier otro Hook, `useReducer()` solo puede llamarse en el nivel superior de un componente de función (o de un Hook personalizado), nunca dentro de condicionales ni bucles.
 
+> **En TypeScript:** el punto donde más vale la pena invertir tipado es en `action`, porque distintos tipos de acción suelen traer distintos `payload`. La forma idiomática es una **unión discriminada**: un `type` que enumera cada acción posible, todas compartiendo el campo `type` como "discriminante":
+>
+> ```tsx
+> type Action =
+>   | { type: 'increment' }
+>   | { type: 'decrement' }
+>   | { type: 'setCount'; payload: number };
+> ```
+>
+> Con esto, dentro del `switch` del reducer, TypeScript **estrecha (narrows)** automáticamente el tipo de `action` en cada `case`: en `case 'setCount'`, sabe que `action.payload` existe y es `number`; en `case 'increment'`, ni siquiera te deja intentar leer `action.payload`, porque esa variante del tipo no lo tiene. Esto evita el error clásico de despachar `{ type: 'setCount' }` olvidándote del `payload`, o de escribir mal el `type` de una acción — casos que, en JavaScript puro, solo se descubrirían en tiempo de ejecución. El tipado completo de `useReducer()` combinado con Context se ve en detalle en [11-typescript-y-react/03-Tipado de useReducer y Context API.md](../11-typescript-y-react/03-Tipado%20de%20useReducer%20y%20Context%20API.md).
+
 -----
 
 ## Cómo Funciona La Función Reducer

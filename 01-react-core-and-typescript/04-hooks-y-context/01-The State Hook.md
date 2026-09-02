@@ -66,6 +66,8 @@ function Toggle() {
 
 Fíjate cómo la función actualizadora de estado, **setToggle()**, es llamada por nuestros **event listeners** de `onClick`. Para actualizar el valor de `toggle` y **volver a renderizar** este componente con el nuevo valor, todo lo que necesitamos hacer es llamar a la función **setToggle()** pasando el siguiente valor del estado como argumento.
 
+> **En TypeScript:** `useState()` sin argumento, como en `useState()`, deja a TypeScript sin ninguna pista sobre qué tipo de dato vas a guardar ahí — infiere `undefined`, lo cual te va a impedir asignarle luego un string como `"On"`. Cuando no tenés un valor inicial concreto para inferir el tipo, pasáselo explícitamente como **generic**: `useState<string>()`. El estado va a quedar tipado como `string | undefined` (todavía puede ser `undefined` hasta la primera actualización), lo cual es más preciso que dejar que TypeScript adivine.
+
 Con el **State Hook**, actualizar el estado es tan simple como llamar a una función actualizadora. Llamar a esta función le indica a React que el componente necesita **volver a renderizarse**, por lo que toda la función que define el componente se ejecuta de nuevo.
 La magia de **useState()** es que permite a React **mantener el seguimiento del valor actual del estado de un renderizado al siguiente**.
 
@@ -268,6 +270,8 @@ El arreglo **options** contiene datos estáticos, lo que significa que no cambia
 
 El arreglo **selected** contiene datos dinámicos, lo que significa que cambian, generalmente en función de las acciones del usuario. Inicializamos **selected** como un arreglo vacío. Cuando se hace clic en un botón, se llama al manejador de eventos `toggleTopping()`. Observa cómo este manejador usa información del objeto del evento para determinar qué ingrediente fue seleccionado.
 
+> **En TypeScript:** `useState([])` es otro caso donde no hay nada que inferir a partir del valor inicial — TypeScript le asigna el tipo `never[]`, un arreglo que **no admite agregar ningún elemento**, así que `setSelected((prev) => [clickedTopping, ...prev])` va a marcar error de tipos. La solución es la misma que con cualquier `useState()` sin datos suficientes para inferir: pasar el tipo explícito como generic, `useState<string[]>([])`.
+
 Al actualizar un arreglo en el estado, no simplemente agregamos nuevos datos al arreglo anterior. Reemplazamos el arreglo anterior con uno completamente nuevo. Esto significa que cualquier información que queramos conservar del arreglo anterior debe copiarse explícitamente al nuevo arreglo. Para eso usamos la **sintaxis spread**: `...prev`.
 
 Fíjate cómo usamos los métodos `.includes()`, `.filter()` y `.map()` de los arreglos. Si estos métodos son nuevos para ti o solo quieres refrescar conceptos, tómate un momento para revisarlos. No necesitamos ser expertos absolutos en JavaScript para construir aplicaciones con React, pero invertir tiempo en fortalecer nuestras habilidades en JavaScript siempre nos ayudará a hacer más cosas, más rápido (y a divertirnos mucho más) como desarrolladores de React.
@@ -327,6 +331,19 @@ setFormState((prev) => ({ ...prev }))
 Esto le indica a JavaScript que las llaves representan un **nuevo objeto** que debe ser retornado. Usamos `...`, el operador spread, para copiar los campos correspondientes del estado anterior. Finalmente, sobrescribimos la clave adecuada con su valor actualizado.
 
 ¿Notaste los **corchetes** alrededor de `name`? Este **nombre de propiedad computado (Computed Property Name)** nos permite usar el valor de cadena almacenado en la variable `name` como clave de la propiedad.
+
+> **En TypeScript:** al igual que con los arreglos, `useState({})` infiere el tipo `{}` — un objeto del que TypeScript no sabe qué propiedades tiene, así que `formState.firstName` va a marcar error. Acá lo correcto no es forzar un generic vacío, sino declarar primero la forma completa del objeto con un `type`, y usarlo para tipar el estado:
+>
+> ```tsx
+> type FormState = {
+>   firstName: string;
+>   password: string;
+> };
+>
+> const [formState, setFormState] = useState<FormState>({ firstName: '', password: '' });
+> ```
+>
+> De paso, esto también obliga a inicializar el objeto con todas sus propiedades desde el principio, en vez de arrancar de un `{}` vacío e ir completándolo — una forma más segura de evitar accesos a propiedades que todavía no existen.
 
 ----
 
