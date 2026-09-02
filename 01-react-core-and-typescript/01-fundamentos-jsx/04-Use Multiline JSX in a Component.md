@@ -118,6 +118,8 @@ function RandomNumber() {
 
 En el ejemplo anterior, la línea con la declaración `const n` causará un **error de sintaxis**, ya que debería ir **antes del return**.
 
+> **En TypeScript:** no hace falta declarar el tipo de retorno de `RandomNumber` a mano — TypeScript infiere automáticamente `JSX.Element` a partir de lo que devuelve el `return`. Si preferís dejarlo explícito por claridad (útil en componentes grandes, para detectar rutas del código que se olvidan de devolver JSX), podés escribir `function RandomNumber(): JSX.Element { ... }`.
+
 ----
 
 ## Use a Conditional in a Function Component
@@ -168,6 +170,8 @@ return <div onHover={handleHover}></div>
 ```
 
 La función `handleHover()` se pasa **sin los paréntesis** que normalmente veríamos al llamar a una función. Esto se debe a que pasarla como `handleHover` indica que **solo debe ejecutarse cuando ocurra el evento**. Pasarla como `handleHover()` **ejecutaría la función inmediatamente**, ¡así que ten cuidado!
+
+> **En TypeScript:** este mismo detalle (pasar la función sin ejecutarla) es algo que TypeScript **no puede detectar por vos** — `handleHover` y `handleHover()` son ambos código válido para el compilador, la diferencia es puramente de comportamiento en tiempo de ejecución. Donde sí te ayuda TypeScript es a la hora de recibir un manejador de eventos como prop: si tipás la prop como `onHover: () => void`, el compilador te va a marcar error si intentás pasarle una función con una firma distinta. Vemos esto en profundidad en [03-Props.md](../02-componentes-y-props/03-Props.md) y en [11-typescript-y-react/01-Tipado de Props y Funciones.md](../11-typescript-y-react/01-Tipado%20de%20Props%20y%20Funciones.md).
 
 -----
 

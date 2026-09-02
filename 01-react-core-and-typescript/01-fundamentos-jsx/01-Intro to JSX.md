@@ -56,6 +56,8 @@ Si un archivo JavaScript contiene código JSX, entonces ese archivo tendrá que 
 
 Los servidores de Codecademy ya tienen un compilador de JSX instalado, así que por ahora no tienes que preocuparte por eso. Más adelante veremos cómo configurar un compilador de JSX en tu computadora personal.
 
+> **En TypeScript:** un archivo que combina TypeScript con JSX no usa la extensión `.ts`, sino `.tsx`. El compilador de TypeScript necesita esa extensión para saber que debe interpretar la sintaxis JSX (y también requiere la opción `"jsx"` configurada en `tsconfig.json` — la vemos en detalle en [00-typescript-fundamentals/02-Archivo tsconfig.md](../00-typescript-fundamentals/02-Archivo%20tsconfig.md)).
+
 ----
 
 ## JSX Elements
@@ -96,6 +98,8 @@ const myTeam = {
 };
 ```
 
+> **En TypeScript:** cuando guardás una expresión JSX en una variable, como `navBar` o `title` más abajo, TypeScript infiere automáticamente el tipo `JSX.Element` — no hace falta anotarlo a mano. Si en algún momento querés escribir esa anotación explícitamente (por ejemplo, en el tipo de retorno de una función), `JSX.Element` es el tipo que corresponde.
+
 -----
 
 ## Attributes In JSX
@@ -119,8 +123,12 @@ const title = <h1 id='title'>Introduction to React.js: Part I</h1>;
 Un solo elemento JSX puede tener muchos atributos, igual que en HTML:
 
 ```jsx
-const panda = <img src='images/panda.jpg' alt='panda' width='500px' height='500px'>;
+const panda = <img src='images/panda.jpg' alt='panda' width='500px' height='500px' />;
 ```
+
+Fíjate que, al ser un elemento de una sola etiqueta, `<img />` necesita la barra de autocierre al final — sin ella, el compilador de JSX no sabe dónde termina el elemento.
+
+> **En TypeScript:** este tipo de error (olvidar la barra de autocierre) deja de ser un detalle menor. En un archivo `.tsx`, el compilador de TypeScript rechaza directamente el código en el momento de compilar —y tu editor te lo va a marcar en rojo al instante—, en lugar de dejarte descubrirlo recién cuando la app falle en el navegador.
 
 ----
 
@@ -252,6 +260,8 @@ root.render(<h1>Hello world</h1>)
 Usa el método `render()` de `root` para **renderizar el contenido pasado como argumento**.
 Aquí pasamos un elemento `<h1>`, que muestra *Hello world*.
 Esta es la parte de React que responde a **“qué contenido renderizar”**.
+
+> **En TypeScript:** `document.getElementById()` está tipado para devolver `HTMLElement | null` (podría no encontrar ningún elemento con ese id), mientras que `createRoot()` espera un `HTMLElement` a secas. Por eso, en un proyecto TypeScript vas a ver esta línea escrita con una aserción de no-nulo (`!`), asumiendo que el elemento sí existe en el HTML: `createRoot(document.getElementById('app')!)`. Profundizamos en esto en [01-Your First React Component.md](../02-componentes-y-props/01-Your%20First%20React%20Component.md).
 
 -----
 

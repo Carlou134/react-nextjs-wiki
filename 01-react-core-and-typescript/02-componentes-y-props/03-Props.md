@@ -110,6 +110,20 @@ function Button({displayText}) {
 }
 ```
 
+> **En TypeScript:** acá es donde vas a sentir el mayor cambio respecto de JSX puro. Cada componente necesita declarar la forma de sus props con un `type` (o `interface`), y usarlo para anotar el parámetro:
+>
+> ```tsx
+> type ButtonProps = {
+>   displayText: string;
+> };
+>
+> function Button({ displayText }: ButtonProps) {
+>   return <button>{displayText}</button>;
+> }
+> ```
+>
+> A cambio de escribir ese tipo, ganás que TypeScript te avise en el momento —no cuando la app ya está corriendo— si te olvidaste de pasar una prop obligatoria, si le pasaste un tipo de dato equivocado (un número donde se esperaba un string), o si escribiste mal el nombre de una prop al usar el componente. Vemos el tipado de props en detalle, con más ejemplos, en [11-typescript-y-react/01-Tipado de Props y Funciones.md](../11-typescript-y-react/01-Tipado%20de%20Props%20y%20Funciones.md).
+
 -----
 
 ## Pass props From Component To Component
@@ -170,132 +184,49 @@ Si la contraseña recibida es igual a `'a-tough-password'`, el mensaje resultant
 
 ## Put an Event Handler in a Function Component
 
-Puedes, y a menudo lo harás, pasar funciones como **props**. Es especialmente común pasar funciones de manejo de eventos.
+Puedes, y a menudo lo harás, pasar funciones como **props**. Es especialmente común pasar funciones de manejo de eventos: un componente padre define **qué** debe pasar cuando ocurre un evento, y se lo entrega a un componente hijo para que decida **cuándo** dispararlo.
 
-En el siguiente ejercicio, pasaremos una función de manejo de eventos como una **prop**. Sin embargo, primero debemos definir un manejador de eventos antes de poder pasarlo a cualquier lugar. En este ejercicio, vamos a definir una función de manejo de eventos.
+Antes de poder pasar un manejador de eventos a algún lado, primero hay que definirlo. Se define exactamente igual que cualquier otra función dentro de un componente de función:
 
-¿Cómo definimos un manejador de eventos en React?
+```jsx
+function Talker() {
+  function talk() {
+    let speech = '';
+    for (let i = 0; i < 10000; i++) {
+      speech += 'blah ';
+    }
+    alert(speech);
+  }
 
-Definimos un manejador de eventos como un método en el componente de función.
+  return <Button talk={talk} />;
+}
 
-Echa un vistazo al archivo **Example.js** en el editor de código. En las líneas 4 a 8, se define un método de manejo de eventos. En la línea 10, ese método de manejo de eventos se adjunta a un evento (en este caso, un evento de clic).
+export default Talker;
+```
+
+En este componente **Talker**, `talk` es una función común de JavaScript, definida dentro del cuerpo del componente: cuando se la invoque, va a construir un texto largo y mostrarlo en una alerta. Hasta acá no hay nada nuevo — `talk` es solo una función. Lo interesante empieza en la línea `return`, donde esa función se pasa como **prop** al componente `Button`.
 
 -----
 
 ## Pass an Event Handler as a prop
 
-¡Bien! Has definido un nuevo método dentro del componente **Talker**. Ahora estás listo para pasar esa función a otro componente.
-
-Puedes pasar un método de la misma manera exacta que pasas cualquier otro dato: usando llaves `{}`.
-
-### 🧠 Qué está pasando (visión general)
-
-Este componente:
-
-* **define una función**
-* **se la pasa a otro componente**
-* **ese otro componente la ejecuta**
-
-Nada más.
-
-#### 🔍 Paso a paso (línea por línea)
-
-```js
-import Button from './Button';
-```
-
-👉 Importa un **componente React** llamado `Button`.
-
-```js
-function Talker() {
-```
-
-👉 Define un **function component**.
-
-```js
-function talk() {
-```
-
-👉 Define una **función normal de JavaScript** dentro del componente.
-
-```js
-let speech = '';
-for (let i = 0; i < 10000; i++) {
-  speech += 'blah ';
-}
-```
-
-👉 Construye un string largo:
-`"blah blah blah ..."` (10,000 veces)
-
-```js
-alert(speech);
-```
-
-👉 Muestra ese texto en una alerta.
+Fíjate en la línea `return` de **Talker**:
 
 ```jsx
 return <Button talk={talk} />;
 ```
 
-👉 Aquí está **lo importante**:
+Acá está el punto clave de esta lección: `talk={talk}` pasa la **función en sí** — no el resultado de ejecutarla. Nota que no hay paréntesis después de `talk`. Si hubiéramos escrito `talk={talk()}`, la función se habría ejecutado inmediatamente durante el renderizado de `Talker` (mostrando la alerta enseguida), y lo que se pasaría como prop sería el valor que `talk()` devuelve — en este caso `undefined` — no la función. Al pasarla sin paréntesis, le entregamos a `Button` la **referencia** a la función, para que sea `Button` quien decida cuándo (y si) llamarla.
 
-* `talk={talk}`
-* **NO se ejecuta la función**
-* Se pasa la **referencia** de la función al componente `Button`
+Esto conecta con algo que ya sabés: las funciones en JavaScript son valores como cualquier otro, así que se pueden pasar como props de la misma manera que pasarías un string o un número.
 
-```js
-export default Talker;
-```
-
-👉 Exporta el componente.
-
-### 🧠 Qué pasa en tiempo de ejecución (mental model)
-
-1️⃣ React renderiza `Talker`
-2️⃣ `Talker` crea la función `talk`
-3️⃣ `Talker` pasa `talk` a `Button` como prop
-4️⃣ `Button` decide **cuándo llamar `talk()`**
-(normalmente en un `onClick`)
-
-Ejemplo típico dentro de `Button`:
-
-```jsx
-function Button({ talk }) {
-  return <button onClick={talk}>Talk</button>;
-}
-```
-
-## 🎯 Regla clave (memorízala)
-
-👉 **Las funciones se pasan sin paréntesis**
-👉 **Se ejecutan donde corresponde (eventos)**
-
-### Resumen en una línea
-
-> `Talker` define una función y se la entrega a `Button` para que `Button` la ejecute cuando el usuario haga algo.
+En tiempo de ejecución, la secuencia es la siguiente: React renderiza `Talker`, `Talker` crea la función `talk`, se la pasa a `Button` como prop, y `Button` decide en qué momento invocarla — normalmente dentro de un manejador de eventos como `onClick`.
 
 -----
 
 ## Receive an Event Handler as a prop
 
-¡Genial! Acabas de pasar una función de `<Talker />` a `<Button />`.
-
-Mira el archivo **Button.js** en el editor de código. Observa que **Button** devuelve un elemento `<button>`.
-
-Si un usuario hace clic en este elemento `<button>`, quieres que se llame a la función **talk()** que pasaste. Esto significa que necesitas adjuntar **talk()** al elemento `<button>` como un manejador de eventos.
-
-¿Cómo se hace eso? De la misma manera que adjuntas cualquier manejador de eventos a un elemento JSX: le das a ese elemento JSX un atributo especial. El nombre del atributo debe ser un nombre de evento, como **onClick** o **onHover**. El valor del atributo debe ser el manejador de eventos que quieres adjuntar.
-
-### 🧠 Qué está pasando exactamente
-
-Tienes esto (implícito):
-
-```jsx
-<Button talk={talk} />
-```
-
-Y en `Button` algo como:
+Del lado de `Button`, la función `talk` llega como una propiedad más dentro del objeto `props`. Para dispararla cuando el usuario haga clic, hay que adjuntarla al elemento `<button>` como manejador del evento `onClick`:
 
 ```jsx
 function Button(props) {
@@ -303,19 +234,7 @@ function Button(props) {
 }
 ```
 
-### 🔍 ¿Por qué `props` es un objeto?
-
-Porque **React agrupa TODAS las props en un solo objeto**.
-
-Piensa así 👇
-
-Cuando haces:
-
-```jsx
-<Button talk={talk} color="red" />
-```
-
-React lo convierte internamente en algo como:
+Vale la pena entender por qué `props` es un objeto. Cuando `Talker` escribe `<Button talk={talk} color="red" />`, React agrupa **todos** los atributos que le pasaste al componente dentro de un único objeto `props`, algo equivalente a:
 
 ```js
 props = {
@@ -324,166 +243,86 @@ props = {
 };
 ```
 
-👉 **Siempre es un objeto**
+Por eso accedés a la función con `props.talk`: es simplemente la propiedad `talk` de ese objeto. Y, al igual que en `Talker`, se la pasa a `onClick` sin paréntesis (`props.talk`, no `props.talk()`) — es React quien la va a invocar automáticamente cuando detecte el clic.
 
-👉 Cada atributo del componente = una propiedad del objeto
+Dado que `props` es un objeto, también podés desestructurarlo directamente en los parámetros de la función, lo cual suele ser más legible cuando el componente usa pocas props:
 
-### 🔑 Entonces, ¿por qué `props.talk`?
-
-Porque:
-
-* `talk` fue pasado como prop
-* React lo guardó dentro del objeto `props`
-* Accedes a esa función como cualquier propiedad JS
-
-```js
-props.talk   // es la función talk
-```
-
-Y cuando el usuario hace click:
-
-```js
-props.talk() // se ejecuta la función
-```
-
-### 🧠 Analogía rápida (para fijarlo)
-
-Imagina que llamas a una función así:
-
-```js
-Button({
-  talk: talk
-});
-```
-
-Dentro de la función:
-
-```js
-props.talk();
-```
-
-👉 Es **JavaScript puro**, no magia de React.
-
-### ✨ Forma moderna (más común)
-
-En vez de:
-
-```js
-function Button(props) {
-  return <button onClick={props.talk}>Talk</button>;
-}
-```
-
-Usamos **destructuring**:
-
-```js
+```jsx
 function Button({ talk }) {
   return <button onClick={talk}>Talk</button>;
 }
 ```
 
-👉 Es exactamente lo mismo
-👉 Más limpio y legible
+Ambas versiones hacen exactamente lo mismo; la segunda es simplemente la forma más común de escribirlo en código moderno de React.
 
----
+> **En TypeScript:** una prop que es una función también se tipa con una firma de función, no solo con un nombre genérico. Si `talk` no recibe argumentos y no devuelve nada útil, se tipa como `() => void`:
+>
+> ```tsx
+> type ButtonProps = {
+>   talk: () => void;
+> };
+>
+> function Button({ talk }: ButtonProps) {
+>   return <button onClick={talk}>Talk</button>;
+> }
+> ```
+>
+> Esto es lo que hace que el error de "pasar `talk()` en lugar de `talk`" sea mucho menos probable en la práctica: si en algún punto `talk` esperara un argumento y te olvidás de pasárselo al invocarla, TypeScript te lo va a marcar.
+
+----
 
 ## handleEvent, onEvent, and props.onEvent
 
-Hablemos sobre cómo nombrar cosas.
+Cuando pasás un manejador de eventos como prop, hay dos nombres que tenés que elegir, y ambos se deciden en el componente padre (el que define el manejador y lo pasa hacia abajo):
 
-Cuando pasas un manejador de eventos como **prop**, como acabas de hacer, hay dos nombres que debes elegir. Ambas elecciones de nombres ocurren en el componente padre, es decir, el componente que define el manejador de eventos y lo pasa.
+1. El nombre del **manejador de eventos** en sí.
+2. El nombre de la **prop** que usás para pasarlo.
 
-El primer nombre que debes elegir es el nombre del propio manejador de eventos.
-
-Mira **Talker.js**, líneas 5 a 11. Este es nuestro manejador de eventos. Elegimos nombrarlo **talk**.
-
-El segundo nombre que debes elegir es el nombre de la **prop** que usarás para pasar el manejador de eventos. Esto es lo mismo que el nombre del atributo.
-
-Para el nombre de nuestra **prop**, también elegimos **talk**, como se muestra en la línea 12:
+En el ejemplo de `Talker`, elegimos llamar `talk` tanto a la función como a la prop:
 
 ```jsx
+function talk() { /* ... */ }
+
 return <Button talk={talk} />;
 ```
 
-Estos dos nombres pueden ser lo que queramos. Sin embargo, hay una convención de nombres que se usa comúnmente.
-
-Así funciona la convención de nombres: primero, piensa en el tipo de evento al que estás escuchando. En nuestro ejemplo, el tipo de evento era `"click"`. Si estás escuchando un evento `"click"`, entonces nombras tu manejador de eventos **handleClick**. Si estás escuchando un evento `"hover"`, entonces nombras tu manejador de eventos **handleHover**:
+Estos dos nombres pueden ser cualquier cosa que quieras, pero existe una convención muy extendida en la comunidad de React que conviene seguir. Para el nombre del manejador, se usa la palabra **handle** seguida del tipo de evento: si escuchás un `"click"`, el manejador se llama **handleClick**; si escuchás un `"hover"`, se llama **handleHover**:
 
 ```jsx
-function myClass() {
+function MyComponent() {
   function handleHover() {
     alert('Soy un manejador de eventos.');
     alert('Se llamará en respuesta a eventos "hover".');
   }
-}
-```
 
-El nombre de tu **prop** debe ser la palabra **on**, más el tipo de evento. Si estás escuchando un evento `"click"`, entonces nombras tu **prop** **onClick**. Si estás escuchando un evento `"hover"`, entonces nombras tu **prop** **onHover**:
-
-```jsx
-function myClass(){
-  function handleHover() {
-    alert('Soy un manejador de eventos.');
-    alert('Escucharé un evento "hover".');
-  }
   return <Child onHover={handleHover} />;
 }
 ```
 
-Perfecto bro 👌 esto es **MUY importante** y confunde a muchos.
-Te lo explico **ultra simple y directo**.
+Para el nombre de la prop, se usa la palabra **on** seguida del tipo de evento: **onClick**, **onHover**, y así sucesivamente — como se ve en el ejemplo anterior, donde la prop se llama `onHover`.
 
-### 🧠 Idea clave (una sola frase)
+Ahora bien, hay un punto que suele generar confusión: `onClick` (o cualquier otro `on...`) **no es una palabra mágica que React reconozca en todos lados**. Su significado depende de dónde se use.
 
-👉 **`onClick` solo es “especial” cuando se usa en elementos HTML (`<button>`, `<div>`, etc.)**
-
-👉 **En componentes propios (`<Button />`) es solo un nombre de prop**
-
-#### 🔍 Caso 1: HTML real (SÍ es especial)
+Cuando `onClick` se coloca sobre un **elemento HTML nativo** — como `<button>`, `<div>` o `<img>` — React sí le da un tratamiento especial: registra un verdadero **escuchador de eventos** del DOM, y ejecuta la función que le pasaste cuando ocurre el clic real.
 
 ```jsx
+// <button> es un elemento HTML nativo: onClick SÍ es un evento real
 <button onClick={props.onClick}>
   Click me!
 </button>
 ```
 
-Aquí:
-
-* `<button>` 👉 es HTML real
-* `onClick` 👉 **React sabe que es un evento**
-* React crea un **event listener**
-* Cuando haces click 👉 se ejecuta la función
-
-✅ Aquí `onClick` **TIENE significado especial**
-
-### 🔍 Caso 2: Componente propio (NO es especial)
+Pero cuando `onClick` se coloca sobre un **componente propio** — como `<Button />` — React no le atribuye ningún significado especial. `<Button />` no es HTML, es una función de JavaScript que vos escribiste; React simplemente empaqueta `onClick` dentro del objeto `props` de ese componente, igual que haría con cualquier otro nombre de atributo (`talk`, `color`, `size`, lo que sea):
 
 ```jsx
+// Button no es HTML: acá onClick es solo el nombre de una prop, sin comportamiento propio
 <Button onClick={handleClick} />
+
+// React internamente arma:
+// props = { onClick: handleClick }
 ```
 
-Aquí:
-
-* `<Button />` 👉 **NO es HTML**
-* Es solo un **componente React**
-* `onClick` 👉 **NO crea ningún evento**
-* Es solo una **prop con ese nombre**
-
-👉 React lo trata como:
-
-```js
-props = {
-  onClick: handleClick
-}
-```
-
-❌ No hay listener todavía
-
-### 🔁 Entonces… ¿cuándo funciona el click?
-
-Funciona cuando **tú conectas las cosas** 👇
-
-#### Button.js
+En este segundo caso, todavía **no existe ningún escuchador de eventos**. Solo se genera un evento real en el momento en que, dentro de la definición de `Button`, esa prop termina adjuntada a un elemento HTML nativo:
 
 ```jsx
 function Button(props) {
@@ -495,36 +334,9 @@ function Button(props) {
 }
 ```
 
-Aquí pasa la magia:
+Ahí es donde ocurre la conexión: `props.onClick` (el nombre que elegiste para tu prop) se asigna al `onClick` del `<button>` (el evento real del DOM), y recién en ese punto el clic queda conectado a la función.
 
-* El `onClick` del **HTML button**
-* recibe la función que vino como prop
-* ahora SÍ hay evento
-
-### 🧠 Modelo mental definitivo (memorízalo)
-
-```text
-onClick en HTML  → evento real
-onClick en componente → solo una prop
-```
-
-O más claro aún:
-
-> Los eventos solo existen en elementos HTML, no en componentes React.
-
-### 🎯 Por qué esto es así
-
-Porque React:
-
-* No sabe qué eventos quieres en tus componentes
-* Solo entiende eventos cuando ve **HTML real**
-* Los componentes solo **reciben datos y funciones**
-
-### ✅ Resumen en 3 bullets
-
-* `<button onClick={...}>` → evento
-* `<Button onClick={...} />` → prop normal
-* El evento nace SOLO cuando llega a HTML
+La regla general para tener en mente es esta: **los eventos del navegador solo existen sobre elementos HTML**. Sobre un componente propio, cualquier nombre que empiece con `on` —lo elijas vos— es apenas una convención de nomenclatura, no un mecanismo del lenguaje ni de React. React no sabe de antemano qué eventos vas a necesitar en tus propios componentes; solo entiende eventos cuando, en algún nivel de la jerarquía, la prop llega a un elemento HTML real.
 
 ----
 
@@ -540,11 +352,40 @@ Hasta ahora, todos los componentes que has visto han sido etiquetas autocerradas
 
 Al usar **props.children**, podemos separar el componente exterior, en este caso **MyFunctionComponent**, del contenido, lo que lo hace flexible y reutilizable.
 
-Mira **BigButton.js**:
+```jsx
+function BigButton(props) {
+  return <button>{props.children}</button>;
+}
+```
 
-* En el Ejemplo 1, `props.children` de `<BigButton>` sería igual al texto: “I am a child of BigButton.”
-* En el Ejemplo 2, `props.children` de `<BigButton>` sería igual a un componente `<LilButton />`.
-* En el Ejemplo 3, `props.children` de `<BigButton>` sería **undefined**.
+Con este mismo componente `BigButton`, el valor de `props.children` cambia según lo que le pases entre sus etiquetas de apertura y cierre:
+
+```jsx
+// Ejemplo 1: props.children es el string "I am a child of BigButton."
+<BigButton>I am a child of BigButton.</BigButton>
+
+// Ejemplo 2: props.children es el elemento <LilButton />
+<BigButton>
+  <LilButton />
+</BigButton>
+
+// Ejemplo 3: al ser autocerrado, no hay nada entre etiquetas, así que props.children es undefined
+<BigButton />
+```
+
+> **En TypeScript:** `children` se tipa con `React.ReactNode`, un tipo pensado específicamente para cubrir todo lo que React puede renderizar: un string, un número, un elemento JSX, un array de elementos, o incluso `undefined`/`null` (para cuando no se pasa nada, como en el Ejemplo 3):
+>
+> ```tsx
+> type BigButtonProps = {
+>   children: React.ReactNode;
+> };
+>
+> function BigButton({ children }: BigButtonProps) {
+>   return <button>{children}</button>;
+> }
+> ```
+>
+> Si tu componente puede usarse sin hijos (como el Ejemplo 3), marcá la prop como opcional con `children?: React.ReactNode`.
 
 Si un componente tiene más de un hijo entre sus etiquetas JSX, entonces `props.children` devolverá esos hijos en un arreglo. Sin embargo, si un componente tiene solo un hijo, entonces `props.children` devolverá ese único hijo, **sin envolverlo en un arreglo**.
 
@@ -580,6 +421,20 @@ function Example(props) {
 Si a `<Example />` no se le pasa ningún texto, entonces mostrará “This is default text”.
 
 Si a `<Example />` se le pasa algún texto, entonces mostrará ese texto pasado como **prop**.
+
+> **En TypeScript:** los valores por defecto se combinan naturalmente con las **props opcionales**. Si `text` tiene un valor por defecto, entonces quien use `<Example />` no está obligado a pasarlo — y eso hay que reflejarlo en el tipo marcando la prop con `?`:
+>
+> ```tsx
+> type ExampleProps = {
+>   text?: string;
+> };
+>
+> function Example({ text = 'This is default text' }: ExampleProps) {
+>   return <h1>{text}</h1>;
+> }
+> ```
+>
+> Si te olvidás del `?` y dejás `text: string`, TypeScript te va a exigir la prop igual, aunque en tiempo de ejecución el valor por defecto funcione — porque, desde el punto de vista de los tipos, una prop sin `?` es obligatoria.
 
 -----
 

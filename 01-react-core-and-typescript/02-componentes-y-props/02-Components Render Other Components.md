@@ -49,6 +49,8 @@ En el ejemplo anterior, `ItemBox` devuelve una instancia de `PurchaseButton`. ¡
 
 Nota: Fíjate que no necesitamos importar React para usar JSX. Gracias a la transformación moderna de JSX, los componentes pueden usar JSX sin importar explícitamente React.
 
+> **En TypeScript:** que un componente devuelva o renderice a otro no agrega ninguna complicación de tipos nueva, siempre que cada componente tenga sus propias props correctamente tipadas — TypeScript va a verificar `<PurchaseButton />` exactamente igual que verificaría `<button>`, chequeando que las props que le pasás coincidan con las que ese componente espera. El tema de cómo tipar esas props en detalle lo cubrimos en [03-Props.md](03-Props.md) y en [11-typescript-y-react/01-Tipado de Props y Funciones.md](../11-typescript-y-react/01-Tipado%20de%20Props%20y%20Funciones.md).
+
 -----
 
 ## Apply a Component in a Render Function

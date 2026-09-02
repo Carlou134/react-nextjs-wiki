@@ -96,6 +96,8 @@ En la última línea del bloque de código anterior, **MyComponent** se exporta 
 
 Mucho de esto todavía puede parecer desconocido, ¡pero ya entiendes más de lo que entendías antes! ¡Sigamos adelante! 🚀
 
+> **En TypeScript:** para un componente sin props, como este, no hace falta anotar nada extra: `function MyComponent() { return <h1>...</h1>; }` ya es TypeScript válido, y el tipo de retorno se infiere solo. Es común encontrarse con el tipo `React.FC` (por ejemplo, `const MyComponent: React.FC = () => ...`) en proyectos y tutoriales más viejos, pero hoy se recomienda **evitarlo**: `React.FC` agrega automáticamente una prop `children` implícita a todos los componentes, tengan o no sentido para ellos, lo cual generó suficientes problemas como para que la comunidad haya vuelto a preferir la función simple, tipando `children` explícitamente solo en los componentes que realmente lo reciben.
+
 -----
 
 ## Name a Functional Component
@@ -245,6 +247,14 @@ createRoot(document.getElementById("app")).render(<MyComponent />);
 ```
 
 A partir de este punto, React toma el control de la interfaz de usuario dentro de la raíz. En una aplicación típica de React, solo se configura la raíz una vez, y todos los componentes adicionales se agregan a través de tu componente principal **App.js**.
+
+> **En TypeScript:** `document.getElementById()` devuelve `HTMLElement | null` — TypeScript no puede saber, en tiempo de compilación, si el elemento con ese id realmente existe en el HTML. Pero `createRoot()` espera un `HTMLElement`, no algo que pueda ser `null`. Por eso, en un proyecto TypeScript esta línea suele escribirse con una **aserción de no-nulo** (el signo `!`), que le dice al compilador "confiá en mí, sé que esto no va a ser `null`":
+>
+> ```tsx
+> const root = createRoot(document.getElementById("app")!);
+> ```
+>
+> Es una de las pocas aserciones de no-nulo que se consideran razonables de usar, porque el elemento raíz de tu `index.html` es algo que vos mismo controlás y sabés que está ahí.
 
 -----
 

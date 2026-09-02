@@ -52,6 +52,8 @@ Pero, en **JSX**, **tienes que incluir la barra**. Si escribes una etiqueta auto
 <br>
 ```
 
+> **En TypeScript:** en un archivo `.tsx`, olvidarte de la barra de autocierre no es un error que descubras recién al correr la app — el compilador lo marca de inmediato como error de sintaxis, directamente en el editor.
+
 ---
 
 ## JavaScript In Your JSX In Your JavaScript
@@ -193,6 +195,8 @@ function clickAlert() {
 
 Ten en cuenta que en HTML los nombres de los escuchadores de eventos se escriben completamente en minúsculas, como `onclick` u `onmouseover`. En JSX, los nombres de los escuchadores de eventos se escriben en **camelCase**, como `onClick` u `onMouseOver`.
 
+> **En TypeScript:** una función como `clickAlert` que no recibe el objeto del evento y no devuelve nada se tipa simplemente como `() => void`. Pero si tu manejador necesita el evento (por ejemplo, para leer `event.target`), React expone tipos específicos por cada tipo de evento y elemento, como `React.MouseEventHandler<HTMLImageElement>` para un clic sobre una `<img>`. Vas a ver este patrón en detalle en [11-typescript-y-react/01-Tipado de Props y Funciones.md](../11-typescript-y-react/01-Tipado%20de%20Props%20y%20Funciones.md).
+
 ---
 
 ## JSX Conditionals: If Statements That Don't Work
@@ -300,6 +304,8 @@ const tasty = (
 
 Si la expresión a la izquierda de `&&` se evalúa como verdadera, entonces el **JSX** a la derecha de `&&` se renderizará. Sin embargo, si la primera expresión es falsa, el JSX a la derecha de `&&` se ignorará y no se renderizará.
 
+> **En TypeScript:** ojo con un error clásico que TypeScript **no** te va a detectar, porque no es un error de tipos, sino de comportamiento en tiempo de ejecución. Si escribís `{items.length && <List items={items} />}` y `items.length` es `0`, React no omite nada: `0` es un valor válido para renderizar en JSX, así que termina imprimiendo literalmente el número `0` en la pantalla. `items.length` sigue siendo de tipo `number`, así que TypeScript no tiene motivo para quejarse. La forma segura es forzar un booleano explícito: `{items.length > 0 && <List items={items} />}`.
+
 ---
 
 ## .map in JSX
@@ -362,6 +368,8 @@ No todas las listas necesitan keys. Una lista necesita keys si se cumple alguna 
 * El orden de la lista puede cambiar. Por ejemplo, una lista de resultados de búsqueda podría reorganizarse de un renderizado a otro.
 
 Si ninguna de estas condiciones se cumple, entonces no tienes que preocuparte por las keys. ¡Y si no estás seguro, nunca está de más usarlas! 😄
+
+> **En TypeScript:** la prop `key` está tipada por React como `React.Key`, que acepta `string | number` (nunca `boolean`, `undefined` ni un objeto). Si usás el `id` de un objeto como key y ese `id` es opcional en tu tipo (`id?: string`), TypeScript te va a marcar error hasta que lo manejes explícitamente — es una buena señal para revisar si de verdad ese campo puede faltar.
 
 ----
 
