@@ -14,13 +14,14 @@ Repositorio personal de apuntes, guías rápidas (*cheatsheets*) y patrones de d
 - **03-tooling-y-devtools** — Vite/CRA y React Developer Tools.
 - **04-hooks-y-context** — useState, useEffect, useLayoutEffect, Custom Hooks y Context API.
 - **05-patrones-estilos-lifecycle** — HOC, Render Props, composición, estilos (CSS/Sass/styled-components/Tailwind) y ciclo de vida de clases.
-- **06-forms** — Formularios controlados y componentes no controlados.
+- **06-forms** — Formularios controlados, componentes no controlados, y React Hook Form + Zod.
 - **07-routing** — React Router v6.
 - **08-manejo-de-errores** — Error Boundaries.
 - **09-performance** — React Profiler, memoización y técnicas de optimización.
 - **10-fetching-de-datos** — Fetch con useEffect, estados de carga/error, re-fetch por dependencias.
 - **11-typescript-y-react** — Tipado de props, estado, useReducer y Context API.
 - **12-react-19** — Server Components, Actions y los nuevos hooks de React 19.
+- **13-arquitectura-frontend** — Vertical Slice vs. organización horizontal, shared vs. features, y Atomic Design.
 
 ### 2. Next.js App Router (`/02-nextjs-app-router`)
 - Conceptos core, enrutamiento y Layouts.
