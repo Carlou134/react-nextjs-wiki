@@ -155,6 +155,41 @@ Envolver componentes tiene un costo. Cuando varios HOC se combinan sobre el mism
 
 Con la llegada de los Hooks, la mayoría de los casos de uso de los HOC —compartir lógica de estado, efectos o suscripciones— se resuelven con un **custom hook**, sin necesidad de envolver ningún componente. Un custom hook se importa y se llama dentro del componente que lo necesita, sin crear nodos adicionales en el árbol ni indirecciones sobre las props. Por eso, la recomendación actual es: si el problema se puede resolver con un hook, se resuelve con un hook. Los HOC siguen siendo válidos, pero quedan reservados para casos puntuales, como ciertas integraciones con librerías de terceros que ya exponen su API en forma de HOC.
 
+### Yendo más lejos: HOCs tipados y componibles
+
+El ejemplo de `withAuth` de arriba es deliberadamente simple. En un HOC real conviene tipar con cuidado dos cosas: qué prop inyecta el HOC, y que esa prop deje de ser exigida a quien use el componente resultante (ya que el HOC se encarga de proveerla). Esto se logra combinando un generic con `Omit`:
+
+```tsx
+interface WithThemeProps {
+  theme: 'light' | 'dark';
+}
+
+const withTheme = (theme: 'light' | 'dark') =>
+  <P extends WithThemeProps>(
+    Component: React.ComponentType<P>
+  ): React.ComponentType<Omit<P, keyof WithThemeProps>> => {
+    const Wrapped = (props: Omit<P, keyof WithThemeProps>) => (
+      <Component {...(props as P)} theme={theme} />
+    );
+    Wrapped.displayName = `withTheme(${Component.displayName || Component.name})`;
+    return Wrapped;
+  };
+```
+
+Leyendo la firma con calma: `withTheme` recibe el tema y devuelve una función que toma un `Component` cuyas props incluyen `WithThemeProps` (`P extends WithThemeProps`), y devuelve un nuevo componente cuyas props son las de `P` **sin** `theme` (`Omit<P, keyof WithThemeProps>`) — porque `theme` ahora lo provee el HOC, no quien lo usa. `displayName` no es obligatorio, pero vale la pena: sin él, todos los componentes envueltos aparecen en React DevTools con el nombre genérico `Wrapped`, lo que hace mucho más difícil identificar cuál es cuál cuando se combinan varios HOCs.
+
+Y varios HOCs tipados así se combinan sin perder seguridad de tipos en ningún paso:
+
+```tsx
+const EnhancedDashboard = withLogging(withUser(withTheme('dark')(BaseDashboard)));
+
+// Quien usa EnhancedDashboard solo necesita pasar las props que
+// ningún HOC de la cadena provee — en este caso, solo `title`.
+<EnhancedDashboard title="Panel principal" />
+```
+
+Cada HOC de la cadena "consume" su prop (inyectándola) y la resta del tipo final, así que TypeScript sabe con precisión qué props le siguen faltando a `EnhancedDashboard` después de aplicar los tres envoltorios.
+
 -----
 
 ## Render Props

@@ -151,3 +151,127 @@ persist(
 Cada vez que cambiamos la estructura del estado que persistimos, incrementamos el número de `version`. Cuando Zustand detecta que el número de versión guardado en `localStorage` es menor al número de versión actual del código, ejecuta la función `migrate`, pasándole el estado viejo y el número de versión con el que fue guardado. Dentro de esa función podemos transformar los datos viejos a la nueva estructura antes de que el resto de la aplicación los use.
 
 Adoptar esta disciplina (definir siempre una `version` y una función `migrate` desde el principio) evita que un cambio en la forma de tus datos rompa la aplicación para los usuarios que ya tenían estado guardado, y es una práctica que conviene incorporar en cualquier store que persista información entre sesiones.
+
+-----
+
+## Hidratación y SSR
+
+Cuando un store usa `persist`, el estado no está disponible instantáneamente en el primer render: Zustand necesita leer `localStorage` y "rehidratar" el store con esos datos, lo cual ocurre después del render inicial. En una aplicación puramente cliente esto pasa tan rápido que casi nunca se nota, pero en un entorno con **renderizado en el servidor** (como Next.js) el problema se vuelve real: el servidor no tiene acceso a `localStorage`, así que el HTML que envía siempre parte del estado inicial sin persistir, y recién en el cliente, un instante después de la hidratación de React, el store se actualiza con los datos guardados. Si un componente lee ese valor antes de tiempo, muestra información vieja o vacía durante una fracción de segundo, y luego "salta" al valor correcto — un problema similar al *flicker* visual que ya vimos al hablar de `useLayoutEffect`.
+
+La solución es exponer explícitamente si el store ya terminó de hidratarse, usando la opción `onRehydrateStorage`:
+
+```tsx
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+export const useUserStore = create(
+  persist(
+    (set) => ({
+      user: null,
+      isHydrated: false,
+
+      setUser: (user) => set({ user }),
+      setIsHydrated: (hydrated) => set({ isHydrated: hydrated }),
+    }),
+    {
+      name: 'user-store',
+      onRehydrateStorage: () => (state) => {
+        // Zustand llama a esta función una vez que terminó de leer localStorage
+        state?.setIsHydrated(true);
+      },
+    }
+  )
+);
+```
+
+Con eso, cualquier componente que dependa del estado persistido puede esperar explícitamente a que `isHydrated` sea `true` antes de confiar en el dato:
+
+```tsx
+function UserProfile() {
+  const { user, isHydrated } = useUserStore();
+
+  if (!isHydrated) {
+    return <p>Cargando...</p>;
+  }
+
+  if (!user) {
+    return <p>No hay usuario</p>;
+  }
+
+  return <div>{user.name}</div>;
+}
+```
+
+Si varios componentes necesitan esta misma espera, conviene envolver el patrón en un HOC reutilizable en lugar de repetir el chequeo `if (!isHydrated)` en cada uno:
+
+```tsx
+export const withHydration = (Component) => {
+  return function HydratedComponent(props) {
+    const isHydrated = useUserStore((state) => state.isHydrated);
+
+    if (!isHydrated) {
+      return <div>Inicializando...</div>;
+    }
+
+    return <Component {...props} />;
+  };
+};
+```
+
+-----
+
+## Middleware: devtools e Immer
+
+Además de `persist`, Zustand expone otros middlewares que se combinan de la misma forma (envolviendo la función que define el store).
+
+**`devtools`** conecta el store con la extensión Redux DevTools del navegador, permitiendo inspeccionar el estado y el historial de actions aunque el proyecto no use Redux:
+
+```tsx
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
+
+const useCounterStore = create(
+  devtools(
+    (set) => ({
+      count: 0,
+      increment: () => set((state) => ({ count: state.count + 1 })),
+    }),
+    { name: 'CounterStore' }
+  )
+);
+```
+
+**`immer`** resuelve la incomodidad de escribir actualizaciones inmutables a mano cuando el estado tiene arreglos u objetos anidados. Sin Immer, cada actualización necesita spread/`map`/`filter` explícitos:
+
+```tsx
+const useStoreWithoutImmer = create((set) => ({
+  todos: [],
+  addTodo: (todo) => set((state) => ({
+    todos: [...state.todos, todo],
+  })),
+  updateTodo: (id, updates) => set((state) => ({
+    todos: state.todos.map((t) => (t.id === id ? { ...t, ...updates } : t)),
+  })),
+}));
+```
+
+Con `immer((set) => ...)`, el mismo store se escribe "mutando" el borrador de estado directamente, y por debajo Immer se encarga de producir un nuevo objeto inmutable sin que tengas que hacer el spread vos mismo:
+
+```tsx
+import { immer } from 'zustand/middleware/immer';
+
+const useTodoStore = create(
+  immer((set) => ({
+    todos: [],
+    addTodo: (todo) => set((state) => {
+      state.todos.push(todo);
+    }),
+    updateTodo: (id, updates) => set((state) => {
+      const todo = state.todos.find((t) => t.id === id);
+      if (todo) Object.assign(todo, updates);
+    }),
+  }))
+);
+```
+
+La sintaxis con Immer es más legible cuanto más anidado es el estado, pero agrega una dependencia y una capa de indirección — para stores simples (como los ejemplos de esta lección), el `set` estándar de Zustand sigue siendo perfectamente adecuado.

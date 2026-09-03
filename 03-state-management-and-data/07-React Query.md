@@ -53,6 +53,30 @@ const { data } = useQuery({
 
 Esto es importante porque React Query no solo usa la query key para decidir si ya tiene el dato en cache, sino también para saber **qué invalidar** cuando algo cambia. Si actualizás al usuario con id `5`, podés decirle a React Query que invalide específicamente la entrada `['user', 5]`, sin afectar el cache de ningún otro usuario. Pensá en la query key como la dirección exacta de un dato dentro del cache.
 
+A medida que una aplicación crece y las mismas keys se repiten en varios componentes, escribir arreglos como `['users']` o `['user', userId]` a mano en cada lugar se vuelve propenso a errores de tipeo (`['user', id]` en un componente y `['users', id]` en otro terminan siendo cachés completamente distintos para React Query). Una forma común de evitar esto es centralizar las keys de un recurso en un **factory de query keys**:
+
+```tsx
+const userKeys = {
+  all: ['users'] as const,
+  lists: () => [...userKeys.all, 'list'] as const,
+  list: (filters: { page: number; search: string }) => [...userKeys.lists(), filters] as const,
+  details: () => [...userKeys.all, 'detail'] as const,
+  detail: (id: number) => [...userKeys.details(), id] as const,
+};
+
+const { data } = useQuery({
+  queryKey: userKeys.list({ page: 1, search: 'juan' }),
+  queryFn: () => api.getUsers({ page: 1, search: 'juan' }),
+});
+
+const { data: user } = useQuery({
+  queryKey: userKeys.detail(123),
+  queryFn: () => api.getUser(123),
+});
+```
+
+La jerarquía (`all` → `lists`/`details` → `list(...)`/`detail(...)`) también hace que invalidar por nivel sea directo: `queryClient.invalidateQueries({ queryKey: userKeys.all })` invalida todo lo relacionado a usuarios (listas y detalles por igual), mientras que `queryClient.invalidateQueries({ queryKey: userKeys.lists() })` invalida solo las listas, dejando intactos los detalles ya cacheados.
+
 -----
 
 ## Refetching to Stay in Sync
@@ -100,3 +124,20 @@ Esta técnica no es apropiada para cualquier operación. Tiene sentido para acci
 ## When to Reach for React Query
 
 Vale la pena remarcar que React Query no reemplaza a Zustand o Redux: resuelve un problema distinto. Zustand y Redux gestionan estado de **cliente** (datos que le pertenecen a tu aplicación y que vos controlás por completo). React Query gestiona estado de **servidor** (datos que no te pertenecen, que pueden cambiar por fuera de tu aplicación, y que necesitan sincronizarse, cachearse y refrescarse). En una aplicación real, es común usar ambas herramientas juntas: Zustand para el estado de la interfaz, y React Query para todo lo que involucre comunicación con una API.
+
+Para inspeccionar visualmente todo lo que estuvimos viendo —qué queries están cacheadas, cuáles están `stale`, cuántas veces se refetchearon, el estado de las mutaciones— React Query ofrece su propio panel de DevTools, similar en espíritu al React Profiler:
+
+```tsx
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <YourApp />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}
+```
+
+Solo se incluye en el bundle durante desarrollo, así que no hay que preocuparse por sacarlo antes de deployar a producción.

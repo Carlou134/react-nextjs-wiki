@@ -164,3 +164,35 @@ Aplicar memoización de forma preventiva, sin haber confirmado con el Profiler q
 
 ------
 
+## El Profiler como componente
+
+Todo lo visto hasta acá usa la **extensión de React DevTools** — una herramienta visual que se abre aparte del código. React también expone un componente `<Profiler>`, importable desde `'react'`, que mide el rendimiento de renderizado **programáticamente**, dentro de la propia aplicación:
+
+```javascript
+import { Profiler } from 'react';
+
+const onRenderCallback = (
+  id,              // el prop "id" del árbol de Profiler que se acaba de commitear
+  phase,           // "mount" (primer render) o "update" (re-render)
+  actualDuration,  // tiempo que tardó en renderizarse este commit
+  baseDuration,    // tiempo estimado que tardaría sin ninguna memoización
+  startTime,       // marca de tiempo en la que React empezó a renderizar
+  commitTime,      // marca de tiempo en la que React confirmó este commit
+  interactions     // conjunto de interacciones asociadas a esta actualización
+) => {
+  console.log(`${id} (${phase}) tardó ${actualDuration}ms`);
+};
+
+const App = () => (
+  <Profiler id="App" onRender={onRenderCallback}>
+    <Header />
+    <UserList />
+    <Footer />
+  </Profiler>
+);
+```
+
+Esto es útil en escenarios donde la extensión de DevTools no alcanza: registrar métricas de rendimiento en producción (por ejemplo, enviándolas a un servicio de monitoreo cuando `actualDuration` supera cierto umbral), automatizar alertas de regresión de performance en tests, o medir un árbol específico sin depender de que quien lo ejecute tenga la extensión instalada. Para el trabajo diario de diagnóstico durante el desarrollo, la extensión de DevTools sigue siendo la herramienta más cómoda — el componente `<Profiler>` complementa esa herramienta, no la reemplaza.
+
+------
+
