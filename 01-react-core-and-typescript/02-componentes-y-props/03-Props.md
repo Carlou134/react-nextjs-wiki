@@ -26,6 +26,18 @@ Al final de esta lección, deberías ser capaz de:
 
 ------
 
+## ¿Cuándo usar cada concepto de esta lección?
+
+- **Acceder a props** (`props.name`) — siempre que un componente necesite mostrar o usar algo que le llega desde afuera.
+- **Pasar props** — cuando el padre necesita personalizar o configurar a un hijo (`<Product name="..." price={...} />`).
+- **Renderizado condicional según props** — cuando es el **hijo** el que tiene que decidir qué mostrar según lo que recibió, sin que el padre le diga literalmente "mostrate de tal forma".
+- **Evento como prop** (el patrón `Talker`/`Button`) — cuando el padre necesita reaccionar a algo que pasa **dentro** del hijo, como un click. El padre define la lógica (`talk`), el hijo decide el momento en que se dispara (`onClick={talk}`).
+- **Convención `handleX` / `onX`** — siempre que definís un manejador de eventos y lo pasás como prop, para que cualquiera que lea el código entienda de qué se trata sin tener que rastrear la implementación.
+- **`children`** — cuando el contenido interno de un componente varía completamente según quien lo use (layouts, wrappers, cards), al punto de que enumerar ese contenido como props nombradas no tendría sentido.
+- **Valores por defecto** — cuando una prop es opcional y existe un valor razonable para cuando nadie la pasa explícitamente.
+
+------
+
 ## Access a Component's props
 
 Cada componente tiene algo llamado **props**.

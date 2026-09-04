@@ -21,7 +21,17 @@ Existen tres momentos clave en los que se puede utilizar el Hook de Efecto:
 
 Más adelante en esta lección, aprenderemos cómo ajustar con mayor precisión exactamente cuándo se ejecuta el Hook de Efecto.
 
-------
+-----
+
+## ¿Cuándo usar useEffect?
+
+La pregunta que te tenés que hacer es siempre la misma: **¿esto necesita pasar *después* de que React ya actualizó la pantalla, y sincronizar tu componente con algo que vive fuera de React?** Si la respuesta es sí, es un efecto. "Fuera de React" incluye el DOM directamente, una API externa, un timer o intervalo, una suscripción, `localStorage`.
+
+Si en cambio lo que necesitás es simplemente calcular algo a partir de props o estado para usarlo en el mismo render (sin tocar nada externo), no hace falta un efecto — alcanza con una variable normal, o con `useMemo()` si ese cálculo es costoso (lo vemos en la lección de performance).
+
+Para el caso especial de necesitar medir el DOM y ajustar algo **antes** de que el navegador pinte (evitar un parpadeo visual), existe `useLayoutEffect()`, que vemos más abajo en esta misma nota — pero es la excepción, no la regla: `useEffect()` sigue siendo la opción correcta por defecto.
+
+-----
 
 ## Function Component Effects
 
@@ -343,5 +353,17 @@ function Tooltip() {
 ```
 
 Fuera de este tipo de escenarios —mediciones de layout, animaciones que dependen de una medición previa, o evitar parpadeos visuales al sincronizar el DOM con datos externos— **useEffect()** sigue siendo la opción correcta por defecto. Como **useLayoutEffect()** bloquea el pintado del navegador hasta que termina de ejecutarse, abusar de él puede degradar el rendimiento percibido de la aplicación. Las reglas de dependencias y la función de limpieza funcionan exactamente igual que en **useEffect()**; lo único que cambia es el momento en el que React decide ejecutar el efecto.
+
+-----
+
+## ¿Cuándo usar cada práctica de esta lección?
+
+- **Sin array de dependencias** (`useEffect(fn)`) — casi nunca es lo que realmente querés: el efecto se ejecuta después de **cada** render, sin excepción. Se usa muy poco en código real; si te encontrás sin pasar el segundo argumento, valen la pena revisar si en realidad necesitás `[]` o un array con dependencias específicas.
+- **Array vacío `[]`** — cuando el efecto solo debe ejecutarse una vez, al montar el componente: una suscripción, un fetch inicial que no depende de ninguna prop ni estado.
+- **Array con dependencias específicas** (`[count]`, `[searchQuery]`) — cuando el efecto debe volver a ejecutarse únicamente si cambia alguno de esos valores puntuales — el caso típico de re-fetch cuando cambia un id o un término de búsqueda.
+- **Función de limpieza (cleanup)** — cuando el efecto crea algo que podría duplicarse o generar una fuga de memoria si no se deshace: un *event listener*, un `setInterval`, una suscripción. Si el efecto solo lee un valor y lo asigna a `document.title`, por ejemplo, no necesita cleanup.
+- **`useEffectEvent`** — cuando el efecto necesita leer el valor **más reciente** de una variable, pero esa variable no debería formar parte del array de dependencias porque no querés que el efecto se vuelva a ejecutar (y recrear listeners o timers) solo porque ese valor cambió.
+- **`useLayoutEffect`** — únicamente cuando necesitás medir el DOM y ajustar algo de forma sincrónica antes de que el navegador pinte, para evitar un parpadeo visual. Para todo lo demás, `useEffect` es la opción por defecto.
+- **Separar en varios `useEffect`** — cuando dos piezas de lógica no están relacionadas entre sí (una obtiene datos de una API, otra escucha el movimiento del mouse). Agruparlas en un solo efecto mezcla responsabilidades que no tienen nada que ver.
 
 ----

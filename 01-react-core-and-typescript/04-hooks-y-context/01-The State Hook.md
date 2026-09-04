@@ -27,6 +27,14 @@ En esta lección, aprenderemos a:
 
 -----
 
+## ¿Cuándo usar useState?
+
+Usá `useState()` cuando un componente necesita "recordar" un valor entre renders, y ese valor tiene que provocar que React vuelva a dibujar la pantalla cuando cambia. Es la opción por defecto para datos **simples e independientes entre sí**: un booleano, un string, un número, un array u objeto chico que cambia como una sola unidad.
+
+No es la herramienta correcta cuando la lógica de actualización se vuelve compleja — varias acciones posibles sobre el mismo estado, o varios sub-valores que tienen que mantenerse coherentes entre sí. En ese punto, conviene escalar a `useReducer()` (lo vemos en la lección de ese mismo nombre, más adelante en esta carpeta) en lugar de forzar todo dentro de `useState()`.
+
+-----
+
 ## Update Function Component State
 
 Comencemos con el **State Hook**, el Hook más comúnmente usado para construir componentes de React. El **State Hook** es una exportación nombrada de la biblioteca de React, por lo que lo importamos usando **desestructuración de objetos**, así:
@@ -485,5 +493,15 @@ function Profile({ isLoggedIn }) {
 Por último, vale la pena aclarar una confusión común: un Hook **no es un componente**. Un componente de React es una función que recibe props y devuelve JSX para ser renderizado. Un Hook, en cambio, es una función común de JavaScript que llamamos **desde dentro** de un componente para conectarnos a capacidades internas de React, como el estado o los efectos secundarios. `useState()` no renderiza nada por sí mismo; simplemente le da a la función que define nuestro componente acceso a un valor que React recuerda entre renderizados.
 
 Esta distinción se vuelve especialmente relevante cuando empecemos a construir nuestros propios **Hooks personalizados**: seguirán siendo funciones que empiezan con `use`, sujetas a las mismas dos reglas que acabamos de repasar, y solo podrán llamarse desde componentes de función o desde otros Hooks personalizados.
+
+-----
+
+## ¿Cuándo usar cada práctica de esta lección?
+
+- **Actualizar con un valor directo** (`setCount(5)`) — cuando el siguiente valor no depende del valor anterior del estado.
+- **Actualizar con función callback** (`setCount(prev => prev + 1)`) — cuando el siguiente valor **sí** depende del valor anterior. Es la opción más segura por defecto para incrementos, toggles, o cualquier "cambiá esto en base a lo que ya tenía", porque evita el problema de trabajar con un valor de estado desactualizado si React agrupa varias actualizaciones.
+- **Arreglos en el estado** — cuando manejás una colección de elementos que se agregan, quitan o filtran como grupo (una lista de tareas, los ingredientes seleccionados de una pizza).
+- **Objetos en el estado** — cuando varias variables están relacionadas entre sí y tiende a tener sentido leerlas o pasarlas juntas (los campos de un formulario).
+- **Múltiples `useState` separados, en vez de un objeto grande** — cuando esas variables, aunque estén relacionadas conceptualmente, **cambian de forma independiente** entre sí. Es la señal contraria a la anterior: si actualizar un solo campo te obliga a hacer spread de un objeto grande con `...prev`, probablemente convenga separarlo en hooks individuales.
 
 -----

@@ -10,7 +10,15 @@ Los hooks personalizados no son una característica nueva de React, sino una **c
 
 En el camino hacia la creación de nuestros propios hooks personalizados, practicaremos y repasaremos algunos conceptos básicos sobre los hooks. Específicamente, repasaremos cómo funciona el hook `useEffect()` internamente, así como las **reglas** que todos los hooks deben seguir. Con estas habilidades, podemos comenzar a crear nuestros hooks personalizados. ¡Comencemos!
 
-----
+-----
+
+## ¿Cuándo crear un custom hook?
+
+Creá un hook personalizado cuando tenés lógica con estado (una combinación de `useState`/`useEffect`, típicamente) que **se repite en más de un componente** — en ese caso, extraerla a un hook evita copiar y pegar la misma lógica una y otra vez. También vale la pena crear uno aunque se use en un solo lugar, si esa lógica le agrega ruido al componente y sacarla mejora la legibilidad del JSX.
+
+La forma de reconocer si algo "es" un custom hook: el nombre empieza con `use`, y llama a otros Hooks de React adentro suyo. Si una función no llama a ningún Hook internamente, es simplemente una función auxiliar común — no hace falta (ni corresponde) nombrarla con el prefijo `use`.
+
+-----
 
 ## Reviewing the Effect Hook
 
@@ -226,4 +234,13 @@ Para que nuestra aplicación funcione correctamente, crearemos un hook personali
 *   El concepto de que los hooks personalizados son útiles para **encapsular lógica de hooks compleja y repetitiva** y a menudo se crean en su propio archivo y se exportan para una máxima portabilidad.
 
 -----
+
+## ¿Cuándo devolver qué forma desde un custom hook?
+
+No hay una única forma "correcta" de devolver datos desde un custom hook — depende de cuántos valores devuelve y de si el orden importa:
+
+- **Devolver un arreglo** (`return [state, toggle]`, como `useToggle`) — cuando devolvés **dos valores relacionados**, siguiendo la misma convención visual que `useState()`. Funciona bien porque quien lo consume puede renombrar libremente en la desestructuración (`const [modoOscuro, toggleModoOscuro] = useToggle()`).
+- **Devolver un objeto** (`return { user, loading, error }`, como en `useGeolocation`) — cuando devolvés **tres o más valores**, o cuando el orden no es evidente por sí solo. Con un objeto, quien lo consume puede desestructurar solo lo que necesita, por nombre, sin depender de una posición específica.
+
+Como regla general: dos valores estrechamente relacionados (un valor y su actualizador) → arreglo. Tres o más valores, o valores donde el nombre aporta más claridad que la posición → objeto.
 

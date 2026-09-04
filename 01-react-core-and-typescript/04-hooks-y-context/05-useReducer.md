@@ -169,6 +169,15 @@ Por último, `useReducer()` combina naturalmente con **Context** para compartir 
 
 -----
 
+## ¿Cuándo usar cada práctica de esta lección?
+
+- **Acción sin `payload`** (`{ type: 'increment' }`) — cuando la acción no necesita transportar información adicional; el `type` solo le dice al reducer qué transformación aplicar.
+- **Acción con `payload`** (`{ type: 'setCount', payload: 10 }`) — cuando el reducer necesita un dato externo para calcular el siguiente estado (un valor escrito por el usuario, un id, una respuesta de API).
+- **`useReducer()` solo, dentro de un componente** — cuando el estado complejo es local a ese componente y nadie más de la aplicación necesita leerlo ni modificarlo (por ejemplo, el estado de un formulario grande que vive y muere dentro de una sola pantalla).
+- **`useReducer()` combinado con Context** — en cuanto ese mismo estado complejo necesite compartirse con componentes que no son descendientes directos, o que están varios niveles más abajo en el árbol. Es la combinación que usás cuando las dos señales aparecen juntas: "esto tiene muchas acciones relacionadas" **y** "esto lo necesitan leer varios componentes distintos".
+
+-----
+
 ## Resumen
 
 * `useReducer()` centraliza la lógica de actualización de estado en una función **reducer**, en lugar de repartirla entre múltiples manejadores de eventos.

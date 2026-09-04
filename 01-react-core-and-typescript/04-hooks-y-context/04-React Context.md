@@ -25,7 +25,71 @@ Al final de la lección, aprenderás:
 
 ¡Comencemos!
 
-----
+-----
+
+## ¿Cuándo usar Context?
+
+Usá Context cuando **varios componentes, en distintos niveles de profundidad**, necesitan leer (y a veces actualizar) el mismo dato, y pasarlo por props te obligaría a atravesar componentes intermedios que ni siquiera lo usan — el problema del edificio de quince pisos de arriba. Ejemplos típicos: el tema visual, el usuario autenticado, el idioma de la interfaz.
+
+No es la herramienta correcta para **todo** el estado de una aplicación: como vamos a ver en "Buenas prácticas y antipatrones" más abajo, un valor de Context que cambia con mucha frecuencia puede generar re-renders innecesarios en todos sus consumidores. Para estado que cambia seguido o que involucra lógica de actualización compleja, conviene mirar `useReducer()` combinado con Context (lo vemos en la sección "Context con useReducer"), o directamente una librería como Zustand — cubierta en `03-state-management-and-data`.
+
+-----
+
+## Paso a paso recomendado para armar un Context
+
+El resto de esta lección explica cada pieza por separado, en el orden en que aparecieron históricamente en el curso. Pero a la hora de **construir** un Context de cero, conviene hacerlo en este orden — es el mismo que fuiste destrabando en la práctica con el ejercicio del tema claro/oscuro:
+
+**1. Definí el tipo del valor, y creá el contexto.** Antes de escribir ninguna lógica, preguntate: ¿qué necesitan leer (y actualizar) los componentes que van a consumir esto? Eso es tu `type`. Creá el contexto con ese tipo y `undefined` como valor por defecto:
+
+```tsx
+type ThemeContextType = {
+  theme: string;
+  setTheme: (theme: string) => void;
+};
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+```
+
+**2. Creá el componente Provider (el "wrapper").** Este es el único lugar de todo tu código que va a tocar `ThemeContext.Provider` directamente. Acá vive el estado real (`useState` o `useReducer`), y el `value` memoizado con `useMemo`:
+
+```tsx
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState('light');
+  const value = useMemo(() => ({ theme, setTheme }), [theme]);
+
+  return (
+    <ThemeContext.Provider value={value}>
+      {children}
+    </ThemeContext.Provider>
+  );
+}
+```
+
+**3. Creá el custom hook de inmediato — no es opcional ni depende de "cuántos componentes lo van a usar".** Acá vale la pena corregir una intuición razonable pero equivocada: no es que el hook se justifique recién "cuando vamos a usar muchos componentes". Se crea **siempre**, incluso si por ahora solo lo consume un componente, porque:
+
+  * te ahorra repetir el chequeo de `undefined` en cada lugar que consuma el contexto,
+  * oculta `ThemeContext` como detalle de implementación — nadie fuera de este archivo necesita saber que existe,
+  * si el día de mañana cambiás cómo se implementa el contexto por dentro, ningún componente consumidor tiene que cambiar una sola línea.
+
+  ```tsx
+  function useTheme() {
+    const context = useContext(ThemeContext);
+    if (context === undefined) {
+      throw new Error('useTheme debe usarse dentro de un ThemeProvider');
+    }
+    return context;
+  }
+  ```
+
+  Lo que sí es cierto es que el **beneficio** de tener el hook crece cuantos más componentes lo consuman — pero el costo de escribirlo es tan bajo (cuatro líneas) que conviene hacerlo desde el primer consumidor, no esperar a que haga falta.
+
+**4. Envolvé con el Provider la parte del árbol que necesita el contexto — ni más arriba, ni más abajo de lo necesario.** Acá está la otra parte de tu pregunta: ¿dónde va el `<ThemeProvider>` en el árbol de componentes? La regla es ubicarlo **lo más cerca posible de los componentes que realmente lo necesitan**, sin envolver de más. Si todo tu sitio necesita el tema, envolvé en la raíz (`<App>`). Si solo una sección específica lo necesita (por ejemplo, un panel de configuración), envolvé solo esa sección — no hace falta que el `<ThemeProvider>` viva en la raíz de la aplicación "por las dudas".
+
+**5. Consumí con el hook en cualquier componente descendiente.** A partir de acá, cualquier componente adentro del `<ThemeProvider>` llama a `useTheme()` — sin importar cuán anidado esté, y sin volver a tocar `ThemeContext` directamente.
+
+**6. ¿En qué archivo va todo esto?** Los pasos 1, 2 y 3 (el `type`, `createContext`, el `Provider` y el hook) conviene agruparlos juntos en su **propio archivo** desde el día uno — por ejemplo `ThemeContext.tsx` — aunque todavía tengas un solo consumidor. No es una decisión que se posterga hasta que el contexto "crezca": es una unidad autocontenida (contexto + provider + hook de acceso) que tiene sentido mantener junta desde que nace, para que cualquiera que la use sepa exactamente de dónde importarla y no tenga que buscarla dispersa entre los componentes que la consumen.
+
+-----
 
 ## Creating and Consuming Context
 
@@ -133,6 +197,26 @@ const ThemedMessage = ({ children, theme }) => {
   );
 };
 ```
+
+> **En TypeScript:** todo componente envoltorio recibe `children`, y esa prop se tipa con `React.ReactNode` — el mismo tipo que ya vimos en la lección de Props para cubrir cualquier cosa renderizable (string, número, elemento JSX, arreglo de elementos, o nada):
+>
+> ```tsx
+> type ThemedMessageProps = {
+>   children: React.ReactNode;
+>   theme: string;
+> };
+>
+> const ThemedMessage = ({ children, theme }: ThemedMessageProps) => {
+>   return (
+>     <ThemeContext.Provider value={theme}>
+>       This content is in {theme} mode!
+>       {children}
+>     </ThemeContext.Provider>
+>   );
+> };
+> ```
+>
+> Este mismo patrón se repite en todos los componentes envoltorio que vas a ver más abajo en esta lección (`CounterArea`, `ThemeProvider`, `CartProvider`): todos reciben `children: React.ReactNode` como prop, así que no lo vamos a repetir cada vez — a partir de acá, dalo por tipado así en cada uno.
 
 Los componentes envoltorio como `ThemedMessage` pueden entonces usarse en lugar de un componente **.Provider** para envolver componentes hijos:
 
@@ -416,5 +500,20 @@ useEffect(() => {
 ```
 
 Combinar Context con lógica asíncrona compleja —reintentos, caché, invalidación de datos— tiende a volverse difícil de escalar con las herramientas básicas de React. Cuando el manejo de datos asíncronos empieza a dominar la lógica de un contexto, suele ser una señal de que conviene migrar a una librería especializada en manejo de datos remotos, como React Query, o a un gestor de estado global como Redux Toolkit.
+
+-----
+
+## ¿Cuándo usar cada práctica de esta lección?
+
+- **Un solo Provider** — el caso por defecto: un dato, compartido tal cual, con toda la aplicación (o toda la sección) que lo envuelve.
+- **Multiple Providers** (mismo contexto, valores distintos) — cuando necesitás el mismo *tipo* de contexto pero con un valor diferente por sección de la app (por ejemplo, temas distintos para distintas áreas de un dashboard).
+- **Nested Providers** — cuando una sección específica del árbol necesita *sobreescribir* el valor que ya viene de un Provider más arriba, solo para sus propios descendientes.
+- **Provider Wrapper** (el componente `ThemeProvider`) — siempre. No es una técnica opcional para casos avanzados: es la forma recomendada de usar Context desde el principio, en lugar de escribir `<ThemeContext.Provider value={...}>` a mano en cada lugar donde lo necesites.
+- **Exponer `dispatch` o el setter junto con el valor** ("Updating Context") — cuando los componentes consumidores necesitan poder *cambiar* el dato, no solo leerlo. Si el contexto es de solo lectura (por ejemplo, datos de configuración que nunca cambian en runtime), no hace falta exponer ningún setter.
+- **Dividir en varios contextos** ("Buenas prácticas") — cuando agrupaste, en un mismo contexto, datos que cambian con frecuencias distintas o que pertenecen a dominios sin relación entre sí (usuario, tema, carrito). La señal de alarma es un componente que se re-renderiza por un cambio en una parte del contexto que ni siquiera usa.
+- **`useMemo` en el `value` del Provider** — siempre que el Provider pueda re-renderizarse por una razón ajena al valor del contexto (por ejemplo, si el Provider mismo recibe otras props). Es barato de escribir y evita una clase entera de re-renders innecesarios en los consumidores.
+- **Persistencia con `localStorage`** — cuando el valor tiene que sobrevivir a un recargado de página: tema, idioma, sesión. No tiene sentido para datos que deberían reiniciarse en cada carga.
+- **Context con `useReducer`** — cuando el valor compartido necesita soportar varias operaciones relacionadas entre sí (agregar/quitar/editar), en vez de un único setter simple. Si solo necesitás cambiar un valor de una manera, `useState` alcanza.
+- **Manejo explícito de estados de carga con datos async** — en cuanto el valor del contexto dependa de una petición a una API. Si el contexto es 100% síncrono (tema, idioma elegido localmente), no aplica.
 
 -----
