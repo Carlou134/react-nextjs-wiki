@@ -89,6 +89,43 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 **6. ¿En qué archivo va todo esto?** Los pasos 1, 2 y 3 (el `type`, `createContext`, el `Provider` y el hook) conviene agruparlos juntos en su **propio archivo** desde el día uno — por ejemplo `ThemeContext.tsx` — aunque todavía tengas un solo consumidor. No es una decisión que se posterga hasta que el contexto "crezca": es una unidad autocontenida (contexto + provider + hook de acceso) que tiene sentido mantener junta desde que nace, para que cualquiera que la use sepa exactamente de dónde importarla y no tenga que buscarla dispersa entre los componentes que la consumen.
 
+**7. El error más común al conectar todo esto: consumir el contexto en el mismo componente que crea el Provider.** Es tentador escribir algo así, sobre todo en un componente de ejemplo o de demo:
+
+```tsx
+// ❌ Esto tira "useTheme debe usarse dentro de un ThemeProvider"
+function DemoDelTema() {
+  const { theme } = useTheme(); // se ejecuta ACÁ...
+
+  return (
+    <ThemeProvider>          {/* ...pero el Provider recién existe ACÁ, más abajo */}
+      <h1>Tema: {theme}</h1>
+    </ThemeProvider>
+  );
+}
+```
+
+Esto no es un problema de **orden** en el código (no se arregla moviendo la línea de `useTheme()` más abajo) — es un problema de **jerarquía en el árbol**. `DemoDelTema` es quien *crea* el `ThemeProvider`; nunca puede ser, a la vez, hijo de ese mismo Provider. Un componente no puede estar simultáneamente arriba y abajo de sí mismo en el árbol que él mismo renderiza.
+
+La solución es siempre la misma: separar en dos componentes — uno de afuera, que solo pone el Provider, y otro de adentro, que consume el hook:
+
+```tsx
+// ✅ Correcto: dos componentes, el de adentro sí es descendiente del Provider
+function DemoDelTema() {
+  return (
+    <ThemeProvider>
+      <ContenidoDelTema />
+    </ThemeProvider>
+  );
+}
+
+function ContenidoDelTema() {
+  const { theme } = useTheme(); // ahora sí, adentro del Provider
+  return <h1>Tema: {theme}</h1>;
+}
+```
+
+Esto **no** significa que siempre haya que dividir todo en dos componentes — la mayoría de las veces el `<ThemeProvider>` va a envolver a un componente `<App>` que ya existía de antes, y no hace falta crear nada nuevo. La regla solo se activa en el caso puntual donde una misma pieza necesita hacer dos cosas mutuamente excluyentes: proveer el contexto y consumirlo.
+
 -----
 
 ## Creating and Consuming Context
@@ -437,23 +474,35 @@ Hay dos detalles importantes en este ejemplo. Primero, el valor inicial de `useS
 
 Cuando el valor compartido por un contexto necesita soportar varias operaciones relacionadas entre sí —agregar, quitar o editar elementos, por ejemplo—, exponer un actualizador de estado distinto para cada operación a través del Provider se vuelve difícil de mantener. En estos casos, es común combinar **Context** con **useReducer()**: el contexto expone el estado actual junto con una única función `dispatch()`, y toda la lógica de las transiciones de estado queda centralizada en el reducer.
 
-```jsx
-const CartContext = createContext();
+```tsx
+type CartItem = { id: number; name: string; price: number };
+type CartState = { items: CartItem[] };
 
-const initialState = { items: [] };
+type CartAction =
+  | { type: 'add'; payload: CartItem }
+  | { type: 'remove'; payload: { id: number } };
 
-function cartReducer(state, action) {
+type CartContextType = {
+  state: CartState;
+  dispatch: React.Dispatch<CartAction>;
+};
+
+const CartContext = createContext<CartContextType | undefined>(undefined);
+
+const initialState: CartState = { items: [] };
+
+function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'add':
       return { items: [...state.items, action.payload] };
     case 'remove':
-      return { items: state.items.filter((item) => item.id !== action.payload) };
+      return { items: state.items.filter((item) => item.id !== action.payload.id) };
     default:
       return state;
   }
 }
 
-function CartProvider({ children }) {
+function CartProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const value = useMemo(() => ({ state, dispatch }), [state]);
 
@@ -465,15 +514,44 @@ function CartProvider({ children }) {
 }
 ```
 
-Los componentes consumidores ya no necesitan recibir múltiples funciones actualizadoras a través del contexto; les basta con `dispatch()`:
+Notá que `CartAction` es la misma unión discriminada que vimos en la lección de `useReducer`, y que el `payload` de `remove` es `{ id: number }` — no el `CartItem` entero — porque para sacar un producto del carrito alcanza con saber cuál es su `id`; pasarle el objeto completo sería exigirle a quien despacha la acción un dato que ni siquiera necesita.
 
-```jsx
-const { state, dispatch } = useContext(CartContext);
+Los componentes consumidores ya no necesitan recibir múltiples funciones actualizadoras a través del contexto; les basta con `dispatch()`. Igual que con cualquier otro contexto, conviene envolver `useContext(CartContext)` en su propio hook (`useCart()`), con el mismo chequeo de `undefined` que ya venimos usando:
+
+```tsx
+function useCart() {
+  const context = useContext(CartContext);
+  if (context === undefined) {
+    throw new Error('useCart debe usarse dentro de un CartProvider');
+  }
+  return context;
+}
+```
+
+```tsx
+const { state, dispatch } = useCart();
 
 dispatch({ type: 'add', payload: newItem });
 ```
 
 Este patrón —a veces descrito informalmente como "Redux sin librería externa"— funciona muy bien para estado global de complejidad media. Para aplicaciones con una cantidad de acciones y de estado mucho mayor, suele ser preferible migrar a una librería dedicada de manejo de estado, como Redux Toolkit o Zustand, que veremos en profundidad en la lección de `useReducer`.
+
+Vale la pena marcar un error de tipeo muy común al escribir la línea del `CartProvider`, porque mezcla dos cosas que suenan parecido pero son completamente distintas:
+
+```jsx
+const [state, dispatch] = useReducer(cartReducer, initialState);
+```
+
+**Lo que le pasás a `useReducer()` como argumentos** (`cartReducer`, `initialState`) **no tiene nada que ver con lo que te devuelve** (`state`, `dispatch`). Son dos pares de nombres que casualmente aparecen en la misma línea, no la misma cosa vista dos veces. Un error típico es escribir algo como esto:
+
+```jsx
+// ❌ estado y dispatch mal nombrados, y colisión de nombres
+const [cartReducer, initialState] = useReducer(cartReducer, initialState);
+```
+
+Acá `cartReducer` e `initialState` (los que declara el `const`) están pisando los nombres de la función reducer y el estado inicial que se supone que le estás pasando **en la misma línea** — y como `const` reserva ese nombre para toda la función desde el principio (incluso antes de inicializarse), el `cartReducer` del lado derecho ya no apunta a tu función reducer de arriba, sino a esta nueva variable todavía sin valor. El resultado es un error en tiempo de ejecución (`Cannot access 'cartReducer' before initialization`), no un simple typo cosmético.
+
+La forma de no confundirse: `useReducer()` siempre devuelve `[state, dispatch]`, en ese orden, sin excepción — es la misma convención que `useState()` con `[valor, setValor]`. Los nombres que le pasás como argumentos (la función reducer, el estado inicial) podés llamarlos como quieras, pero conviene que sean claramente distintos de `state` y `dispatch`, precisamente para no arriesgarte a esta colisión.
 
 -----
 

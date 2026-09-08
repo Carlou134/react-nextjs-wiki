@@ -41,6 +41,31 @@ Esta línea tiene tres partes que conviene distinguir con claridad:
    * **`state`**: el valor actual del estado.
    * **`dispatch`**: una función que usamos para enviar una acción al reducer y así solicitar una actualización de estado.
 
+### Cómo funciona la desestructuración de arreglos (y por qué importa acá)
+
+Vale la pena detenerse en esto, porque `const [state, dispatch] = useReducer(reducer, initialState)` mezcla dos mecánicas de JavaScript que conviene distinguir con claridad.
+
+La **desestructuración de arreglos** asigna por **posición**, no por nombre. `useReducer()` siempre devuelve un arreglo de dos elementos, en un orden fijo: el estado actual va primero, `dispatch` va segundo. Los nombres `state` y `dispatch` que usamos para capturarlos son una elección nuestra —igual que con `useState()`— y podríamos llamarlos de cualquier otra forma sin que cambie nada del comportamiento, siempre que respetemos el orden:
+
+```javascript
+const [contador, enviarAccion] = useReducer(reducer, initialState);
+// contador es el primer elemento del arreglo (el estado)
+// enviarAccion es el segundo (dispatch), aunque lo hayamos llamado distinto
+```
+
+Esto es exactamente lo opuesto a la **desestructuración de objetos** (la que usamos, por ejemplo, al consumir `props` o el valor de un Context): ahí se asigna por **nombre de propiedad**, no por posición, y el orden no importa — pero el nombre sí tiene que coincidir con la propiedad real del objeto (o renombrarse explícitamente con `:`).
+
+Este detalle explica un error de tipeo bastante común: como los nombres del lado izquierdo (`state`, `dispatch`) son una elección libre, es tentador reutilizar en esa misma línea nombres que ya estás usando para otra cosa — típicamente, el nombre de la función reducer o del estado inicial:
+
+```javascript
+// ❌ colisión de nombres
+const [reducer, initialState] = useReducer(reducer, initialState);
+```
+
+Este código no funciona, y el motivo es una regla de JavaScript que va más allá de `useReducer()`: cuando declarás una variable con `const` (o `let`), esa variable queda reservada para **todo el alcance** en el que se declara desde el principio del bloque, aunque todavía no tenga un valor asignado — un período llamado **zona muerta temporal (temporal dead zone)**. Como el `const [reducer, initialState] = ...` de arriba declara un `reducer` nuevo en el mismo alcance donde ya existía una función llamada `reducer`, el `reducer` que aparece del lado derecho de esa misma línea (dentro de `useReducer(reducer, initialState)`) ya no apunta a tu función reducer definida más arriba: apunta a esta variable nueva, todavía sin inicializar. El resultado es un error en tiempo de ejecución: `Cannot access 'reducer' before initialization`.
+
+La forma de evitarlo es simplemente no reutilizar esos nombres: llamá a tus variables desestructuradas `state` y `dispatch` (o algo igual de descriptivo, como `contador`/`dispatchContador` si tenés varios reducers en el mismo archivo), y dejá que la función reducer y el estado inicial conserven sus propios nombres sin cruzarse.
+
 Al igual que con cualquier otro Hook, `useReducer()` solo puede llamarse en el nivel superior de un componente de función (o de un Hook personalizado), nunca dentro de condicionales ni bucles.
 
 > **En TypeScript:** el punto donde más vale la pena invertir tipado es en `action`, porque distintos tipos de acción suelen traer distintos `payload`. La forma idiomática es una **unión discriminada**: un `type` que enumera cada acción posible, todas compartiendo el campo `type` como "discriminante":
