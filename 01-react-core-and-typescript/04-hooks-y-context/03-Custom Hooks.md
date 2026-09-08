@@ -141,6 +141,32 @@ export const useToggle = (initialState = false) => {
 >   return [state, toggle];
 > };
 > ```
+>
+> Ahora bien, hay un caso distinto donde esta misma idea de "tipar la tupla a mano" puede salir mal: cuando tu hook personalizado **expone el setter de `useState()` tal cual**, en vez de una función propia como `toggle`. Pensá en un hook `useLocalStorage()` que funcione "como `useState()`, pero persistiendo en localStorage":
+>
+> ```tsx
+> function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T) => void] {
+>   const [value, setValue] = useState<T>(initialValue);
+>   // ...sincroniza con localStorage...
+>   return [value, setValue]; // 👈 acá se devuelve el setter real de useState
+> }
+> ```
+>
+> Esto compila sin error, pero le saca una capacidad real a quien use el hook. El setter que devuelve `useState()` no es `(value: T) => void`: es `Dispatch<SetStateAction<T>>`, un tipo que acepta **tanto** un valor directo **como** una función `(prev: T) => T` (la forma callback que vimos en la lección del State Hook, la recomendada cuando el siguiente valor depende del anterior). Al declarar el retorno de tu hook como `(value: T) => void` —más angosto que lo que `setValue` realmente admite—, TypeScript sigue dejándote hacer el `return` (porque el setter real acepta *más* casos de los que tu tipo promete, así que sigue siendo válido asignarlo), pero le prohíbe a quien consuma tu hook escribir `setValue(prev => prev + 1)`: para el compilador, tu hook solo devuelve una función que acepta un valor directo.
+>
+> La razón para introducir esto en tus propios hooks es simple: **si tu hook se comporta como `useState()`, su tipo tiene que prometer lo mismo que `useState()` promete** — ni más, ni menos. Reflejar el tipo real del setter, en vez de inventar uno más angosto "que alcanza para el caso que estás probando ahora", evita que le impongas a futuros consumidores de tu hook una limitación que no existe en la implementación real. La forma correcta:
+>
+> ```tsx
+> import { useState, type Dispatch, type SetStateAction } from 'react';
+>
+> function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
+>   const [value, setValue] = useState<T>(initialValue);
+>   // ...sincroniza con localStorage...
+>   return [value, setValue];
+> }
+> ```
+>
+> Regla práctica: si tu hook devuelve **su propia función** con una firma acotada (como `toggle: () => void`, que no recibe nada), tipala tal cual esa firma acotada. Si en cambio devuelve **el setter de `useState()` sin envolverlo**, tipalo como `Dispatch<SetStateAction<T>>` para no perder la forma callback en el camino.
 
 En este ejemplo, creamos un hook personalizado llamado `useToggle()` que:
 
