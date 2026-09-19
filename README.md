@@ -34,11 +34,12 @@ Repositorio personal de apuntes, guías rápidas (*cheatsheets*) y patrones de d
 - Redux: core concepts, API, estado complejo, Redux Toolkit, middleware y thunks.
 - React Query: caché, mutaciones y actualizaciones optimistas.
 
-### 4. Testing & UI (`/04-testing-and-ui`) — *próximamente*
-- Pruebas unitarias e integración de UI con **Vitest / Jest** y **React Testing Library**.
-- Componentización accesible con **Tailwind CSS** y **Shadcn/UI**.
+### 4. Testing & UI (`/04-testing-and-ui`)
 
-> La carpeta marcada *próximamente* todavía no tiene notas — se crea cuando el contenido correspondiente exista, para no dejar directorios vacíos en el repo.
+- **01-tailwind-css** — Fundamentos utility-first, instalación (CLI, Vite, Astro, Next.js), detección de clases, tipografía/espaciado/cajas, colores y modo oscuro, diseño responsive, Flexbox y Grid, personalización del tema (v3 vs v4), plugins y buenas prácticas.
+- *Próximamente:* pruebas unitarias e integración de UI con **Vitest / Jest** y **React Testing Library**, y componentización accesible con **Shadcn/UI**.
+
+> Los temas marcados *próximamente* todavía no tienen notas — se crean cuando el contenido correspondiente exista, para no dejar directorios vacíos en el repo.
 
 ---
 

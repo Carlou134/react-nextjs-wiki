@@ -256,5 +256,7 @@ En **Tailwind v4**, integrado con Vite, la configuración se simplifica consider
 
 Escribir CSS propio —con o sin Sass— separa la definición del estilo (en un archivo `.css` o `.scss`) de su aplicación (en el `className` del componente), y exige nombrar cada selector. Tailwind invierte ese enfoque: el estilo se declara directamente donde se usa, componiendo clases ya existentes en lugar de inventar nombres nuevos para cada elemento. Esto elimina el problema de nombrar clases y mantiene el estilo visible junto al marcado, a costa de que el JSX incluya cadenas de clases más largas. Como esas clases se resuelven durante el build y no en tiempo de ejecución, Tailwind no tiene el costo de runtime asociado a librerías de CSS-in-JS como styled-components.
 
+> **Para profundizar:** esta sección es solo una introducción. El módulo completo de Tailwind (instalación, detección de clases, responsive, Flexbox y Grid, personalización del tema, plugins y buenas prácticas) está en [04-testing-and-ui/01-tailwind-css](../../04-testing-and-ui/01-tailwind-css/01-Fundamentos%20de%20Tailwind.md).
+
 ------
 
