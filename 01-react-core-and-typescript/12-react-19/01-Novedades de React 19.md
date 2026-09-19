@@ -77,9 +77,107 @@ Junto con las Actions, React 19 agrega tres hooks nuevos que resuelven necesidad
 
 * **`useActionState`**: administra el estado que resulta de ejecutar una Action, como el mensaje de error que el servidor devolvió, sin que tengas que declarar ese estado manualmente con `useState`.
 * **`useFormStatus`**: permite que un componente hijo del formulario (por ejemplo, el botón de envío) sepa si el formulario padre está actualmente enviándose, para poder deshabilitarse o mostrar un indicador de carga, sin necesidad de recibir esa información por props.
-* **`useOptimistic`**: te permite mostrar inmediatamente un resultado "esperado" en la interfaz mientras la Action todavía se está procesando en el servidor, y ajustar ese resultado cuando la respuesta real llega. Es la misma idea de las actualizaciones optimistas que vimos con `useMutation` en React Query, pero incorporada directamente al propio React.
+* **`useOptimistic`**: te permite mostrar inmediatamente un resultado "esperado" en la interfaz mientras la Action todavía se está procesando en el servidor. Cuando la Action termina, React vuelve solo al valor real. Es la misma idea de las actualizaciones optimistas que vimos con `useMutation` en React Query, pero incorporada directamente al propio React (lo vemos en detalle en la próxima sección).
 
 Juntos, estos tres hooks son los que permiten escribir formularios que manejan carga, error y feedback inmediato con una fracción del código que este mismo comportamiento requería con `useState` y `useEffect`.
+
+-----
+
+## useOptimistic en detalle
+
+Con las actualizaciones optimistas ya vimos el problema de fondo: esperar la respuesta del servidor para reflejar una acción hace que la interfaz se sienta lenta, así que mostramos el resultado esperado de inmediato y lo corregimos solo si algo falla. `useOptimistic()` resuelve exactamente eso, sin librerías externas y con una diferencia importante en cómo maneja el "rollback".
+
+### La firma
+
+```jsx
+const [optimisticState, setOptimistic] = useOptimistic(value, reducer?);
+```
+
+* **`value`**: el valor "real", el que se muestra cuando no hay ninguna Action pendiente. Normalmente viene de un estado o de props.
+* **`reducer`** (opcional): una función pura `(currentState, action) => nextOptimisticState` que define cómo se calcula el valor optimista a partir del actual y de lo que le pasás a `setOptimistic`. Sin reducer, `setOptimistic(nuevoValor)` simplemente reemplaza el valor.
+* **`optimisticState`**: lo que tenés que renderizar. Es igual a `value` mientras nada esté pendiente, y pasa a ser el valor optimista mientras una Action esté en curso.
+* **`setOptimistic`**: la función con la que declarás el cambio optimista.
+
+### Un ejemplo completo: agregar un item a una lista
+
+```jsx
+import { useOptimistic, startTransition } from 'react';
+
+function TodoList({ todos, saveTodo }) {
+  const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+    todos,
+    (currentTodos, newTodo) => [
+      ...currentTodos,
+      { ...newTodo, pending: true },
+    ]
+  );
+
+  function handleAdd(text) {
+    startTransition(async () => {
+      addOptimisticTodo({ id: crypto.randomUUID(), text }); // aparece YA en la lista
+      await saveTodo(text);                                  // mientras tanto, se guarda de verdad
+    });
+  }
+
+  return (
+    <ul>
+      {optimisticTodos.map((todo) => (
+        <li key={todo.id} style={{ opacity: todo.pending ? 0.5 : 1 }}>
+          {todo.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+El flujo es este: al llamar a `addOptimisticTodo(...)`, React renderiza de inmediato la lista con el item nuevo (marcado como `pending`). En segundo plano, `saveTodo()` hace el trabajo real. Cuando termina y el padre actualiza `todos` con el dato definitivo, el estado optimista y el real **convergen automáticamente en el mismo render**: no hay ningún paso adicional para "limpiar" el valor optimista.
+
+### El rollback es automático (y esa es la diferencia con React Query)
+
+Si la Action falla y lanza un error, React deja de mostrar el valor optimista y vuelve a renderizar lo que valga `value` en ese momento. Como el padre solo actualiza `value` cuando la operación sale bien, el efecto visible es que **el cambio optimista desaparece solo**, sin que tengas que escribir un `onError` que restaure una copia guardada.
+
+Lo que sí sigue siendo tu responsabilidad es avisarle al usuario que algo falló:
+
+```jsx
+startTransition(async () => {
+  removeOptimistic(id);
+  try {
+    await deleteItem(id);
+  } catch (e) {
+    setError(e.message); // el item reaparece solo; acá solo mostrás el mensaje
+  }
+});
+```
+
+Compará esto con lo que vimos en React Query, donde el rollback es explícito: `onMutate` guarda una copia del estado anterior y `onError` la restaura a mano. Con `useOptimistic()`, ese trabajo lo hace React.
+
+### Restricciones importantes
+
+* **`setOptimistic()` tiene que llamarse dentro de `startTransition` o dentro de una Action** (por ejemplo, la función que le pasás a `<form action={...}>`). Si la llamás fuera, React emite una advertencia y el valor optimista se ve solo por un instante.
+* **No se puede llamar durante el renderizado.** Es una función para reaccionar a eventos, como cualquier setter.
+* **El valor optimista es temporal por diseño**: solo existe mientras la Action está pendiente. No es un lugar donde guardar datos; para eso sigue estando `value`.
+* Si usás un reducer y el `value` base cambia mientras la Action está en curso, React vuelve a ejecutar el reducer con el valor nuevo para recalcular el resultado optimista.
+
+### ¿useOptimistic o React Query?
+
+Son dos herramientas para el mismo problema, pero no son intercambiables:
+
+* **`useOptimistic()`** conviene cuando el estado vive en el propio componente (o sus props) y la operación es una Action de formulario o una transición: es más simple, sin dependencias, y el rollback viene resuelto.
+* **React Query** conviene cuando los datos ya viven en el **cache compartido** de tu aplicación: si varias pantallas leen la misma `queryKey`, `onMutate` puede actualizar ese cache una sola vez y todas se enteran. `useOptimistic()` es local al componente donde lo declarás; no sabe nada de un cache global.
+
+> **En TypeScript:** el valor optimista se infiere a partir de `value`, así que en el caso simple no hay que anotar nada. Cuando usás un reducer, tipá explícitamente el segundo parámetro (`action`), porque TypeScript no tiene de dónde inferirlo:
+>
+> ```tsx
+> type Todo = { id: string; text: string; pending?: boolean };
+>
+> const [optimisticTodos, addOptimisticTodo] = useOptimistic(
+>   todos,
+>   (currentTodos: Todo[], newTodo: Todo) => [...currentTodos, { ...newTodo, pending: true }]
+> );
+> ```
+>
+> Si el reducer tiene que soportar varios tipos de cambio optimista (agregar, quitar, marcar), la misma unión discriminada que usamos con `useReducer()` funciona igual como tipo de `action`.
 
 -----
 

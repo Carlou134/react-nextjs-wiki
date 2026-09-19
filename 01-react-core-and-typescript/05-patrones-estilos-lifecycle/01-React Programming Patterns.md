@@ -344,3 +344,118 @@ Con este cambio, `Layout` y `Sidebar` ya ni siquiera necesitan mencionar `user` 
 
 -----
 
+## Compound Components
+
+Hay componentes que, por naturaleza, están formados por **varias partes que tienen que trabajar coordinadas**: unas pestañas (la lista de pestañas y los paneles), un acordeón, un menú desplegable. La primera idea suele ser resolverlo con un único componente configurado por props:
+
+```tsx
+<Tabs
+  tabs={[
+    { id: 'perfil', label: 'Perfil', content: <Perfil /> },
+    { id: 'config', label: 'Configuración', content: <Config /> },
+  ]}
+/>
+```
+
+Funciona, hasta que aparecen los pedidos de personalización: un ícono en una pestaña, una pestaña deshabilitada, un panel con un layout distinto. Cada pedido obliga a agregar una prop nueva al arreglo (`icon`, `disabled`, `renderPanel`...) y el componente termina con una API enorme y rígida, controlada por un único objeto de configuración.
+
+El patrón **Compound Components** resuelve esto dividiendo el componente en partes que se **componen con JSX**, y que se comunican entre sí de forma implícita a través de un estado compartido (Context), sin que quien las usa tenga que conectarlas a mano:
+
+```tsx
+<Tabs defaultTab="perfil">
+  <Tabs.List>
+    <Tabs.Tab id="perfil">Perfil</Tabs.Tab>
+    <Tabs.Tab id="config">Configuración</Tabs.Tab>
+  </Tabs.List>
+
+  <Tabs.Panel id="perfil"><Perfil /></Tabs.Panel>
+  <Tabs.Panel id="config"><Config /></Tabs.Panel>
+</Tabs>
+```
+
+Quien usa el componente controla la estructura (el orden, qué va entre medio, qué estilos lleva cada parte), mientras las partes siguen sincronizadas entre sí. Así se implementa:
+
+```tsx
+import { createContext, useContext, useState, type ReactNode } from 'react';
+
+type TabsContextType = {
+  activeTab: string;
+  setActiveTab: (id: string) => void;
+};
+
+const TabsContext = createContext<TabsContextType | undefined>(undefined);
+
+function useTabs() {
+  const context = useContext(TabsContext);
+  if (context === undefined) {
+    throw new Error('Las partes de Tabs deben usarse dentro de <Tabs>');
+  }
+  return context;
+}
+
+function Tabs({ defaultTab, children }: { defaultTab: string; children: ReactNode }) {
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  return (
+    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+      <div>{children}</div>
+    </TabsContext.Provider>
+  );
+}
+
+function TabList({ children }: { children: ReactNode }) {
+  return <div role="tablist">{children}</div>;
+}
+
+function Tab({ id, children }: { id: string; children: ReactNode }) {
+  const { activeTab, setActiveTab } = useTabs();
+
+  return (
+    <button role="tab" aria-selected={activeTab === id} onClick={() => setActiveTab(id)}>
+      {children}
+    </button>
+  );
+}
+
+function TabPanel({ id, children }: { id: string; children: ReactNode }) {
+  const { activeTab } = useTabs();
+  return activeTab === id ? <div role="tabpanel">{children}</div> : null;
+}
+
+Tabs.List = TabList;
+Tabs.Tab = Tab;
+Tabs.Panel = TabPanel;
+```
+
+Fijate que es exactamente el esqueleto de Context que ya conocés: un contexto con su tipo, un hook con la guardia de `undefined`, y un componente padre (`Tabs`) que hace de Provider y dueño del estado. Lo único propio del patrón son las últimas tres líneas, que cuelgan las partes como propiedades del componente padre (`Tabs.Tab`) para que se importen y se usen juntas como una unidad.
+
+**Cuándo conviene:** cuando el componente tiene varias partes que comparten estado y el consumidor necesita libertad para acomodarlas (pestañas, acordeones, menús, selects, modales con encabezado/cuerpo/pie). Es el patrón que usan librerías de componentes como Radix UI (y shadcn/ui, que se construye encima).
+
+**Cuándo no:** si las partes no comparten estado, alcanza con composición común (`children` y slots, como vimos antes). Y si el componente es simple y con un solo propósito, una API por props es más corta y suficiente.
+
+**El costo:** las partes solo funcionan dentro del padre (por eso la guardia de `useTabs()`), y el contrato entre ellas es implícito: nada te avisa en la firma de `Tab` que necesita estar adentro de `Tabs`, solo el error en ejecución. Existe una variante más antigua que evita el Context usando `React.Children.map` y `cloneElement` para inyectar props a los hijos, pero es frágil (se rompe si envolvés un hijo en otro componente), y hoy se prefiere la versión con Context.
+
+-----
+
+## Mapa de patrones: dónde vive cada uno en este wiki
+
+Los patrones de diseño de frontend más comunes en React, y dónde están cubiertos:
+
+| Patrón | Para qué sirve | Dónde verlo |
+| --- | --- | --- |
+| Container / Presentational | Separar lógica de datos de la interfaz | Al principio de esta misma nota |
+| Higher-Order Component | Reutilizar lógica envolviendo un componente | Más arriba, en esta nota |
+| Render Props | Compartir lógica dejando que el consumidor decida el JSX | Más arriba, en esta nota |
+| Composición y Slots | Armar componentes flexibles con `children` | Más arriba, en esta nota |
+| Compound Components | Partes coordinadas que se componen con JSX | Justo arriba |
+| Custom Hooks | Extraer y reutilizar lógica con estado | [03-Custom Hooks](../04-hooks-y-context/03-Custom%20Hooks.md) |
+| Provider (Context) | Compartir datos sin prop drilling | [04-React Context](../04-hooks-y-context/04-React%20Context.md) |
+| Reducer | Centralizar transiciones de estado complejas | [05-useReducer](../04-hooks-y-context/05-useReducer.md) |
+| Controlled / Uncontrolled inputs | Quién es dueño del valor de un campo | [06-forms](../06-forms/01-React%20Forms.md) |
+| Error Boundary | Aislar fallos de renderizado | [08-manejo-de-errores](../08-manejo-de-errores/01-React%20Error%20Boundaries.md) |
+| Lazy Loading y memoización | Cargar y renderizar solo lo necesario | [09-performance](../09-performance/02-React%20Optimization.md) |
+| Server Components | Traer datos en el servidor | [Next.js Server Components](../../02-nextjs-app-router/04-Next.js%20Server%20Components.md) |
+| Organización por features / Atomic Design | Estructurar el proyecto y los componentes de UI | [13-arquitectura-frontend](../13-arquitectura-frontend/01-Organizacion%20de%20Carpetas%20-%20Vertical%20Slice%20vs%20Horizontal.md) |
+
+-----
+
