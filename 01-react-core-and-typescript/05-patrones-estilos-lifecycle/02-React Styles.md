@@ -1,262 +1,392 @@
-# React Styles
+# Estilos en React: cómo aplicar CSS a los componentes
 
-## Intro to Styling React Apps
+## En una frase
 
-El **estilizado** es un aspecto fundamental de cualquier aplicación en React, ya que puede impactar la experiencia del usuario y ayudar a crear una identidad distintiva para tu aplicación. A medida que tu aplicación crece en complejidad, la forma en que aplicas los estilos se vuelve cada vez más importante. Es esencial elegir el enfoque correcto para mantener tus estilos organizados y fáciles de manejar.
-
-En esta lección, cubriremos los conceptos básicos del estilizado en React, incluyendo los diferentes enfoques y técnicas que puedes utilizar. Comenzaremos con una explicación del estilizado en línea y el uso de variables de estilo como objetos, y explicaremos las reglas de sintaxis únicas que son específicas de React. Luego, profundizaremos en los **módulos CSS** y te mostraremos cómo usarlos para hacer que tus estilos sean modulares y reutilizables.
-
-Al final de esta lección, tendrás una base sólida sobre el estilizado en React y contarás con el conocimiento necesario para dar estilo a tus componentes de una manera que sea mantenible, escalable y organizada.
+React no impone una forma de dar estilos: un componente puede recibirlos como objeto (`style`), como clases CSS (`className`), o mediante herramientas que generan esas clases (CSS Modules, Sass, CSS-in-JS, Tailwind). Cada enfoque resuelve de forma distinta el mismo problema: que los estilos de un componente no choquen con los de otro.
 
 -----
 
-## Inline Styles and Style Object Variables
+## Antes de empezar
 
-Hay muchas formas diferentes de usar estilos en React. Este ejercicio se enfoca en dos de ellas: **estilos en línea** y **variables de objetos de estilo**.
+Conviene que ya sepas cómo escribir JSX y pasar props a un componente. Términos usados en esta nota (también están en el [Glosario](Glosario.md)):
 
-Un estilo en línea es un estilo que se escribe como un atributo, por ejemplo:
-
-```jsx
-<h1 style={{ color: 'red' }}>Hello world</h1>
-```
-
-Observa que tiene **dobles llaves**. Las llaves externas indican que todo lo que está dentro debe interpretarse como **JavaScript**. Las llaves internas crean un **objeto literal de JavaScript**.
-
-Sin embargo, usar estilos en línea puede volverse rápidamente desordenado si quieres aplicar más que solo unos pocos estilos. Una alternativa es guardar un objeto de estilos en una variable y luego inyectar esa variable como el valor del atributo `style`.
-
-Para hacer esto, podemos inicializar un objeto con propiedades y valores de esta forma:
-
-```js
-const darkMode = {
-  color: 'white',
-  background: 'black'
-};
-```
-
-Luego, el objeto puede inyectarse para dar estilo a un componente:
-
-```jsx
-<h1 style={darkMode}>Hello world</h1>
-```
-
-----
-
-## Style Syntax
-
-Hay algunas cosas que debes tener en cuenta al aplicar estilos a componentes con **JSX**.
-
-Al igual que cuando referenciamos propiedades CSS en el objeto `style` del DOM en JavaScript, en React escribimos los nombres de las propiedades CSS usando **camelCase**:
-
-```js
-const styles = {
-  marginTop: '20px',
-  backgroundColor: 'green'
-};
-```
-
-Esta sintaxis proviene de una regla simple. El guion (`-`) es un operador reservado en JavaScript. Si usamos `background-color`, el guion se interpreta como un signo de resta. Por lo tanto, para ser consistentes con los nombres de las propiedades en el objeto `style` del DOM en JavaScript, usamos **camelCase**.
-
-En JavaScript normal, los valores de estilo casi siempre son **strings**. Incluso si un valor de estilo es numérico, normalmente debes escribirlo como un string para poder especificar una unidad. Por ejemplo, escribirías `'450px'` o `'20%'`.
-
-Si escribes un valor de estilo como un número, entonces se asume automáticamente la unidad `'px'`. Por ejemplo, si quieres un tamaño de fuente de 30px, puedes escribir:
-
-```js
-{ fontSize: 30 }
-```
-
-Si quieres usar unidades distintas de `'px'`, puedes usar un string:
-
-```js
-{ fontSize: "2em" }
-```
-
-Especificar la unidad `'px'` dentro de un string seguirá funcionando, aunque es redundante.
-
-Algunos estilos específicos no completan automáticamente la unidad `'px'`. Estos son estilos en los que normalmente no usarías `'px'` de todos modos, así que no tienes que preocuparte demasiado por ellos.
+* **Estilo en línea (inline style):** estilo que se aplica con el atributo `style` de un elemento.
+* **Selector de clase:** regla CSS que se aplica a los elementos que tienen cierta clase, por ejemplo `.card`.
+* **Ámbito (scope):** zona donde un nombre de clase es válido. En CSS normal, el ámbito es toda la página.
+* **CSS-in-JS:** enfoque en el que el CSS se escribe dentro de archivos JavaScript.
+* **Utility-first:** enfoque en el que se compone la interfaz con clases pequeñas que aplican una sola propiedad cada una.
+* **Bundler:** herramienta (Vite, Next.js, etc.) que procesa y empaqueta el código y los estilos antes de servirlos al navegador.
 
 -----
 
-## Multiple Stylesheets
+## El problema
 
-Aunque los **estilos en línea** y las **variables de objetos de estilo** son métodos válidos para aplicar estilos en React, puede volverse difícil mantener una buena organización y seguimiento de los estilos a medida que tu aplicación crece.
+El CSS del navegador es **global**: cualquier regla `.title` afecta a todos los elementos con esa clase, sin importar en qué componente estén.
 
-Una forma de hacer que los estilos sean **modulares, organizados y reutilizables** es crear hojas de estilo separadas para cada componente.
+```css
+/* Header.css */
+.title { color: red; }
 
-Podemos importar una hoja de estilos usando la palabra clave `import`:
-
-```js
-import './App.css'
+/* Card.css */
+.title { color: blue; }
 ```
 
-Sin embargo, si tenemos múltiples hojas de estilo con los mismos nombres de clases, estos nombres pueden **colisionar** y crear conflictos de estilos.
+Si ambos archivos se cargan, el resultado depende del orden en que se cargan, y un componente puede alterar a otro sin que lo notes. A medida que la app crece, hace falta un enfoque que:
 
-Una forma de evitar esto es usar **módulos CSS**. Al importarlos como un módulo, los estilos solo estarán disponibles para el componente que importó el archivo. Esto se hace automáticamente creando nombres de clase únicos para cada módulo. De esta manera, no tenemos que preocuparnos por llevar un registro de los nombres de clase usados en todas las hojas de estilo.
-
-Para usar módulos CSS, comenzamos nombrando nuestra hoja de estilos con el siguiente formato, donde `fileName` debe reemplazarse por el nombre del componente que estás estilizando:
-
-```text
-fileName.module.css
-```
-
-Esto indica que el archivo debe procesarse como un módulo CSS.
-
-Luego, debe importarse en el archivo que contiene nuestro componente:
-
-```js
-import styles from './fileName.module.css'
-```
-
-A partir de esta importación, podemos ver que el objeto `styles` ahora contiene los selectores de clase de `fileName.module.css`. Para acceder a los selectores, usamos la notación de punto, por ejemplo:
-
-```jsx
-<div className={styles.divStyle}></div>
-```
-
-Ten en cuenta que aplicamos los estilos usando el atributo `className` en lugar de `class`. `class` es una palabra reservada en JavaScript, por lo que React utiliza `className` para evitar conflictos.
-
-Aunque React no impone una forma específica de definir estilos, este es el método preferido para estilizar en React, ya que mantiene la filosofía composicional de React.
+1. Evite choques de nombres.
+2. Mantenga el estilo cerca del componente que lo usa.
+3. Permita variar el estilo según props o estado.
 
 -----
 
-## Review
+## Cómo funciona
 
-¡Bien hecho! Has llegado al final de esta lección sobre el estilizado en aplicaciones React.
+### Estilos en línea con un objeto
 
-Antes de terminar, aquí tienes un resumen:
+El atributo `style` recibe un **objeto**, no un string. Por eso se ven dobles llaves: las externas abren una expresión JavaScript y las internas son el objeto literal.
 
-* Los componentes de React pueden estilizarse de varias maneras: **estilos en línea**, **estilos con variables de objeto**, **hojas de estilo** y **módulos CSS**.
-* Los estilos en línea pueden usarse para aplicar estilos a un solo elemento. Se hacen dando al elemento un atributo llamado `style`, cuyo valor es un objeto literal rodeado por llaves.
+```jsx
+<h1 style={{ color: 'red', marginTop: 20 }}>Hola</h1>
+```
 
-  ```jsx
-  <h1 style={{ color: "red" }}> Hello, World! </h1>
-  ```
-* También se puede usar una **variable de objeto** para aplicar estilos a un solo elemento. La sintaxis es similar al estilizado en línea, pero en lugar de pasar un objeto literal, se pasa el nombre de la variable.
+Reglas:
 
-  ```js
-  const myStyle = { color: "red" }
-  <h1 style={myStyle}> Hello, World! </h1>
-  ```
-* Los nombres de las propiedades de estilo en React deben estar en **camelCase**. Por ejemplo, `background-color` se convierte en `backgroundColor`.
-* En React, cuando un valor de estilo es un número, se interpreta automáticamente con la unidad **px**.
-* Los estilos pueden separarse y almacenarse en archivos de **módulos CSS**. Estos estilos pueden importarse y usarse aplicando atributos `className` a los elementos correspondientes.
+* Los nombres de propiedades van en **camelCase**: `backgroundColor`, no `background-color`. Sigue la convención de la propiedad `style` del DOM.
+* Los valores son strings o números. Un número recibe `px` automáticamente, salvo en propiedades sin unidad (como `opacity` o `zIndex`). Para otra unidad, usa un string: `{ fontSize: '2em' }`.
+* El objeto puede guardarse en una variable para reutilizarlo:
 
-------
+```jsx
+const darkMode = { color: 'white', backgroundColor: 'black' };
 
-## Sass en React
+<h1 style={darkMode}>Hola</h1>
+```
 
-**Sass** (Syntactically Awesome Style Sheets) es un preprocesador de CSS: se escribe en un superset del lenguaje CSS que agrega características que CSS por sí solo no tiene, y luego se compila a CSS plano antes de llegar al navegador. En un proyecto de React, esa compilación la resuelve automáticamente el bundler (Vite, Create React App, etc.) en cuanto el paquete `sass` está instalado como dependencia; no requiere configuración manual adicional.
+Limitaciones: `style` no admite pseudoclases (`:hover`), pseudoelementos ni media queries, y los estilos no se pueden sobrescribir fácilmente desde una hoja externa. La documentación de React recomienda usarlo solo para valores dinámicos que no se conocen de antemano, y usar clases (`className`) en los demás casos.
 
-Las características que Sass añade por sobre CSS son, principalmente:
+```jsx
+// Caso adecuado: el valor viene de un dato
+<div style={{ width: `${progress}%` }} />
+```
 
-- **Variables**, para centralizar valores reutilizados como colores o espaciados.
-- **Anidamiento (nesting)**, para escribir selectores hijos dentro del selector de su padre, reflejando la jerarquía del HTML.
-- **Mixins**, para reutilizar bloques de declaraciones CSS en distintos selectores.
+### Hojas de estilo importadas y `className`
+
+Se escribe un archivo `.css` y se importa desde el componente. El bundler lo incluye en la página. Los elementos usan el atributo `className`:
+
+```jsx
+import './Card.css';
+
+function Card() {
+  return <div className="card">Contenido</div>;
+}
+```
+
+`className` reemplaza a `class` porque `class` es una palabra reservada de JavaScript. Para combinar clases de forma condicional, arma el string con una plantilla o con una utilidad como `clsx`:
+
+```jsx
+<button className={`btn ${isActive ? 'btn-active' : ''}`}>Enviar</button>
+```
+
+### Varias hojas de estilo
+
+Una hoja por componente mantiene el CSS organizado, pero **importar un archivo `.css` no lo limita a ese componente**: sus reglas siguen siendo globales una vez cargadas. Dos archivos con `.title` chocan igual. Las salidas son:
+
+* Prefijar los nombres a mano (`.card__title`, convención BEM). Funciona, pero depende de la disciplina del equipo.
+* Usar CSS Modules, que automatiza el aislamiento.
+
+### CSS Modules
+
+Un archivo con extensión `.module.css` se trata como módulo: el bundler reescribe cada nombre de clase para hacerlo único y devuelve un objeto que asocia el nombre original con el generado.
+
+```css
+/* Card.module.css */
+.card { border-radius: 8px; }
+.title { color: #2563eb; }
+```
+
+```jsx
+import styles from './Card.module.css';
+
+function Card() {
+  return (
+    <div className={styles.card}>
+      <h2 className={styles.title}>Título</h2>
+    </div>
+  );
+}
+```
+
+El `.title` de este archivo no choca con el de otro módulo, porque cada uno recibe un nombre generado distinto. Vite y Next.js lo soportan sin configuración extra. Si el nombre de la clase tiene guiones (`.card-title`), se accede con corchetes (`styles['card-title']`) o se escribe en camelCase (`.cardTitle`).
+
+### Sass
+
+**Sass** es un preprocesador: se escribe en una sintaxis que extiende CSS y se **compila a CSS plano** antes de llegar al navegador. Añade variables, anidamiento, mixins y módulos (`@use`).
 
 ```scss
-$color-primario: #2563eb;
+// Card.module.scss
+$primary: #2563eb;
 
 .card {
   border-radius: 8px;
 
-  .card-title {
-    color: $color-primario;
-    font-weight: bold;
+  .title {
+    color: $primary;
   }
 }
 ```
 
-En React, los archivos Sass se usan igual que los módulos CSS vistos anteriormente, pero con extensión `.scss`. Un archivo `Card.module.scss` se importa como módulo, obteniendo nombres de clase únicos por componente, con la ventaja adicional de poder usar variables, anidamiento y mixins dentro de esas reglas:
+Para usarlo, instala el paquete `sass` (`npm install -D sass`). Vite y Next.js lo compilan automáticamente y no requieren un plugin adicional. Un archivo `.module.scss` combina Sass con CSS Modules, y se importa igual que un `.module.css`.
 
-```jsx
-import styles from './Card.module.scss';
+En Sass, `@use` es el reemplazo del antiguo `@import`; para código nuevo se usa `@use`.
 
-<div className={styles.card}>
-  <h2 className={styles.cardTitle}>Título</h2>
-</div>
-```
+Hoy CSS nativo ya ofrece variables (`--color`) y anidamiento, así que Sass es menos imprescindible que antes; sigue siendo útil por sus mixins, funciones y módulos.
 
-Sass no reemplaza a los módulos CSS: es un lenguaje que se compila a CSS y puede combinarse con ellos. La decisión de incorporarlo suele depender del tamaño del proyecto: en aplicaciones donde las hojas de estilo crecen mucho y se repiten valores o patrones de selectores, las variables y los mixins ayudan a mantener el CSS organizado y evitan la duplicación.
+### Styled Components y CSS-in-JS
 
------
-
-## Styled Components
-
-**styled-components** es una librería que permite escribir CSS directamente dentro de JavaScript, usando template literals, para crear componentes que ya llevan sus estilos incorporados. A este enfoque se lo conoce como **CSS-in-JS**.
+**styled-components** define componentes que llevan su CSS incorporado, escrito en un template literal. Genera un nombre de clase único por componente.
 
 ```jsx
 import styled from 'styled-components';
 
-const Boton = styled.button`
-  background: blue;
+const Button = styled.button`
+  background: ${(props) => (props.$primary ? '#2563eb' : '#6b7280')};
   color: white;
   padding: 8px 16px;
-  border-radius: 4px;
 `;
 
-<Boton>Enviar</Boton>
+<Button $primary>Confirmar</Button>
+<Button>Cancelar</Button>
 ```
 
-`Boton` es, en sí mismo, un componente de React: al usarlo, React renderiza un `<button>` con las reglas CSS definidas en el template literal ya aplicadas. No hace falta un archivo `.css` aparte ni preocuparse por colisiones de nombres de clase, porque styled-components genera un nombre de clase único para cada componente estilizado.
+Puntos a tener en cuenta:
 
-La característica distintiva de esta librería es que las reglas CSS pueden depender de las **props** que recibe el componente, igual que cualquier otra lógica de React:
+* `Button` es un componente de React que renderiza un `<button>`.
+* Las reglas pueden depender de props. El prefijo `$` (transient props) evita que esa prop llegue al elemento del DOM.
+* Genera el CSS **en tiempo de ejecución** en el navegador (y en el servidor si hay SSR, con configuración adicional).
+* Estado actual: los mantenedores anunciaron en marzo de 2025 que la librería entra en **modo de mantenimiento** (solo correcciones críticas y de seguridad) y no recomiendan adoptarla en proyectos nuevos. Además, no funciona en React Server Components sin marcar el archivo con `'use client'`. Verifica el estado vigente en el repositorio antes de decidir.
+
+### Tailwind CSS
+
+**Tailwind CSS** es un framework utility-first: la interfaz se construye combinando clases predefinidas directamente en el JSX.
 
 ```jsx
-const Boton = styled.button`
-  background: ${(props) => (props.primary ? '#2563eb' : '#6b7280')};
-`;
-
-<Boton primary>Confirmar</Boton>
-<Boton>Cancelar</Boton>
+<h1 className="text-3xl font-bold underline">Hola</h1>
 ```
 
-Con esto, `<Boton primary>` se renderiza en azul y `<Boton>` en gris, sin necesidad de alternar clases CSS manualmente ni de escribir condicionales en el `className`.
+Cada clase aplica una propiedad CSS. Tailwind analiza tu código durante el build y genera solo el CSS de las clases que encuentra, por lo que no hay costo de generación en el navegador.
 
-### Ventajas y desventajas frente a Tailwind
-
-styled-components resulta cómodo cuando los estilos dependen fuertemente de props y se prefiere mantener CSS y lógica de componente en el mismo archivo. Sin embargo, tiene un costo: genera los estilos **en tiempo de ejecución (runtime)**, es decir, el navegador debe procesar JavaScript para producir el CSS final, lo que añade trabajo adicional en comparación con una hoja de estilos ya compilada.
-
-Por esa razón, en proyectos nuevos es hoy más común optar por **Tailwind CSS**, que no incurre en ese costo de runtime porque genera el CSS de forma estática durante el build. styled-components sigue siendo una opción válida —sobre todo en proyectos que ya lo usan o que necesitan estilos muy dinámicos basados en props— pero ha dejado de ser la opción por defecto para proyectos que arrancan desde cero.
-
------
-
-## Tailwind CSS
-
-**Tailwind CSS** es un framework de utilidades: en lugar de escribir reglas CSS propias con selectores y nombres de clase inventados, se construye la interfaz combinando clases ya definidas por el framework, directamente en el JSX.
-
-```jsx
-<h1 className="text-3xl font-bold underline">
-  Hello world
-</h1>
-```
-
-Cada clase (`text-3xl`, `font-bold`, `underline`) aplica una única propiedad CSS. El estilo final del elemento surge de combinar varias de estas clases utilitarias, sin necesidad de escribir un solo selector CSS propio.
-
-### Instalación
-
-La instalación de Tailwind ha cambiado entre versiones. En **Tailwind v3**, el proceso requiere instalar el paquete junto con PostCSS y Autoprefixer, generar los archivos de configuración, indicarle a Tailwind en qué archivos debe buscar clases, y activar el framework mediante directivas en el CSS principal:
+Con Vite, la instalación en Tailwind v4 es:
 
 ```bash
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
+npm install tailwindcss @tailwindcss/vite
+```
+
+```js
+// vite.config.js
+import tailwindcss from '@tailwindcss/vite';
+
+export default { plugins: [tailwindcss()] };
 ```
 
 ```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-```
-
-En **Tailwind v4**, integrado con Vite, la configuración se simplifica considerablemente: basta con una única línea de importación en el archivo CSS principal, sin necesidad de generar `tailwind.config.js` ni declarar las tres directivas por separado.
-
-```css
+/* CSS principal */
 @import "tailwindcss";
 ```
 
-### Diferencia filosófica con CSS o Sass
+En Next.js se usa el plugin de PostCSS (`@tailwindcss/postcss`) en lugar del de Vite. En Tailwind v3 el proceso era distinto (archivo `tailwind.config.js` y directivas `@tailwind base/components/utilities`).
 
-Escribir CSS propio —con o sin Sass— separa la definición del estilo (en un archivo `.css` o `.scss`) de su aplicación (en el `className` del componente), y exige nombrar cada selector. Tailwind invierte ese enfoque: el estilo se declara directamente donde se usa, componiendo clases ya existentes en lugar de inventar nombres nuevos para cada elemento. Esto elimina el problema de nombrar clases y mantiene el estilo visible junto al marcado, a costa de que el JSX incluya cadenas de clases más largas. Como esas clases se resuelven durante el build y no en tiempo de ejecución, Tailwind no tiene el costo de runtime asociado a librerías de CSS-in-JS como styled-components.
+Más detalle en el módulo de Tailwind del wiki: [Fundamentos de Tailwind](../../04-testing-and-ui/01-tailwind-css/01-Fundamentos%20de%20Tailwind.md) e [Instalación y compilación](../../04-testing-and-ui/01-tailwind-css/02-Instalaci%C3%B3n%20y%20Compilaci%C3%B3n.md). Para componentes construidos sobre Tailwind, ver [Qué es shadcn/ui](../../04-testing-and-ui/02-shadcn-ui/01-Qu%C3%A9%20es%20shadcn-ui.md).
 
-> **Para profundizar:** esta sección es solo una introducción. El módulo completo de Tailwind (instalación, detección de clases, responsive, Flexbox y Grid, personalización del tema, plugins y buenas prácticas) está en [04-testing-and-ui/01-tailwind-css](../../04-testing-and-ui/01-tailwind-css/01-Fundamentos%20de%20Tailwind.md).
+-----
 
-------
+## Ejemplo completo
 
+Un botón con variantes, usando CSS Modules y una prop tipada:
+
+```css
+/* Button.module.css */
+.button { padding: 8px 16px; border: 0; border-radius: 4px; color: white; }
+.primary { background: #2563eb; }
+.secondary { background: #6b7280; }
+```
+
+```tsx
+// Button.tsx
+import styles from './Button.module.css';
+
+type ButtonProps = {
+  variant?: 'primary' | 'secondary';
+  children: React.ReactNode;
+};
+
+export function Button({ variant = 'primary', children }: ButtonProps) {
+  return (
+    <button className={`${styles.button} ${styles[variant]}`}>
+      {children}
+    </button>
+  );
+}
+```
+
+```tsx
+<Button variant="primary">Confirmar</Button>
+<Button variant="secondary">Cancelar</Button>
+```
+
+La variante se elige con una prop, y las clases quedan aisladas al componente.
+
+-----
+
+## Errores comunes
+
+### 1. Usar `class` en lugar de `className`
+
+**Qué pasa:** en JSX, `class` no aplica la clase y React muestra una advertencia en consola.
+**Por qué:** JSX se compila a JavaScript y la propiedad del DOM se llama `className`.
+**Solución:** escribe `className`.
+
+### 2. Estilos en línea con unidades incorrectas
+
+```jsx
+<div style={{ fontSize: 20 }} />       // 20px
+<div style={{ width: '50' }} />        // inválido: un string sin unidad se ignora
+<div style={{ width: '50%' }} />       // correcto
+```
+
+**Por qué:** un número recibe `px`, pero un string se pasa tal cual al navegador, que lo descarta si no es un valor CSS válido. Usa números para píxeles y strings con unidad para el resto.
+
+### 3. Usar guiones o strings en `style`
+
+```jsx
+<div style={{ 'background-color': 'red' }} />   // no funciona
+<div style="color: red" />                      // error: style espera un objeto
+```
+
+**Solución:** objeto con propiedades en camelCase.
+
+### 4. Estilos globales que se pisan
+
+**Qué pasa:** dos componentes definen `.title` y uno cambia el aspecto del otro.
+**Por qué:** un `.css` importado es global; importarlo desde un componente no lo aísla.
+**Solución:** CSS Modules, un prefijo consistente (BEM) o clases utilitarias.
+
+### 5. Depender del orden de los imports
+
+**Qué pasa:** con reglas de igual especificidad, gana la que se carga después, y ese orden depende del orden de los imports (y de cómo el bundler agrupa los archivos).
+**Por qué:** la cascada de CSS resuelve empates por orden de aparición.
+**Solución:** evita depender de ese orden: usa clases aisladas, importa los estilos globales una sola vez en el punto de entrada y verifica el resultado con el build de producción, no solo en desarrollo.
+
+-----
+
+## En TypeScript
+
+`React.CSSProperties` tipa un objeto de estilos y valida nombres y valores:
+
+```tsx
+import type { CSSProperties } from 'react';
+
+const box: CSSProperties = { marginTop: 20, backgroundColor: 'green' };
+
+<div style={box} />
+```
+
+Las variables CSS personalizadas no forman parte de `CSSProperties`; se pueden pasar con un cast:
+
+```tsx
+<div style={{ '--accent': color } as CSSProperties} />
+```
+
+Los módulos CSS se importan como un objeto de strings. Los tipos de `vite/client` (o los que provee Next.js) declaran `*.module.css`, así que `styles.card` es un `string` sin errores. Si quieres que el compilador valide los nombres de clase, hay herramientas que generan tipos por archivo, aunque no son obligatorias.
+
+Las variantes se tipan como una unión de literales en las props, como en el ejemplo anterior (`'primary' | 'secondary'`). Con styled-components, las props se declaran con un genérico: `styled.button<{ $primary?: boolean }>`.
+
+-----
+
+## Cuándo sí y cuándo no
+
+| Enfoque | Ventajas | Desventajas | Cuándo elegirlo |
+| ------- | -------- | ----------- | --------------- |
+| Estilo en línea | Simple; ideal para valores dinámicos | Sin pseudoclases ni media queries; difícil de reutilizar | Valores calculados en runtime (ancho, posición) |
+| CSS global (`.css`) | Estándar, sin herramientas extra | Nombres globales que pueden chocar | Reset, tipografía base, variables globales |
+| CSS Modules | Aislamiento automático, CSS estándar, sin costo en runtime | Menos cómodo para variantes muy dinámicas | Estilos propios de componentes; buena opción por defecto |
+| Sass | Variables, mixins, módulos | Paso de compilación extra; CSS nativo cubre parte de lo que ofrece | Proyectos con mucho CSS compartido |
+| CSS-in-JS en runtime (styled-components) | Estilos ligados a props, todo en un archivo | Costo en runtime; poco compatible con Server Components; styled-components está en mantenimiento | Proyectos existentes que ya lo usan |
+| Tailwind CSS | Sin nombres que inventar, CSS generado en build, sistema de diseño consistente | JSX con muchas clases; requiere aprender el vocabulario | Proyectos nuevos y equipos que priorizan velocidad y consistencia |
+
+La documentación de Next.js recomienda Tailwind para la mayor parte del estilado y CSS Modules cuando las utilidades no alcanzan.
+
+-----
+
+## Resumen en 5 líneas
+
+1. El CSS es global por defecto: el reto en React es evitar choques de nombres entre componentes.
+2. `style` recibe un objeto en camelCase; úsalo solo para valores dinámicos.
+3. Las hojas `.css` importadas siguen siendo globales; usa `className`, no `class`.
+4. CSS Modules aísla los nombres de clase por archivo sin costo en runtime; Sass se compila a CSS y se combina con ellos.
+5. Tailwind genera el CSS en build; styled-components lo genera en runtime y está en modo de mantenimiento.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>Cómo funciona el aislamiento de CSS Modules</summary>
+
+Durante el build, el bundler reemplaza cada nombre de clase por uno único (por ejemplo `Card_title__x7Yk2`) en el CSS y en el objeto que exporta el módulo. La app no cambia el nombre en tu código fuente: solo el resultado final. Las clases se aíslan, pero los selectores globales (`body`, `h1`) no; para eso existe `:global(...)`.
+
+</details>
+
+<details>
+<summary>Por qué el CSS-in-JS en runtime es un problema con Server Components</summary>
+
+Los Server Components se ejecutan en el servidor y no tienen estado de cliente ni contexto de React en el navegador. Las librerías de CSS-in-JS en runtime suelen depender de contexto y de inyectar estilos mientras se renderiza, por lo que necesitan componentes de cliente (`'use client'`) y configuración adicional para SSR. Los enfoques que generan CSS en build (CSS Modules, Tailwind) no tienen esa dependencia.
+
+</details>
+
+<details>
+<summary>Combinar clases de Tailwind sin conflictos</summary>
+
+Al construir componentes con variantes, las clases pueden contradecirse (`p-2` y `p-4`). Una práctica frecuente es usar `clsx` para armar clases condicionales y `tailwind-merge` para resolver conflictos. shadcn/ui lo formaliza en una utilidad llamada `cn`.
+
+</details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+En React se puede dar estilo con `style` (un objeto en camelCase), con hojas CSS y `className`, con CSS Modules, con Sass, con librerías CSS-in-JS como styled-components o con Tailwind. Los CSS Modules generan nombres de clase únicos para que los estilos de un componente no afecten a otros. Los estilos en línea sirven para valores dinámicos.
+
+### Respuesta ampliada (semi-senior)
+
+* **Aislamiento:** CSS normal es global. CSS Modules lo resuelve en build, CSS-in-JS genera nombres únicos en runtime y Tailwind evita nombrar clases.
+* **Rendimiento:** CSS Modules y Tailwind producen CSS estático, cacheable y sin trabajo extra en el navegador. El CSS-in-JS en runtime serializa y inyecta estilos al renderizar, lo que añade costo, sobre todo con muchos componentes o actualizaciones frecuentes.
+* **SSR y Server Components:** los enfoques estáticos funcionan igual en servidor y cliente. styled-components necesita `'use client'` y soporte de SSR, y su estado de mantenimiento lo hace poco recomendable para proyectos nuevos.
+* **Mantenibilidad:** CSS Modules mantiene CSS estándar y separado del marcado. Tailwind reduce nombres y CSS muerto, pero requiere disciplina para no acumular cadenas de clases largas (se resuelve extrayendo componentes). El CSS-in-JS junta lógica y estilo, pero ata el proyecto a una librería.
+* **Decisión típica:** Tailwind o CSS Modules por defecto, estilo en línea para valores dinámicos y variables CSS para temas. Sass solo si el proyecto ya lo usa o necesita sus funciones.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Por qué `className` y no `class`?**
+`class` es palabra reservada en JavaScript, y JSX se compila a JavaScript. La propiedad del DOM que representa el atributo se llama `className`.
+
+**2. ¿Un `.css` importado desde un componente queda aislado a ese componente?**
+No. El bundler lo incluye en la página y sus reglas son globales. El aislamiento requiere CSS Modules u otra técnica.
+
+**3. ¿Cuándo conviene `style` frente a una clase?**
+Cuando el valor es dinámico y no se conoce de antemano, por ejemplo un ancho calculado. Para estilos fijos, una clase es más eficiente y permite pseudoclases y media queries.
+
+**4. ¿Qué diferencia hay entre Sass y CSS Modules?**
+Resuelven problemas distintos: Sass es un lenguaje que se compila a CSS (variables, mixins), y CSS Modules aísla nombres de clase. Se combinan con `.module.scss`.
+
+**5. ¿Por qué Tailwind no tiene costo en runtime?**
+Porque analiza el código durante el build y genera un CSS estático con solo las clases usadas. El navegador recibe una hoja de estilos normal.
+
+**6. ¿Se puede seguir usando styled-components?**
+Sí, en proyectos existentes: sigue funcionando y recibe correcciones críticas. Sus mantenedores no recomiendan adoptarlo en proyectos nuevos, y con Server Components requiere `'use client'`.
+
+-----
+
+## Siguiente lección
+
+Después de decidir cómo se ve un componente, el paso que sigue es entender **cuándo** se crea, se actualiza y se destruye: [Component Lifecycle Methods](03-Component%20Lifecycle%20Methods.md).

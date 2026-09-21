@@ -1,145 +1,122 @@
-# React Programming Patterns
+# Patrones de programación en React: organizar y reutilizar lógica
 
-## Separate Container Components From Presentational Components
+## En una frase
 
-A medida que continúes creando tus aplicaciones en React, pronto te darás cuenta de que un componente tiene demasiadas responsabilidades y es difícil de mantener. En esta lección, aprenderás un patrón de programación que te ayudará a organizar tu código en React.
-
-Si un componente necesita tener **estado**, hacer cálculos basados en las **props** o manejar cualquier otra lógica compleja, entonces ese componente no debería también encargarse de renderizar **JSX**.
-
-Para ayudar a reducir la complejidad del componente, podemos dividirlo en varios componentes más simples. ¿Cómo deberías separarlo?
-
-El patrón que aprenderemos se enfoca en dividir componentes complejos en componentes **con estado (contenedores)** y **sin estado (presentacionales)**, donde los componentes con estado gestionan el estado o la lógica compleja y los componentes sin estado solo renderizan JSX.
-
-A lo largo de esta lección, veremos cómo aplicar este patrón a nuestra aplicación de ejemplo en React para dividir un componente complejo en componentes contenedores y presentacionales.
+Un **patrón** es una forma probada de organizar componentes para que la lógica se reutilice y cada pieza tenga una sola responsabilidad. Esta lección recorre los patrones clásicos de React y aclara cuáles se siguen usando hoy y cuáles los Hooks dejaron en segundo plano.
 
 -----
 
-## Create Container Component
+## Antes de empezar
 
-Separar los componentes contenedores de los componentes de presentación es un patrón de programación popular en React.
+Conviene que ya sepas:
 
-La parte funcional de un componente (mantener un estado, hacer cálculos basados en props, etc.) puede separarse en un componente contenedor, también llamado componente con estado.
+* Cómo un componente recibe datos con props: [Props](../02-componentes-y-props/03-Props.md).
+* Cómo guardar un dato que cambia con `useState`: [useState](../04-hooks-y-context/01-The%20State%20Hook.md).
+* Qué es un Hook propio (`useAlgo`): [Custom Hooks](../04-hooks-y-context/03-Custom%20Hooks.md).
 
-Este componente contenedor se encargará de mantener el estado (crearlo y actualizarlo) y pasarlo (veremos esto más adelante) a cualquier componente que renderice, usando props.
+Palabras nuevas (también están en el [Glosario](Glosario.md)):
+
+* **Componente contenedor:** componente que maneja estado o lógica y no define la interfaz por sí mismo.
+* **Componente presentacional:** componente que solo recibe props y devuelve JSX.
+* **HOC (Higher-Order Component):** función que recibe un componente y devuelve otro componente con funcionalidad añadida.
+* **Render prop:** prop cuyo valor es una función que devuelve JSX.
+* **Composición:** construir componentes complejos combinando componentes simples.
+* **Slot:** espacio dentro de un componente donde quien lo usa decide qué contenido va.
+* **Prop drilling:** pasar una prop por componentes intermedios que no la usan.
 
 -----
 
-## Create Presentational Component
+## El problema
 
-Ahora que hemos creado un componente contenedor y separado la lógica, podemos crear un componente de presentación (o sin estado) para mostrar nuestro slideshow de cobayas.
+Dos problemas aparecen cuando una aplicación crece:
 
-El único trabajo del componente de presentación es contener JSX. Debe ser un componente exportado y no debe renderizarse a sí mismo, porque siempre será renderizado por un componente contenedor.
+1. **Un componente hace demasiado.** Guarda estado, hace cálculos, pide datos y además define el JSX. Es difícil de leer, de probar y de cambiar.
+2. **La misma lógica se repite.** Varios componentes necesitan la misma protección de acceso, la misma suscripción o la misma estructura visual, y copiar código genera inconsistencias.
 
-Por ejemplo, si tenemos componentes llamados Presentational y Container, Presentational.js debe exportar la función (o clase) del componente:
+Los patrones de esta lección responden a esas dos preguntas: cómo separar responsabilidades y cómo reutilizar lógica o estructura.
 
-```js
-function Presentational(/*...props*/) {
-  // cuerpo del componente
-}
+-----
 
-export default Presentational;
-```
+## Cómo funciona
 
-Container.js debe importar ese componente:
+### Container y Presentational
 
-```js
-import { Presentational } from 'Presentational.js';
-function Container() {
-  // renderiza el componente Presentational
-}
-```
+Este patrón divide un componente en dos:
 
-Es importante entender que, aunque un componente de presentación no mantiene estado, eso no significa que no sea reactivo. Recuerda que, al igual que el estado, un cambio en las props también puede cambiar el JSX renderizado.
+* El **contenedor** guarda el estado, calcula y decide qué mostrar.
+* El **presentacional** recibe datos y funciones por props y devuelve JSX. No sabe de dónde vienen los datos.
 
-----
-
-## Parent/Child and Sibling/Sibling Communication
-
-Hemos visto cómo los componentes contenedores se comunican con los componentes de presentación pasando su estado a través de las props, pero ¿cómo comunican los componentes de presentación cambios al contenedor?
-
-Una idea sería actualizar las props directamente así:
-
-```js
-function Presentational(props) {
-  const buttonClickHandler = () => {
-    props.isActive = !props.isActive
-  }
-  // resto del código
-}
-```
-
-Pero esto no sería correcto porque los componentes nunca deben actualizar sus props directamente. Recuerda que los componentes funcionales de React deben ser funciones puras y actualizar los valores de las props directamente violaría ese principio.
-
-Para que un componente de presentación (sin estado) comunique cambios a un contenedor (con estado), el componente contenedor debe definir y proporcionar una forma para que el componente de presentación se comunique con él usando una función manejadora de cambios pasada como prop.
-
-Por ejemplo:
-
-```js
-function Container() {
-  const [isActive, setIsActive] = useState(false);                              
-                                
+```tsx
+// Presentational.tsx
+export function Presentational({ active, toggle }: { active: boolean; toggle: () => void }) {
   return (
     <>
-      <Presentational active={isActive} toggle={setIsActive}/>
-      <OtherPresentational active={isActive}/>
+      <h1>Motores: {active ? 'encendidos' : 'apagados'}</h1>
+      <button onClick={toggle}>Cambiar</button>
     </>
-  );                          
-}
-                        
-function Presentational(props) {
-  return (
-    <h1>Engines are {props.active}</h1>
-    <button onClick={() => props.toggle(!props.active)}>Engine Toggle</button>
   );
-}
-                            
-function OtherPresentational(props) {
-  // render...
 }
 ```
 
-En el ejemplo anterior, Container mantiene el estado isActive y pasa setIsActive a Presentational a través de la prop toggle. Cuando Presentational necesita comunicar un cambio a la prop active, usa la función pasada a través de la prop toggle.
+```tsx
+// Container.tsx
+import { useState } from 'react';
+import { Presentational } from './Presentational';
 
-Usar este patrón también resulta, de forma indirecta, en comunicación entre componentes hermanos (componentes con un mismo padre), como se muestra en el ejemplo. Cuando Presentational comunica un cambio usando toggle, esto actualiza el estado en Container, que luego proporciona el valor actualizado de isActive tanto a Presentational como a OtherPresentational a través de la prop active.
+export function Container() {
+  const [isActive, setIsActive] = useState(false);
+  return <Presentational active={isActive} toggle={() => setIsActive(!isActive)} />;
+}
+```
 
-----
+Un componente presentacional no tiene estado propio, pero sigue siendo reactivo: si sus props cambian, su JSX también.
 
-## Render Presentational Components in Container Component
+Hoy este patrón se aplica de forma más flexible. Como la lógica con estado se puede extraer a un custom hook, el componente suele quedar como "presentacional" llamando a un hook, sin necesidad de un contenedor aparte. La separación de responsabilidades sigue siendo válida; la estructura de dos archivos ya no es obligatoria.
 
-Hemos aprendido cómo separar la lógica en un componente contenedor y renderizar **JSX** en un componente presentacional.
+### Comunicación padre-hijo y entre hermanos
 
-Ahora, el componente contenedor debería renderizar los componentes presentacionales en lugar de renderizar JSX directamente. El estado del componente contenedor se pasará hacia abajo como **props** a los componentes presentacionales para mantenerlos reactivos.
+Los datos bajan del padre al hijo por props. Un hijo no puede modificar sus props: son de solo lectura y, según la documentación de React, cuando un componente necesita cambiarlas debe "pedirle" a su padre que le pase otras.
 
------
+```tsx
+// Incorrecto: mutar una prop
+function Presentational(props: { isActive: boolean }) {
+  const onClick = () => {
+    props.isActive = !props.isActive; // no se hace
+  };
+}
+```
 
-## Review
+Para que el hijo avise un cambio, el padre le pasa una **función** por props. El hijo la llama y el padre actualiza su estado:
 
-¡Felicidades! Has aprendido tu primer patrón de programación para organizar tu código React. Dividiste un componente complejo de React en un componente contenedor y un par de componentes de presentación.
+```tsx
+function Container() {
+  const [isActive, setIsActive] = useState(false);
 
-Estos son los pasos que seguimos:
+  return (
+    <>
+      <Presentational active={isActive} toggle={setIsActive} />
+      <OtherPresentational active={isActive} />
+    </>
+  );
+}
 
-- Identificamos que el componente original necesitaba ser refactorizado: manejaba cálculos/lógica y presentación/renderizado.
-- Creamos un componente contenedor con toda la lógica con estado.
-- Creamos una función que llama al método para actualizar el estado proporcionado por useState().
-- Creamos y exportamos componentes de presentación que solo contienen JSX.
-- Importamos los componentes de presentación en el componente contenedor.
-- Usamos los componentes de presentación en el return del componente contenedor.
-- Pasamos el estado y las funciones para cambiar el estado como props a los componentes de presentación.
+function Presentational({ active, toggle }: { active: boolean; toggle: (v: boolean) => void }) {
+  return <button onClick={() => toggle(!active)}>Motor: {active ? 'on' : 'off'}</button>;
+}
+```
 
-En este patrón, el componente contenedor decide qué mostrar usando el estado. El componente de presentación muestra el estado usando props. Si un componente hace mucho trabajo en ambas áreas, es señal de que debes usar este patrón.
+Esto también resuelve la comunicación entre hermanos. Dos componentes con el mismo padre no se hablan directamente: uno avisa al padre, el padre actualiza el estado y le entrega el valor nuevo a ambos. A esto se le llama "elevar el estado" al ancestro común más cercano.
 
------
+### Higher-Order Components (HOC)
 
-## Higher-Order Components (HOC)
+Un **HOC** es una función que recibe un componente y devuelve otro. No es una característica de React: surge de que un componente es una función y una función puede recibir y devolver funciones.
 
-Un **Higher-Order Component** (componente de orden superior) es una función que recibe un componente como argumento y devuelve un nuevo componente con funcionalidad adicional. No es una característica del framework, sino un patrón que surge naturalmente de que los componentes de React son, en última instancia, funciones: si una función puede recibir y devolver otra función, un componente puede recibir y devolver otro componente.
-
-Este patrón fue, durante mucho tiempo, la forma estándar de compartir lógica entre componentes que no tenían relación jerárquica directa. Un caso típico es proteger rutas según el estado de autenticación:
+Durante años fue la forma estándar de compartir lógica entre componentes sin relación directa. Ejemplo típico, proteger una pantalla según la autenticación:
 
 ```tsx
 const withAuth = (Component) => {
   return (props) => {
-    const isAuth = true; // vendría de un contexto o de un hook real
+    const isAuth = true; // en la práctica vendría de un contexto o de un hook
     return isAuth ? <Component {...props} /> : <Login />;
   };
 };
@@ -147,17 +124,15 @@ const withAuth = (Component) => {
 const DashboardConAuth = withAuth(Dashboard);
 ```
 
-`withAuth` no modifica `Dashboard`; lo envuelve. El componente devuelto decide, antes de renderizar, si `Dashboard` debe mostrarse o si en su lugar debe mostrarse `Login`. La idea central del patrón es "añado lógica sin tocar el componente original", lo que permite reutilizar la misma protección de autenticación envolviendo cualquier otro componente con `withAuth`.
+`withAuth` no modifica `Dashboard`: lo envuelve. El componente devuelto decide, antes de renderizar, si muestra `Dashboard` o `Login`.
 
-### Por qué los Hooks desplazaron a los HOC
+**Por qué los Hooks los desplazaron.** Envolver tiene un costo. Al combinar varios HOC (`withAuth(withTheme(withData(Componente)))`) el árbol se llena de capas que no aportan JSX, solo lógica. Esto se conoce como **wrapper hell**: más nodos en las React DevTools, más difícil saber de dónde viene cada prop y riesgo de colisión de nombres cuando dos HOC inyectan la misma prop.
 
-Envolver componentes tiene un costo. Cuando varios HOC se combinan sobre el mismo componente (`withAuth(withTheme(withData(Componente)))`), el árbol de componentes se llena de capas intermedias que no aportan JSX propio, solo lógica. A este problema se lo conoce como **wrapper hell**: cada envoltorio agrega una capa en las React DevTools, dificulta rastrear de dónde viene una prop y puede generar colisiones de nombres cuando dos HOC intentan inyectar una prop con el mismo nombre.
+Con Hooks, casi todo lo que hacía un HOC (compartir estado, efectos, suscripciones) se resuelve con un **custom hook** que se llama dentro del componente, sin nodos extra ni indirección de props. La documentación actual de React enseña la reutilización de lógica con custom hooks, y la documentación anterior ya señalaba que los Hooks evitan el anidamiento que producían HOC y render props. Por eso, para lógica nueva, la recomendación es empezar por un hook. Los HOC siguen siendo válidos y aparecen en código existente y en algunas librerías de terceros.
 
-Con la llegada de los Hooks, la mayoría de los casos de uso de los HOC —compartir lógica de estado, efectos o suscripciones— se resuelven con un **custom hook**, sin necesidad de envolver ningún componente. Un custom hook se importa y se llama dentro del componente que lo necesita, sin crear nodos adicionales en el árbol ni indirecciones sobre las props. Por eso, la recomendación actual es: si el problema se puede resolver con un hook, se resuelve con un hook. Los HOC siguen siendo válidos, pero quedan reservados para casos puntuales, como ciertas integraciones con librerías de terceros que ya exponen su API en forma de HOC.
+### HOC tipados y componibles
 
-### Yendo más lejos: HOCs tipados y componibles
-
-El ejemplo de `withAuth` de arriba es deliberadamente simple. En un HOC real conviene tipar con cuidado dos cosas: qué prop inyecta el HOC, y que esa prop deje de ser exigida a quien use el componente resultante (ya que el HOC se encarga de proveerla). Esto se logra combinando un generic con `Omit`:
+En un HOC real hay que tipar dos cosas: qué prop inyecta y que esa prop deje de ser obligatoria para quien use el componente resultante. Se logra con un generic y `Omit`:
 
 ```tsx
 interface WithThemeProps {
@@ -176,29 +151,32 @@ const withTheme = (theme: 'light' | 'dark') =>
   };
 ```
 
-Leyendo la firma con calma: `withTheme` recibe el tema y devuelve una función que toma un `Component` cuyas props incluyen `WithThemeProps` (`P extends WithThemeProps`), y devuelve un nuevo componente cuyas props son las de `P` **sin** `theme` (`Omit<P, keyof WithThemeProps>`) — porque `theme` ahora lo provee el HOC, no quien lo usa. `displayName` no es obligatorio, pero vale la pena: sin él, todos los componentes envueltos aparecen en React DevTools con el nombre genérico `Wrapped`, lo que hace mucho más difícil identificar cuál es cuál cuando se combinan varios HOCs.
+Cómo leer la firma:
 
-Y varios HOCs tipados así se combinan sin perder seguridad de tipos en ningún paso:
+* `withTheme` recibe el tema y devuelve una función que toma un `Component`.
+* `P extends WithThemeProps` exige que las props del componente incluyan `theme`.
+* El resultado es un componente cuyas props son las de `P` **sin** `theme` (`Omit<P, keyof WithThemeProps>`), porque ahora las provee el HOC.
+* `displayName` no es obligatorio, pero sin él todos los componentes envueltos aparecen como `Wrapped` en las DevTools.
+
+Varios HOC tipados así se combinan sin perder seguridad de tipos:
 
 ```tsx
+// withLogging y withUser siguen el mismo esquema que withTheme
 const EnhancedDashboard = withLogging(withUser(withTheme('dark')(BaseDashboard)));
 
-// Quien usa EnhancedDashboard solo necesita pasar las props que
-// ningún HOC de la cadena provee — en este caso, solo `title`.
+// Solo hay que pasar las props que ningún HOC de la cadena provee
 <EnhancedDashboard title="Panel principal" />
 ```
 
-Cada HOC de la cadena "consume" su prop (inyectándola) y la resta del tipo final, así que TypeScript sabe con precisión qué props le siguen faltando a `EnhancedDashboard` después de aplicar los tres envoltorios.
+Cada HOC inyecta su prop y la resta del tipo final, así que TypeScript sabe qué props faltan tras aplicar los tres envoltorios.
 
------
+### Render Props
 
-## Render Props
-
-**Render Props** es un patrón en el que un componente recibe, como prop, una función que le indica qué debe renderizar. En lugar de que el componente decida directamente el JSX final, delega esa decisión al consumidor a través de esa función, mientras conserva para sí la lógica que produce los datos que la función necesita.
+Una **render prop** es una prop cuyo valor es una función que devuelve JSX. El componente conserva la lógica y le entrega los datos a esa función; quien lo usa decide cómo se dibujan.
 
 ```tsx
-function DataFetcher({ url, render }) {
-  const [data, setData] = useState(null);
+function DataFetcher({ url, render }: { url: string; render: (data: unknown) => React.ReactNode }) {
+  const [data, setData] = useState<unknown>(null);
 
   useEffect(() => {
     fetch(url).then((res) => res.json()).then(setData);
@@ -210,7 +188,7 @@ function DataFetcher({ url, render }) {
 <DataFetcher url="/api/users" render={(data) => <UserList users={data} />} />
 ```
 
-`DataFetcher` se encarga de obtener los datos; quien lo usa decide cómo se muestran, pasando una función distinta según el caso: una tabla, una lista, tarjetas, etc. Es habitual encontrar una variante donde la función se pasa como `children` en lugar de como una prop llamada `render`:
+Es común pasar la función como `children`:
 
 ```tsx
 <DataFetcher url="/api/users">
@@ -218,31 +196,27 @@ function DataFetcher({ url, render }) {
 </DataFetcher>
 ```
 
-Ambas variantes resuelven el mismo problema: compartir lógica entre componentes que necesitan mostrar interfaces distintas.
+Igual que con los HOC, los custom hooks reemplazan a las render props en la mayoría de los casos: `useFetch(url)` devuelve los datos sin envolver el JSX en una función ni añadir un nivel de anidamiento. (El ejemplo omite manejo de errores y cancelación para centrarse en el patrón; para datos reales, revisa [Fetch de datos con useEffect](../10-fetching-de-datos/01-Fetch%20de%20Datos%20con%20useEffect.md).) Las render props siguen siendo útiles cuando la lógica la ofrece una librería con esa API, o cuando el componente debe entregar valores a un fragmento de JSX que cambia según el uso.
 
-Al igual que con los HOC, los custom hooks han reemplazado a Render Props en la mayoría de los casos: un `useFetch(url)` devuelve los datos directamente, sin necesidad de envolver el JSX en una función ni de agregar un nivel de anidamiento adicional. Render Props sigue siendo útil cuando no se controla el componente que consume la lógica —por ejemplo, en librerías que exponen su comportamiento mediante esta API— o cuando es necesario inyectar comportamiento en un árbol de JSX que no se puede reescribir como hook.
+### Composición vs. herencia
 
------
+En la programación orientada a objetos clásica se reutiliza comportamiento con **herencia**: una clase extiende a otra (`Animal → Perro → Bulldog`). En React no se recomienda modelar componentes así. La documentación anterior de React lo decía explícitamente: tras usar React en miles de componentes, no encontraron casos donde recomendaran jerarquías de herencia de componentes.
 
-## Composición vs. Herencia
+La herencia en UI crea acoplamiento rígido: un cambio en la clase base puede romper todas las derivadas. Si `BotonPrimario`, `BotonConIcono` y `BotonDeAlerta` heredan de `BotonBase`, cada ajuste en la base se propaga a los tres.
 
-En la Programación Orientada a Objetos clásica es común reutilizar comportamiento mediante **herencia**: una clase extiende a otra y hereda sus propiedades y métodos, formando jerarquías como `Animal → Perro → Bulldog`. React, en cambio, no recomienda modelar componentes de esta forma. Su documentación es explícita al respecto: en Facebook usaron React en miles de componentes y no encontraron ningún caso de uso donde recomendarían crear jerarquías de herencia de componentes.
-
-El problema de la herencia aplicada a UI es que crea acoplamiento rígido: un cambio en la clase base puede romper a todas sus clases hijas, y a medida que la jerarquía crece se vuelve difícil predecir el efecto de una modificación. Un componente `BotonBase` del que heredan `BotonPrimario`, `BotonConIcono` y `BotonDeAlerta` obliga a que cualquier ajuste en `BotonBase` se propague —a veces de forma inesperada— a los tres.
-
-React resuelve el mismo problema con **composición**: en lugar de extender un componente base, se construyen componentes pequeños y con una única responsabilidad, y se combinan para formar interfaces más complejas.
+React resuelve lo mismo con **composición**: componentes pequeños, con una sola responsabilidad, que se combinan.
 
 ```tsx
-// Con herencia (no recomendado en React)
+// Con herencia (no recomendado)
 class BotonBase extends React.Component { /* ... */ }
 class BotonConIcono extends BotonBase { /* ... */ }
 
-// Con composición (idiomático en React)
-function Boton({ children }) {
+// Con composición (idiomático)
+function Boton({ children }: { children: React.ReactNode }) {
   return <button className="boton">{children}</button>;
 }
 
-function BotonConIcono({ icono, children }) {
+function BotonConIcono({ icono, children }: { icono: React.ReactNode; children: React.ReactNode }) {
   return (
     <Boton>
       {icono}
@@ -252,16 +226,14 @@ function BotonConIcono({ icono, children }) {
 }
 ```
 
-En la versión compuesta, `BotonConIcono` no hereda de `Boton`: lo usa. Cada componente puede evolucionar, testearse y reutilizarse de forma independiente, y agregar un nuevo tipo de botón no implica tocar una jerarquía compartida, sino escribir un componente nuevo que combina las piezas que ya existen.
+`BotonConIcono` no hereda de `Boton`: lo usa. Cada pieza se prueba y evoluciona por separado, y un nuevo tipo de botón es un componente nuevo, no un cambio en una jerarquía compartida.
 
------
+### Slots y children
 
-## Slots y children
-
-La prop `children` es la forma que tiene React de crear lo que en otros frameworks se conoce como **slots**: espacios dentro de un componente donde el elemento que lo usa decide qué contenido colocar, sin que el componente que define el espacio necesite conocer ese contenido de antemano.
+La prop `children` es la forma de React de crear **slots**: huecos que quien usa el componente rellena con JSX cualquiera. Según la documentación, un componente con `children` tiene un "hueco" que quien lo usa puede llenar; es habitual en envoltorios visuales como paneles o rejillas.
 
 ```tsx
-function Card({ children }) {
+function Card({ children }: { children: React.ReactNode }) {
   return <div className="card">{children}</div>;
 }
 
@@ -271,12 +243,16 @@ function Card({ children }) {
 </Card>
 ```
 
-`Card` no sabe —ni le interesa saber— qué hay dentro de él. Su única responsabilidad es aplicar el contenedor (la clase `card`) y renderizar lo que reciba como `children`. Quien usa `Card` decide qué va dentro, del mismo modo en que se decide qué colocar dentro de una caja genérica.
+`Card` solo aporta el contenedor; no conoce su contenido.
 
-Cuando un componente necesita más de un espacio de inserción —por ejemplo, una cabecera y un pie separados del contenido principal— `children` deja de ser suficiente, porque solo representa un único hueco. En esos casos se recurre a varias props, cada una destinada a recibir JSX, funcionando como slots nombrados:
+Cuando se necesita más de un hueco (cabecera, contenido, pie), `children` no alcanza porque es uno solo. Se añaden props que reciben JSX, que funcionan como slots con nombre:
 
 ```tsx
-function Layout({ header, children, footer }) {
+function Layout({ header, children, footer }: {
+  header: React.ReactNode;
+  children: React.ReactNode;
+  footer: React.ReactNode;
+}) {
   return (
     <div>
       <header>{header}</header>
@@ -291,13 +267,9 @@ function Layout({ header, children, footer }) {
 </Layout>
 ```
 
-Este enfoque conserva la misma idea que `children` —el padre decide el contenido— pero permite distribuirlo en distintas posiciones del componente.
+### Prop drilling y cómo evitarlo
 
------
-
-## Prop Drilling y cómo evitarlo
-
-**Prop drilling** es el nombre que recibe el problema de pasar una prop a través de varios componentes intermedios que no la utilizan, únicamente para que llegue a un componente descendiente que sí la necesita.
+El **prop drilling** ocurre cuando una prop atraviesa componentes que no la usan solo para llegar a uno más abajo:
 
 ```tsx
 function App() {
@@ -306,24 +278,30 @@ function App() {
 }
 
 function Layout({ user }) {
-  return <Sidebar user={user} />; // Layout no usa 'user', solo la reenvía
+  return <Sidebar user={user} />; // solo reenvía
 }
 
 function Sidebar({ user }) {
-  return <UserMenu user={user} />; // Sidebar tampoco la usa
+  return <UserMenu user={user} />; // solo reenvía
 }
 
 function UserMenu({ user }) {
-  return <span>{user.name}</span>; // recién aquí se usa 'user'
+  return <span>{user.name}</span>; // recién aquí se usa
 }
 ```
 
-`Layout` y `Sidebar` reciben y reenvían `user` sin necesitarla para nada propio; su única función respecto a esa prop es actuar de intermediarios. Cuantos más niveles tenga el árbol y más props se compartan de esta manera, más frágil se vuelve el código: cada componente intermedio queda acoplado a datos que no le pertenecen, y renombrar o reestructurar una prop obliga a tocar cada eslabón de la cadena.
+Cada intermediario queda acoplado a un dato que no le pertenece, y renombrar la prop obliga a tocar toda la cadena.
 
-La solución que ofrece React para datos que numerosos componentes distantes necesitan leer es la **Context API**. Un contexto permite que un componente ancestro provea un valor, y que cualquier descendiente —sin importar cuán profundo esté— lo consuma directamente con el hook `useContext`, sin que los componentes intermedios sepan que ese valor existe:
+La documentación de React sugiere estas opciones, en este orden:
+
+1. **Empezar con props.** Pasar datos explícitamente hace claro qué componente usa qué. Con uno o dos niveles es lo más simple.
+2. **Extraer componentes y pasar JSX como `children`.** Si un dato cruza muchas capas que no lo usan, a menudo falta extraer algún componente. En lugar de `<Layout user={user} />`, se escribe `<Layout><UserMenu user={user} /></Layout>` y `Layout` deja de saber del usuario.
+3. **Context**, solo si lo anterior no funciona bien.
+
+Con Context, un ancestro provee el valor y cualquier descendiente lo lee con `useContext`:
 
 ```tsx
-const UserContext = createContext(null);
+const UserContext = createContext<User | null>(null);
 
 function App() {
   const user = useUser();
@@ -336,17 +314,15 @@ function App() {
 
 function UserMenu() {
   const user = useContext(UserContext);
-  return <span>{user.name}</span>;
+  return <span>{user?.name}</span>;
 }
 ```
 
-Con este cambio, `Layout` y `Sidebar` ya ni siquiera necesitan mencionar `user` en sus props. La regla práctica para decidir cuándo conviene usar Context en lugar de props es: si los componentes intermedios de la cadena no utilizan la prop, solo la reenvían, es una señal de que ese dato debería vivir en un contexto. Para estados globales más complejos, con muchas actualizaciones o lógica de por medio, suele preferirse una librería de manejo de estado dedicada, como Redux o Zustand, en lugar de forzar ese volumen de datos dentro de la Context API.
+Detalle completo, con la guardia de `undefined` y `useMemo`, en [React Context](../04-hooks-y-context/04-React%20Context.md). Para estado global con muchos cambios suele considerarse una librería dedicada (ver [Zustand, Redux y Context](../../03-state-management-and-data/01-Zustand,%20Redux%20y%20Context%20-%20Cuando%20usar%20cada%20uno.md)).
 
------
+### Compound Components
 
-## Compound Components
-
-Hay componentes que, por naturaleza, están formados por **varias partes que tienen que trabajar coordinadas**: unas pestañas (la lista de pestañas y los paneles), un acordeón, un menú desplegable. La primera idea suele ser resolverlo con un único componente configurado por props:
+Algunos componentes están formados por **varias partes que deben coordinarse**: pestañas (lista y paneles), acordeón, menú desplegable. La primera opción suele ser un único componente configurado por props:
 
 ```tsx
 <Tabs
@@ -357,9 +333,9 @@ Hay componentes que, por naturaleza, están formados por **varias partes que tie
 />
 ```
 
-Funciona, hasta que aparecen los pedidos de personalización: un ícono en una pestaña, una pestaña deshabilitada, un panel con un layout distinto. Cada pedido obliga a agregar una prop nueva al arreglo (`icon`, `disabled`, `renderPanel`...) y el componente termina con una API enorme y rígida, controlada por un único objeto de configuración.
+Funciona hasta que llegan los pedidos de personalización (un ícono, una pestaña deshabilitada, un panel con otro layout). Cada uno agrega una prop nueva y la API se vuelve grande y rígida.
 
-El patrón **Compound Components** resuelve esto dividiendo el componente en partes que se **componen con JSX**, y que se comunican entre sí de forma implícita a través de un estado compartido (Context), sin que quien las usa tenga que conectarlas a mano:
+**Compound Components** divide el componente en partes que se componen con JSX y se comunican por un estado compartido a través de Context, sin que quien las usa las conecte a mano:
 
 ```tsx
 <Tabs defaultTab="perfil">
@@ -373,7 +349,7 @@ El patrón **Compound Components** resuelve esto dividiendo el componente en par
 </Tabs>
 ```
 
-Quien usa el componente controla la estructura (el orden, qué va entre medio, qué estilos lleva cada parte), mientras las partes siguen sincronizadas entre sí. Así se implementa:
+Quien lo usa controla la estructura (orden, contenido intermedio, estilos de cada parte) y las partes siguen sincronizadas. Implementación:
 
 ```tsx
 import { createContext, useContext, useState, type ReactNode } from 'react';
@@ -427,35 +403,238 @@ Tabs.Tab = Tab;
 Tabs.Panel = TabPanel;
 ```
 
-Fijate que es exactamente el esqueleto de Context que ya conocés: un contexto con su tipo, un hook con la guardia de `undefined`, y un componente padre (`Tabs`) que hace de Provider y dueño del estado. Lo único propio del patrón son las últimas tres líneas, que cuelgan las partes como propiedades del componente padre (`Tabs.Tab`) para que se importen y se usen juntas como una unidad.
+Es el mismo esqueleto de Context de la lección anterior: un contexto tipado, un hook con guardia de `undefined` y un padre (`Tabs`) que es Provider y dueño del estado. Lo propio del patrón son las tres últimas líneas, que cuelgan las partes del componente padre para importarlas y usarlas como una unidad. Por brevedad, el ejemplo no incluye la navegación con teclado ni los atributos `aria-controls` que un componente de pestañas accesible necesitaría.
 
-**Cuándo conviene:** cuando el componente tiene varias partes que comparten estado y el consumidor necesita libertad para acomodarlas (pestañas, acordeones, menús, selects, modales con encabezado/cuerpo/pie). Es el patrón que usan librerías de componentes como Radix UI (y shadcn/ui, que se construye encima).
-
-**Cuándo no:** si las partes no comparten estado, alcanza con composición común (`children` y slots, como vimos antes). Y si el componente es simple y con un solo propósito, una API por props es más corta y suficiente.
-
-**El costo:** las partes solo funcionan dentro del padre (por eso la guardia de `useTabs()`), y el contrato entre ellas es implícito: nada te avisa en la firma de `Tab` que necesita estar adentro de `Tabs`, solo el error en ejecución. Existe una variante más antigua que evita el Context usando `React.Children.map` y `cloneElement` para inyectar props a los hijos, pero es frágil (se rompe si envolvés un hijo en otro componente), y hoy se prefiere la versión con Context.
+* **Cuándo conviene:** varias partes comparten estado y el consumidor necesita libertad para acomodarlas (pestañas, acordeones, menús, selects, modales con encabezado, cuerpo y pie). Es el estilo que usan librerías como Radix UI, sobre la que se construye shadcn/ui.
+* **Cuándo no:** si las partes no comparten estado, basta con composición común (`children` y slots). Si el componente es simple, una API por props es más corta.
+* **Costo:** las partes solo funcionan dentro del padre (de ahí la guardia) y el contrato es implícito: la firma de `Tab` no indica que debe estar dentro de `Tabs`; solo lo avisa el error en ejecución. Existe una variante antigua con `React.Children` y `cloneElement` para inyectar props a los hijos, pero es frágil (se rompe si envuelves un hijo en otro componente) y hoy se prefiere Context.
 
 -----
 
-## Mapa de patrones: dónde vive cada uno en este wiki
+## Ejemplo completo
 
-Los patrones de diseño de frontend más comunes en React, y dónde están cubiertos:
+Un panel de usuarios que combina varios patrones: un componente con estado (contenedor), componentes presentacionales, un layout con slots y `children`, y la función de cambio pasada por props.
 
-| Patrón | Para qué sirve | Dónde verlo |
-| --- | --- | --- |
-| Container / Presentational | Separar lógica de datos de la interfaz | Al principio de esta misma nota |
-| Higher-Order Component | Reutilizar lógica envolviendo un componente | Más arriba, en esta nota |
-| Render Props | Compartir lógica dejando que el consumidor decida el JSX | Más arriba, en esta nota |
-| Composición y Slots | Armar componentes flexibles con `children` | Más arriba, en esta nota |
-| Compound Components | Partes coordinadas que se componen con JSX | Justo arriba |
-| Custom Hooks | Extraer y reutilizar lógica con estado | [03-Custom Hooks](../04-hooks-y-context/03-Custom%20Hooks.md) |
-| Provider (Context) | Compartir datos sin prop drilling | [04-React Context](../04-hooks-y-context/04-React%20Context.md) |
-| Reducer | Centralizar transiciones de estado complejas | [05-useReducer](../04-hooks-y-context/05-useReducer.md) |
-| Controlled / Uncontrolled inputs | Quién es dueño del valor de un campo | [06-forms](../06-forms/01-React%20Forms.md) |
-| Error Boundary | Aislar fallos de renderizado | [08-manejo-de-errores](../08-manejo-de-errores/01-React%20Error%20Boundaries.md) |
-| Lazy Loading y memoización | Cargar y renderizar solo lo necesario | [09-performance](../09-performance/02-React%20Optimization.md) |
-| Server Components | Traer datos en el servidor | [Next.js Server Components](../../02-nextjs-app-router/04-Next.js%20Server%20Components.md) |
-| Organización por features / Atomic Design | Estructurar el proyecto y los componentes de UI | [13-arquitectura-frontend](../13-arquitectura-frontend/01-Organizacion%20de%20Carpetas%20-%20Vertical%20Slice%20vs%20Horizontal.md) |
+```tsx
+import { useState, type ReactNode } from 'react';
+
+type User = { id: number; name: string; active: boolean };
+
+// Presentacional: solo recibe props y devuelve JSX
+function UserFilter({ query, onQueryChange }: { query: string; onQueryChange: (q: string) => void }) {
+  return (
+    <input value={query} onChange={(e) => onQueryChange(e.target.value)} placeholder="Buscar" />
+  );
+}
+
+function UserList({ users }: { users: User[] }) {
+  if (users.length === 0) return <p>Sin resultados</p>;
+  return (
+    <ul>
+      {users.map((u) => (
+        <li key={u.id}>{u.name}{u.active ? '' : ' (inactivo)'}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Presentacional con slots: no conoce su contenido
+function Panel({ title, toolbar, children }: { title: string; toolbar: ReactNode; children: ReactNode }) {
+  return (
+    <section>
+      <header>
+        <h2>{title}</h2>
+        {toolbar}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+// Contenedor: estado y lógica, sin definir estructura visual propia
+export function UsersPage({ users }: { users: User[] }) {
+  const [query, setQuery] = useState('');
+
+  const visible = users.filter((u) => u.name.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <Panel title="Usuarios" toolbar={<UserFilter query={query} onQueryChange={setQuery} />}>
+      <UserList users={visible} />
+    </Panel>
+  );
+}
+```
+
+Qué pasa:
+
+1. `UsersPage` guarda `query` y calcula `visible`. Es el único que tiene estado.
+2. `UserFilter` avisa cada cambio con `onQueryChange`; no modifica nada por su cuenta.
+3. `Panel` ofrece dos huecos (`toolbar` y `children`) y no sabe qué se pondrá en ellos.
+4. `UserList` recibe la lista ya filtrada y solo la dibuja.
+
+Nada aquí necesita un HOC ni una render prop. Si mañana el filtrado se comparte con otra pantalla, esa lógica se extrae a un custom hook `useUserFilter`.
 
 -----
 
+## Errores comunes
+
+### 1. Mutar una prop en el hijo
+
+```tsx
+function Toggle(props: { isActive: boolean }) {
+  return <button onClick={() => { props.isActive = !props.isActive; }}>Cambiar</button>;
+}
+```
+
+**Por qué pasa:** parece natural "cambiar el valor" donde se muestra. Las props son de solo lectura y el componente debe ser una función pura respecto a ellas, así que el cambio no se refleja ni provoca un nuevo render.
+**Cómo se arregla:** el padre guarda el estado y pasa una función (`onToggle`) que el hijo llama.
+
+### 2. Crear un HOC dentro del render
+
+```tsx
+function App() {
+  const Enhanced = withAuth(Dashboard); // se crea un componente nuevo en cada render
+  return <Enhanced />;
+}
+```
+
+**Por qué pasa:** cada llamada a `withAuth` devuelve un componente distinto. React lo trata como un tipo nuevo, descarta el árbol anterior y pierde su estado en cada render.
+**Cómo se arregla:** aplica el HOC una sola vez, fuera del componente, y usa el resultado (`const DashboardConAuth = withAuth(Dashboard);`).
+
+### 3. Reenviar la misma prop por muchos niveles
+
+Ver el ejemplo de prop drilling: los componentes intermedios quedan acoplados a un dato que no usan.
+**Cómo se arregla:** primero extraer componentes y pasar JSX como `children`; si no alcanza, usar Context.
+
+### 4. Usar `children` cuando hacen falta varios huecos
+
+**Por qué pasa:** `children` es un único hueco, y forzar varias piezas dentro obliga a inspeccionarlas o a reordenarlas dentro del componente.
+**Cómo se arregla:** props con nombre (`header`, `footer`) que reciben JSX.
+
+### 5. Usar una parte de un Compound Component fuera de su padre
+
+```tsx
+<Tabs.Tab id="perfil">Perfil</Tabs.Tab> // sin <Tabs> alrededor
+```
+
+**Por qué pasa:** `Tab` lee el contexto que pone `Tabs`. Sin Provider arriba, `useContext` devuelve el valor por defecto (`undefined`).
+**Cómo se arregla:** colócala dentro de `<Tabs>`. La guardia en `useTabs()` convierte el fallo en un mensaje claro.
+
+### 6. Aplicar un patrón donde no hace falta
+
+**Por qué pasa:** se envuelve, se separa o se pone Context "por si acaso".
+**Cómo se arregla:** empieza con lo más simple (un componente con props) y añade un patrón cuando el problema aparece: lógica repetida, un componente demasiado grande o prop drilling real.
+
+-----
+
+## En TypeScript
+
+* **HOC:** usa un generic `P extends TuProp` y `Omit<P, keyof TuProp>` en el tipo del componente devuelto, como en `withTheme` (sección "HOC tipados y componibles"). Así el consumidor no está obligado a pasar la prop que inyecta el HOC.
+* **Render props:** tipa la función explícitamente (`render: (data: T) => React.ReactNode`). Con un generic en el componente (`DataFetcher<T>`), el tipo de `data` llega al callback sin conversiones.
+* **Slots y children:** `children: React.ReactNode` cubre todo lo que React puede dibujar (texto, número, elemento, lista o nada). Los slots con nombre se tipan igual.
+* **Compound Components:** el contexto se crea con `createContext<T | undefined>(undefined)` y un hook que lanza un error si el valor es `undefined`; así, dentro de las partes el tipo ya no incluye `undefined`. Al asignar `Tabs.List = TabList`, TypeScript reconoce las propiedades estáticas de una función declarada con `function`.
+
+Más sobre tipado en [Tipado de Props y Funciones](../11-typescript-y-react/01-Tipado%20de%20Props%20y%20Funciones.md) y [Tipado de useReducer y Context API](../11-typescript-y-react/03-Tipado%20de%20useReducer%20y%20Context%20API.md).
+
+-----
+
+## Cuándo sí y cuándo no
+
+Para lógica nueva, el orden habitual es: props y composición, luego custom hook, luego Context. HOC y render props quedan para casos específicos.
+
+| Patrón | Qué problema resuelve | Cuándo elegirlo hoy | Dónde verlo |
+| --- | --- | --- | --- |
+| Container / Presentational | Separar lógica de la interfaz | Como principio de diseño; a menudo se cumple con un custom hook en vez de dos componentes | Esta lección |
+| Composición, slots y `children` | Estructuras flexibles sin herencia | Primera opción para reutilizar estructura visual y evitar prop drilling | Esta lección; [Props](../02-componentes-y-props/03-Props.md) |
+| Custom Hooks | Reutilizar lógica con estado | Primera opción para compartir lógica entre componentes | [Custom Hooks](../04-hooks-y-context/03-Custom%20Hooks.md) |
+| HOC | Reutilizar lógica envolviendo un componente | Código existente o librerías que lo exigen; no para lógica nueva en la mayoría de casos | Esta lección |
+| Render Props | Compartir lógica dejando que el consumidor decida el JSX | Cuando una librería lo ofrece o cuando hay que entregar datos a JSX variable; en otros casos, un hook | Esta lección |
+| Compound Components | Partes coordinadas que se componen con JSX | Componentes de UI con varias partes que comparten estado | Esta lección |
+| Provider (Context) | Compartir datos sin prop drilling | Datos transversales de cambio poco frecuente (tema, usuario, idioma) | [React Context](../04-hooks-y-context/04-React%20Context.md) |
+| Reducer | Centralizar transiciones de estado complejas | Estado con muchas acciones relacionadas | [useReducer](../04-hooks-y-context/05-useReducer.md) |
+| Controlled / Uncontrolled inputs | Quién es dueño del valor de un campo | Formularios | [React Forms](../06-forms/01-React%20Forms.md) |
+| Error Boundary | Aislar fallos de renderizado | Proteger secciones de la interfaz | [Error Boundaries](../08-manejo-de-errores/01-React%20Error%20Boundaries.md) |
+| Lazy loading y memoización | Cargar y renderizar solo lo necesario | Tras medir un problema real | [React Optimization](../09-performance/02-React%20Optimization.md) |
+| Server Components | Traer datos en el servidor | Aplicaciones con Next.js App Router | [Next.js Server Components](../../02-nextjs-app-router/04-Next.js%20Server%20Components.md) |
+| Organización por features / Atomic Design | Estructurar proyecto y UI | Al organizar carpetas y componentes | [Organización de carpetas](../13-arquitectura-frontend/01-Organizacion%20de%20Carpetas%20-%20Vertical%20Slice%20vs%20Horizontal.md) |
+
+-----
+
+## Resumen en 5 líneas
+
+1. Separa lógica (estado, cálculos) de presentación (JSX); hoy suele bastar un custom hook en el mismo componente.
+2. Los datos bajan por props y los cambios suben con funciones; las props no se mutan.
+3. Los HOC y las render props reutilizan lógica, pero añaden anidamiento; para lógica nueva se prefiere un custom hook.
+4. En React se compone en lugar de heredar: `children` y props con JSX crean slots, y Compound Components coordina partes con Context.
+5. Ante prop drilling, primero extrae componentes y pasa `children`; usa Context si no alcanza.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>HOC: reglas prácticas</summary>
+
+* Aplícalo fuera del render (ver error común 2).
+* Pasa al componente envuelto las props que el HOC no consume (`{...props}`).
+* Asigna `displayName` para que las DevTools muestren un nombre útil.
+* Un HOC no debe mutar el componente original: lo envuelve.
+
+</details>
+
+<details>
+<summary>Variante antigua de Compound Components</summary>
+
+Antes de usar Context se inyectaban props a los hijos con `React.Children.map` y `cloneElement`. Solo funciona con hijos directos: si envuelves un hijo en otro componente, deja de recibir lo inyectado. La versión con Context no tiene esa limitación.
+
+</details>
+
+<details>
+<summary>Herencia en componentes de clase</summary>
+
+React sigue soportando componentes de clase (se crean extendiendo `React.Component`), pero la documentación actual recomienda definir componentes como funciones en código nuevo. Por eso, la herencia de clases casi no aparece en React moderno.
+
+</details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+Los patrones de React organizan el código: se separa la lógica del JSX (contenedor y presentacional), se pasan datos por props y funciones para comunicar cambios, y se compone en lugar de heredar. Para reutilizar lógica antes se usaban HOC y render props; hoy se usan custom hooks.
+
+### Respuesta ampliada (semi-senior)
+
+* **Separación de responsabilidades:** el patrón container/presentational sigue vigente como idea; se implementa con un custom hook para la lógica y un componente que solo renderiza.
+* **Reutilización de lógica:** los custom hooks comparten lógica sin añadir nodos al árbol. Los HOC y las render props funcionan, pero producen anidamiento (wrapper hell) y son más difíciles de tipar y depurar.
+* **Reutilización de estructura:** composición con `children` y slots. La herencia de componentes no se recomienda por el acoplamiento que genera.
+* **Prop drilling:** primero props explícitas, luego extraer componentes y pasar JSX como `children`, y por último Context. Para estado global de cambio frecuente, una librería de estado.
+* **Compound Components:** varias partes que comparten estado vía Context y se componen con JSX (`Tabs.List`, `Tabs.Tab`). Dan libertad al consumidor a costa de un contrato implícito.
+* **TypeScript:** los HOC se tipan con `P extends Inyectadas` y `Omit`; los compound components, con un contexto `T | undefined` y una guardia.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Sigue vigente container/presentational?**
+Como principio, sí: separar lógica y presentación. Como estructura de dos componentes, ya no es obligatoria, porque un custom hook permite extraer la lógica sin crear un contenedor aparte.
+
+**2. ¿HOC o custom hook?**
+Para lógica nueva, custom hook: se llama dentro del componente, sin nodos extra ni colisión de props. Un HOC se justifica en código existente o cuando una librería lo expone.
+
+**3. ¿Render props o hooks?**
+Hooks en la mayoría de los casos. Las render props se mantienen cuando el componente debe entregar valores a un JSX que decide quien lo usa, o cuando una librería las ofrece.
+
+**4. ¿Composición o herencia?**
+Composición. La herencia acopla el componente derivado a la base y un cambio en esta puede romper a todos; con composición cada pieza se usa, prueba y cambia por separado.
+
+**5. ¿Qué son los Compound Components y cuándo se usan?**
+Un componente dividido en partes (`Tabs.List`, `Tabs.Panel`) que comparten estado con Context y se componen con JSX. Se usan en UI con varias partes coordinadas donde el consumidor necesita controlar la estructura.
+
+**6. ¿Cómo evitas el prop drilling?**
+Extrayendo componentes y pasando JSX como `children`, de modo que los intermedios no reciban el dato. Si sigue habiendo muchos niveles, Context; y para estado global complejo, una librería de estado.
+
+-----
+
+## Siguiente lección
+
+Ahora que sabes organizar componentes, la siguiente lección trata cómo darles estilo: [React Styles](02-React%20Styles.md).
