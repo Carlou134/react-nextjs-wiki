@@ -1,321 +1,512 @@
-# Custom Types
+# Tipos personalizados: alias, interfaces y objetos
 
-## Introduction
+## En una frase
 
-¡Hasta ahora, has cubierto mucho de TypeScript! Entiendes todos los tipos que TypeScript define para ti: tipos primitivos y **arrays**. ¡Eso es un gran logro! Pero no te confíes demasiado, porque TypeScript también se puede usar para crear tipos personalizados, en lugar de estar limitado a los tipos predefinidos. Los tipos personalizados son lo que hacen a TypeScript realmente divertido y útil, ya que permiten una comprobación de tipos que está adaptada a tus propósitos exactos.
+Un **tipo personalizado** es un tipo que defines tú combinando los predefinidos; las herramientas principales son los tipos de objeto, `type` (alias), `interface`, los modificadores `?` y `readonly`, las intersecciones y las firmas de índice.
 
-De hecho, ya has estudiado un ejemplo de un tipo personalizado: **tuplas**. Por ejemplo, el tipo de tupla `[string, string, number, boolean]` es un tipo personalizado que se puede usar con datos sobre los usuarios de un sitio web: nombre (string), apellido (string), edad (number) y si tienen una cuenta de pago (boolean).
+-----
 
-Los tipos predefinidos son como ingredientes: pueden usarse por sí solos. A veces solo necesitas un string simple y a veces solo quieres comer un pepinillo. Sin embargo, los tipos predefinidos también pueden combinarse en tipos personalizados. Los tipos personalizados son como comidas completamente preparadas (pepinos, así como queso, pan y carne de hamburguesa).
+## Antes de empezar
 
-Los tipos complejos que cubrimos aquí se pueden usar de la misma manera que los tipos más simples cubiertos antes. Pueden usarse como **anotaciones de tipo** durante la declaración de variables:
+Conviene que ya sepas:
+
+* Los tipos primitivos y las anotaciones de tipo: [Types](01-Types.md).
+* Cómo se tipan las funciones: [Functions](03-Functions.md).
+* Cómo se tipan los arrays y las tuplas: [Arrays](04-Arrays.md).
+
+Palabras nuevas (también están en el [Glosario](Glosario.md)):
+
+* **Tipo de objeto:** tipo que describe las propiedades de un objeto y el tipo de cada una.
+* **Alias de tipo:** nombre que se le da a cualquier tipo con `type Nombre = ...`.
+* **Interface:** declaración que nombra la forma de un objeto con `interface Nombre { ... }`.
+* **Tipado estructural:** TypeScript compara tipos por su **forma** (las propiedades que tienen), no por el nombre con que fueron declarados.
+
+-----
+
+## El problema
+
+Los tipos predefinidos no bastan para describir datos reales. Una anotación en línea funciona una vez, pero se repite y se desincroniza:
 
 ```typescript
-let myVar: compType;
+function greet(user: { name: string; age: number }) { /* ... */ }
+function save(user: { name: string; age: number }) { /* ... */ }
+function render(user: { name: string; age: number; email: string }) { /* ... */ } // ¿otro tipo o un descuido?
 ```
 
-Y también se pueden usar como anotaciones de tipo para funciones:
+Se necesita **nombrar** una forma una sola vez y reutilizarla, y poder expresar detalles como propiedades opcionales, de solo lectura o en número variable.
+
+-----
+
+## Cómo funciona
+
+### Tipos de objeto
+
+Una anotación de objeto se parece a un literal, pero en lugar de valores lleva tipos:
 
 ```typescript
-function testFn(param: compType): returnedCompType {
-  /* Cuerpo de la función */
-}
+let aPerson: { name: string; age: number };
+
+aPerson = { name: 'Ana', age: 22 };                 // válido
+aPerson = { name: 'Kushim', yearsOld: 5000 };       // error: falta "age" y "yearsOld" no existe
+aPerson = { name: 'Ana', age: 'veintidós' };        // error: "age" debe ser number
 ```
 
-E incluso puedes hacer inferencia de tipos con tipos complejos:
+Las propiedades pueden ser de cualquier tipo: primitivos, arrays, funciones u otros objetos.
+
+Un detalle importante: al asignar un **literal de objeto** directamente, TypeScript rechaza propiedades sobrantes (*excess property check*). Si el valor viene de una variable, esa revisión no se aplica y basta con que tenga al menos las propiedades requeridas (tipado estructural):
 
 ```typescript
-let inferredTypeVariable = testFn(myVar);
-// La variable inferredTypeVariable tendrá el tipo returnedCompType.
+type Person = { name: string; age: number };
+
+const withExtra = { name: 'Ana', age: 22, city: 'Lima' };
+const p: Person = withExtra;                              // válido: la variable tiene name y age
+const q: Person = { name: 'Ana', age: 22, city: 'Lima' }; // error: literal con propiedad sobrante
 ```
 
-Así que, sin más preámbulos, ¡vamos a sumergirnos en nuestro primer tipo complejo!
+### Alias de tipo (`type`)
 
-----
-
-## Enums
-
-Nuestro primer ejemplo de un tipo complejo también es uno de los más útiles: los **enums**. Usamos enums cuando queremos enumerar todos los valores posibles que una variable podría tener. Esto contrasta con la mayoría de los otros tipos que hemos estudiado. Una variable de tipo string puede tener cualquier cadena como valor; hay infinitas cadenas posibles, y sería imposible listarlas todas. De manera similar, una variable de tipo `boolean[]` puede tener cualquier arreglo de booleanos como valor; nuevamente, las posibilidades son infinitas.
+Un **alias** da un nombre a cualquier tipo:
 
 ```typescript
-enum Direction {
-  North,
-  South,
-  East,
-  West
-}
-```
+type Person = { name: string; age: number };
 
-Hay muchas situaciones en las que podríamos querer limitar los valores posibles de una variable. Por ejemplo, el código anterior define el **enum** `Direction`, que representa las cuatro direcciones del compás: `Direction.North`, `Direction.South`, `Direction.East` y `Direction.West`. Cualquier otro valor, como `Direction.Southeast`, no está permitido. Mira el siguiente ejemplo:
-
-```typescript
-let whichWayToArcticOcean: Direction;
-whichWayToArcticOcean = Direction.North; // No hay error de tipo.
-whichWayToArcticOcean = Direction.Southeast; // Error de tipo: Southeast no es un valor válido para el enum Direction.
-whichWayToArcticOcean = West; // Sintaxis incorrecta, debemos usar Direction.West en su lugar.
-```
-
-Como se muestra arriba, un tipo de **enum** se puede usar en una anotación de tipo como cualquier otro tipo.
-
-Bajo el capó, TypeScript procesa estos tipos de **enum** utilizando números. Los valores de los **enum** se asignan a un valor numérico según su orden en la lista. El primer valor se asigna el número 0, el segundo el número 1, y así sucesivamente.
-
-Por ejemplo, si establecemos `whichWayToArticOcean = Direction.North`, entonces `whichWayToArticOcean == 0` evaluará como verdadero. Además, podemos reasignar `whichWayToArticOcean` a un valor numérico, como `whichWayToArticOcean = 2`, y no se generará un error de tipo. Esto es porque `Direction.North`, `Direction.South`, `Direction.East` y `Direction.West` son iguales a 0, 1, 2 y 3, respectivamente.
-
-Podemos cambiar el número inicial, escribiendo algo como esto:
-
-```typescript
-enum Direction {
-  North = 7,
-  South,
-  East,
-  West
-}
-```
-
-Aquí, `Direction.North`, `Direction.South`, `Direction.East` y `Direction.West` son iguales a 7, 8, 9 y 10, respectivamente.
-
-También podemos especificar todos los números por separado, si es necesario:
-
-```typescript
-enum Direction {
-  North = 8,
-  South = 2,
-  East = 6,
-  West = 4
-}
-```
-
-(Estos números coinciden con las teclas del teclado numérico de muchos teclados).
-
-Ahora, ¡vamos a practicar con los **enums** de TypeScript!
-
-----
-
-## String Enums vs. Numeric Enums
-
-Los **enums** que hemos estudiado hasta ahora se conocen como **enums numéricos**, ya que están basados en números. TypeScript también nos permite usar **enums** basados en cadenas de texto, conocidos como **enums de cadenas**. Se definen de manera muy similar:
-
-```typescript
-enum DirectionNumber { North, South, East, West }
-enum DirectionString { North = 'NORTH', South = 'SOUTH', East = 'EAST', West = 'WEST' }
-```
-
-Con los **enums numéricos**, los números pueden ser asignados automáticamente, pero con los **enums de cadenas**, debemos escribir explícitamente la cadena, como se muestra arriba. Técnicamente, cualquier cadena servirá: `North = 'JabberWocky'` es una definición de valor válida. Sin embargo, es mucho mejor usar la convención que se muestra aquí (`North = 'NORTH'`), donde el valor de la cadena de la variable del **enum** es simplemente la forma en mayúsculas del nombre de la variable. De esta forma, los mensajes de error y los registros serán mucho más informativos.
-
-Recomendamos usar siempre **enums de cadenas** porque los **enums numéricos** permiten algunos comportamientos que pueden permitir que errores se cuelen en nuestro código. Por ejemplo, se pueden asignar números directamente a las variables de **enum** numérico:
-
-```typescript
-let whichWayToAntarctica: DirectionNumber;
-whichWayToAntarctica = 1; // Código válido en TypeScript.
-whichWayToAntarctica = DirectionNumber.South; // Válido, equivalente a la línea anterior.
-```
-
-Curiosamente, incluso asignar números arbitrarios, como `whichWayToAntarctica = 943205`, no generará errores de tipo.
-
-Los **enums de cadenas** son mucho más estrictos. Con los **enums de cadenas**, ¡no se puede asignar cadenas arbitrarias a las variables!
-
-```typescript
-let whichWayToAntarctica: DirectionString;
-whichWayToAntarctica = '\ (•◡•) / Arbitrary String \ (•◡•) /'; // ¡Error de tipo!
-whichWayToAntarctica = 'SOUTH'; // ¡AÚN un error de tipo!
-whichWayToAntarctica = DirectionString.South; // La única forma permitida de hacerlo.
-```
-
-Ahora, ¡vamos a practicar!
-
-----
-
-## Object Types
-
-¡Es hora! Finalmente podemos hablar sobre la programación orientada a objetos y cómo se relaciona con TypeScript. Los **tipos de objetos** de TypeScript son extremadamente útiles, ya que nos permiten tener un control muy detallado sobre los tipos de variables en nuestros programas. También son los tipos personalizados más comunes, por lo que debemos entenderlos si queremos leer los programas de otras personas.
-
-Aquí tienes una **anotación de tipo** para un objeto que representa a una persona:
-
-```typescript
-let aPerson: {name: string, age: number};
-```
-
-La **anotación de tipo** se parece a un **literal de objeto**, pero en lugar de valores después de las propiedades, tenemos tipos. Observa que la variable `aPerson` aún no ha sido asignada a un valor. Intentar asignar un valor a `aPerson` que no tenga las propiedades `name` y `age` con los tipos especificados generará un error de tipo:
-
-```typescript
-aPerson = {name: 'Aisle Nevertell', age: "wouldn't you like to know"}; // Error de tipo: la propiedad "age" tiene el tipo incorrecto.
-aPerson = {name: 'Kushim', yearsOld: 5000}; // Error de tipo: no hay propiedad "age".
-aPerson = {name: 'User McCodecad', age: 22}; // Código válido.
-```
-
-En el caso de **Kushim** arriba, el objeto tenía propiedades del tipo correcto. Sin embargo, se lanzó un error de tipo porque las propiedades no tenían los nombres correctos.
-
-TypeScript no pone restricciones sobre los tipos de las propiedades de un objeto. ¡Pueden ser **enums**, **arrays** e incluso otros tipos de objetos!
-
-```typescript
-let aCompany: {
-  companyName: string, 
-  boss: {name: string, age: number}, 
-  employees: {name: string, age: number}[], 
-  employeeOfTheMonth: {name: string, age: number},  
-  moneyEarned: number
+type Company = {
+  companyName: string;
+  boss: Person;
+  employees: Person[];
+  employeeOfTheMonth: Person;
+  moneyEarned: number;
 };
 ```
 
-Esto es solo una introducción a los **tipos de objetos** de TypeScript. Una descripción completa merecería una lección por sí sola (lo cual pronto exploraremos si seguimos aprendiendo). Por ahora, ¡practiquemos los conceptos básicos un poco más!
-
-----
-
-## Type Aliases
-
-Una excelente manera de personalizar los tipos en nuestros programas es utilizar **alias de tipos**. Estos son nombres alternativos de tipo que elegimos por conveniencia. Usamos el formato `type <nombre del alias> = <tipo>`:
+Un alias **no crea un tipo nuevo**, solo un nombre. Por eso dos alias del mismo tipo son intercambiables:
 
 ```typescript
 type MyString = string;
-let myVar: MyString = 'Hi'; // Código válido.
-```
-
-Crear nombres alternativos para `string` puede no ser muy útil, pero esto se puede hacer con cualquier tipo. Los alias de tipos son realmente útiles para referirse a tipos complicados que necesitan ser repetidos, especialmente **tipos de objetos** y **tipos de tuplas**. Recordemos el ejemplo de la empresa que vimos antes:
-
-```typescript
-let aCompany: { 
-  companyName: string, 
-  boss: { name: string, age: number }, 
-  employees: { name: string, age: number }[], 
-  employeeOfTheMonth: { name: string, age: number },  
-  moneyEarned: number
-};
-```
-
-¡Aquí hay una gran repetición innecesaria! (Y cuantas más veces repitamos algo, más oportunidades hay de cometer errores tipográficos). Esto se puede simplificar con **alias de tipos**:
-
-```typescript
-type Person = { name: string, age: number };
-let aCompany: {
-  companyName: string, 
-  boss: Person, 
-  employees: Person[], 
-  employeeOfTheMonth: Person,  
-  moneyEarned: number
-};
-```
-
-Todo el mundo conoce la famosa cita de Shakespeare: "¿Qué hay en un nombre? Lo que llamamos una cadena, con cualquier otro nombre, olería igual de dulce". Los alias de TypeScript no son más que nombres. No tienen absolutamente ninguna influencia sobre cómo funcionan los tipos. Por ejemplo, el siguiente código no genera errores de tipo:
-
-```typescript
-type MyString = string; 
 type MyOtherString = string;
-let firstString: MyString = 'test';
-let secondString: MyOtherString = firstString; // Código válido.
+
+const a: MyString = 'test';
+const b: MyOtherString = a; // válido: ambos son string
 ```
 
-La razón por la que esto funciona es que `MyString` y `MyOtherString` no son tipos distintos. Son solo nombres alternativos para lo mismo.
-
-Usando **alias de tipos**, podemos hacer que nuestro código sea mucho más fácil de entender. ¡Vamos a probarlo!
-
-----
-
-## Function Types
-
-Una de las cosas interesantes de JavaScript es que **las funciones** se pueden asignar a **variables**.
+A diferencia de `interface`, un alias sirve para **cualquier** tipo: primitivos, uniones, tuplas y funciones.
 
 ```typescript
-let myFavoriteFunction = console.log; // Fíjate en la ausencia de paréntesis.
-myFavoriteFunction('Hello World'); // Imprime: Hello World
+type Id = string | number;                       // unión (siguiente lección)
+type Coordinates = [number, number];            // tupla
+type StringsToNumber = (a: string, b: string) => number; // función
 ```
 
-Una de las cosas interesantes de TypeScript es que podemos controlar con precisión qué tipos de funciones se pueden asignar a una variable. Hacemos esto utilizando **tipos de funciones**, que especifican los tipos de los argumentos y el tipo de retorno de una función. Aquí hay un ejemplo de un tipo de función que solo es compatible con funciones que reciben dos argumentos de tipo `string` y retornan un número:
+### Interfaces
+
+Una `interface` describe la forma de un objeto:
 
 ```typescript
-type StringsToNumberFunction = (arg0: string, arg1: string) => number;
+interface User {
+  name: string;
+  age: number;
+}
+
+const user: User = { name: 'Ana', age: 22 };
 ```
 
-Esta sintaxis es similar a la notación de flecha para funciones, excepto que en lugar del valor de retorno, ponemos el tipo de retorno. En este caso, el tipo de retorno es `number`. Como esto es solo un tipo, no escribimos el cuerpo de la función en absoluto. Una variable de tipo `StringsToNumberFunction` puede ser asignada a cualquier función compatible:
+Se pueden **extender** con `extends`, y una interface puede extender varias:
 
 ```typescript
-let myFunc: StringsToNumberFunction;
-myFunc = function(firstName: string, lastName: string) {
-  return firstName.length + lastName.length;
-};
+interface Admin extends User {
+  permissions: string[];
+}
 
-myFunc = function(whatever: string, blah: string) {
-  return whatever.length - blah.length;
-};
-// Ninguna de estas asignaciones genera un error de tipo.
+const admin: Admin = { name: 'Eva', age: 40, permissions: ['delete'] };
 ```
 
-Como vemos arriba, no importa cómo nombremos los parámetros de la función, siempre y cuando tengan los tipos correctos (`string` y `string`). Por lo tanto, no importa qué nombres les pongamos a los parámetros en la anotación de tipo (arriba elegimos `arg0` y `arg1`).
+Una interface también puede extender un alias de tipo de objeto, y un alias puede combinar interfaces con intersección (ver más abajo).
 
-Hay algo importante que recordar aquí. ¡Nunca debemos caer en la tentación de omitir los nombres de los parámetros o los paréntesis alrededor de los parámetros en una anotación de tipo de función, incluso si solo hay un parámetro! Este código **no funcionará**:
+### Propiedades opcionales (`?`)
+
+Con `?` la propiedad puede omitirse. Su tipo pasa a ser `T | undefined`:
 
 ```typescript
-type StringToNumberFunction = (string) => number; // NO
-type StringToNumberFunction = arg: string => number; // NO NO NO NO
+interface Profile {
+  name: string;
+  bio?: string; // string | undefined
+}
+
+const p1: Profile = { name: 'Ana' };                    // válido
+const p2: Profile = { name: 'Ana', bio: 'Desarrolladora' }; // válido
+
+p1.bio.toUpperCase(); // error: "bio" puede ser undefined
+p1.bio?.toUpperCase(); // válido
 ```
 
-Los **tipos de función** son más útiles cuando se aplican a **funciones de retorno (callback)**. Como las funciones de retorno son tan comunes, es útil saber cómo tiparlas correctamente. ¡Vamos a practicar el uso de los tipos de función con funciones de retorno!
+Con la opción `exactOptionalPropertyTypes` (desactivada por defecto), `bio?: string` prohíbe asignar `undefined` de forma explícita. Es un detalle que solo importa si activas esa opción.
 
-----
+### Propiedades de solo lectura (`readonly`)
 
-## Generic Types
-
-Los **genéricos** de TypeScript son una forma de crear colecciones de tipos (y funciones tipadas, entre otras cosas) que comparten ciertas similitudes formales. Estas colecciones están parametrizadas por una o más variables de tipo. Ahora que hemos aclarado esto, ¡pasemos a la revisión!
-
-Hmm, quizás deberíamos discutir esto con un poco más de detalle. De hecho, ya hemos visto un ejemplo de un tipo genérico en uso. ¿Recuerdas la sintaxis de tipo de array `Array<T>`? Esto es genérico porque podemos sustituir cualquier tipo (ya sea predefinido o personalizado) en lugar de T. Por ejemplo, `Array<string>` es un array de cadenas de texto.
-
-Los genéricos nos dan el poder de definir nuestras propias colecciones de tipos de objetos. Aquí tienes un ejemplo:
+`readonly` impide reasignar una propiedad después de crear el objeto:
 
 ```typescript
-type Family<T> = {
-  parents: [T, T], mate: T, children: T[]
-};
+interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+const origin: Point = { x: 0, y: 0 };
+origin.x = 5; // error: "x" es de solo lectura
 ```
 
-Este código define una colección de tipos de objetos, con un tipo diferente para cada valor de T. El genérico `Family<T>` no puede ser usado directamente como un tipo en una anotación de tipo. En su lugar, debemos sustituir T por algún tipo de nuestra elección, por ejemplo, `string`. Entonces, `Family<string>` es exactamente lo mismo que el tipo de objeto dado por asignar T a `string`: `{parents: [string, string], mate: string, children: string[]}`. Así que la siguiente asignación no generará errores:
+Dos límites que conviene conocer:
+
+* Es una comprobación **solo en compilación**. En ejecución la propiedad sigue siendo modificable.
+* Es **superficial**: impide reasignar la propiedad, pero no protege el contenido de lo que apunta. Un `readonly items: string[]` no permite `obj.items = []`, aunque sí `obj.items.push('x')`. Para proteger el array, usa `readonly string[]`.
+
+### Intersecciones (`&`)
+
+Una **intersección** combina varios tipos en uno que debe cumplir **todos**:
 
 ```typescript
-let aStringFamily: Family<string> = {
-  parents: ['stern string', 'nice string'],
-  mate: 'string next door', 
-  children: ['stringy', 'stringo', 'stringina', 'stringolio']
-};
+type Named = { name: string };
+type Aged = { age: number };
+
+type Person = Named & Aged; // { name: string; age: number }
+
+const p: Person = { name: 'Ana', age: 22 }; // válido
 ```
 
-En general, escribir tipos genéricos con la sintaxis `type typeName<T>` nos permite usar T dentro de la anotación de tipo como un **marcador de posición** para el tipo. Luego, cuando el tipo genérico es utilizado, T es reemplazado por el tipo proporcionado. (Escribir T es solo una convención. Podríamos usar S o `GenericType` igualmente).
+Si dos tipos declaran la misma propiedad con tipos incompatibles, la propiedad resultante es `never` y no se puede asignar ningún valor:
 
-¡Genial! Vamos a practicar con tipos genéricos.
+```typescript
+type A = { id: string };
+type B = { id: number };
+type C = A & B; // id: string & number = never
+```
 
----
+### Firmas de índice (index signatures)
 
-## Generic Functions
+Cuando no conoces los nombres de las propiedades, pero sí el tipo de las claves y de los valores, usa una **firma de índice**:
 
-También podemos usar los **genéricos** para crear colecciones de funciones tipadas. Las funciones genéricas como estas probablemente sean más fáciles de entender con un ejemplo. ¡Y por una vez, el ejemplo es realmente útil! Imagina que queremos crear una función que devuelva arrays llenos con un valor determinado. Vamos a escribir el código en JavaScript por ahora:
+```typescript
+interface Scores {
+  [student: string]: number; // "student" es solo un nombre descriptivo
+}
 
-```javascript
-function getFilledArray(value, n) {
-  return Array(n).fill(value);
+const scores: Scores = { ana: 9, luis: 7 };
+scores.eva = 10;          // válido
+scores.pedro = 'alto';    // error: el valor debe ser number
+```
+
+`Record<string, number>` es una forma equivalente y más corta. Ten en cuenta que, con una firma de índice, TypeScript asume que **cualquier** clave existe: `scores.inexistente` tiene tipo `number` aunque en ejecución sea `undefined`. La opción `noUncheckedIndexedAccess` (en `tsconfig`) corrige eso y lo tipa como `number | undefined`.
+
+Si algunas propiedades son conocidas, deben ser compatibles con el tipo de la firma:
+
+```typescript
+interface Config {
+  [key: string]: string | number;
+  version: number; // válido: number es parte de string | number
 }
 ```
 
-Aquí, `getFilledArray('cheese', 3)` da como resultado `['cheese', 'cheese', 'cheese']`. No hay problema, ¿verdad? Pues, encontramos un problema cuando intentamos especificar el tipo de retorno de la función. Sabemos que debería ser un array del tipo del valor proporcionado. ¿Tenemos que escribir una anotación de tipo separada para cada tipo de valor? ¡No! Aquí es donde entran las **funciones genéricas** para salvarnos.
+### Tipos de función
+
+Un tipo de función indica los tipos de los parámetros y del retorno. Se escribe con sintaxis parecida a la de una flecha, y se usa mucho para callbacks:
+
+```typescript
+type Comparator = (a: string, b: string) => number;
+
+const byLength: Comparator = (x, y) => x.length - y.length;
+```
+
+Los nombres de los parámetros del tipo son solo documentación: no tienen que coincidir con los de la función asignada. Cada parámetro debe llevar nombre **y** tipo. Escribir `(string) => number` es un error de concepto: TypeScript lo interpreta como un parámetro **llamado** `string` de tipo implícito `any`, lo que falla con `noImplicitAny`. Lo correcto es `(text: string) => number`.
+
+### Enums
+
+Un **enum** enumera los valores posibles de una variable:
+
+```typescript
+enum Direction {
+  North = 'NORTH',
+  South = 'SOUTH',
+  East = 'EAST',
+  West = 'WEST',
+}
+
+let heading: Direction = Direction.North; // válido
+heading = 'SOUTH';                        // error: hay que usar Direction.South
+```
+
+Hay dos tipos:
+
+* **Numéricos:** `enum Direction { North, South, East, West }` asigna 0, 1, 2 y 3 automáticamente; puedes fijar el inicio (`North = 7`) o cada valor.
+* **De cadenas:** cada miembro lleva su valor explícito, como arriba.
+
+Se recomiendan los de cadenas: al depurar, `'NORTH'` dice más que `0`, y son más estrictos. Los numéricos permiten conversiones implícitas con `number` (por ejemplo, un `number` cualquiera es asignable a un enum numérico). Desde TypeScript 5.0, asignar un literal numérico fuera del rango del enum sí da error, pero un valor de tipo `number` genérico sigue pasando.
+
+Ten presente que un enum **genera código JavaScript** en ejecución (un objeto), a diferencia de `type` e `interface`, que desaparecen al compilar. Muchos equipos prefieren una unión de literales (`type Direction = 'NORTH' | 'SOUTH'`, ver [Union Types](06-Union%20Types.md)) o un objeto `as const`.
+
+### Genéricos
+
+Un **genérico** es un tipo o función con **parámetros de tipo**: un marcador (por convención `T`) que se sustituye al usarlo. Ya conoces uno: `Array<T>`.
+
+```typescript
+type Family<T> = {
+  parents: [T, T];
+  mate: T;
+  children: T[];
+};
+
+const stringFamily: Family<string> = {
+  parents: ['a', 'b'],
+  mate: 'c',
+  children: ['d', 'e'],
+};
+```
+
+`Family<T>` no se puede usar sin indicar `T`. Con las funciones, el genérico conecta el tipo de la entrada con el de la salida:
 
 ```typescript
 function getFilledArray<T>(value: T, n: number): T[] {
   return Array(n).fill(value);
 }
+
+const cheeses = getFilledArray('cheese', 3); // string[]; T se infiere
+const ones = getFilledArray<number>(1, 3);   // T indicado de forma explícita
 ```
 
-El código anterior le dice a TypeScript que se asegure de que tanto `value` como el array devuelto tengan el mismo tipo `T`. Cuando se invoque la función, proporcionaremos el valor de `T`. Por ejemplo, podemos invocar la función usando `getFilledArray<string>('cheese', 3)`, lo que asigna a `T` el valor de `string`. Esto aún devuelve `['cheese', 'cheese', 'cheese']`, pero ahora la función está correctamente tipada y es menos propensa a errores. La función `getFilledArray<string>` es precisamente lo mismo que si hubiéramos escrito `(value: string, n: number): string[]` en su anotación de tipo.
-
-En general, escribir funciones genéricas con la sintaxis `function functionName<T>` nos permite usar `T` dentro de la anotación de tipo como un **marcador de tipo**. Luego, cuando se invoque la función, `T` será reemplazado por el tipo proporcionado.
-
-¡Increíble! Vamos a practicar con funciones genéricas.
+Los genéricos tienen su propia lección más adelante; aquí basta con entender el concepto de marcador de tipo.
 
 -----
 
-## Review
+## Ejemplo completo
 
-Al completar esta lección, ¡te has convertido oficialmente\* en un **héroe de TypeScript**! Ya no estás limitado a los tipos predefinidos de TypeScript; ¡ahora has aprendido a crear tus propios tipos personalizados! Estos incluyen:
+Un modelo de tienda que combina varias piezas:
 
-* **Enums** (tanto de tipo cadena como numéricos)
-* **Tipos de objetos**
-* **Tipos de funciones**
+```typescript
+type Currency = 'USD' | 'EUR';
 
-Además, aprendiste a referenciar tipos complejos utilizando **alias de tipos**. ¡Y hasta lograste dominar los **genéricos**, que son como tipos personalizados doblemente! ¡Impresionante!
+interface Entity {
+  readonly id: number;
+}
 
-----
+interface Product extends Entity {
+  name: string;
+  price: number;
+  description?: string;
+}
+
+type Timestamps = { createdAt: Date; updatedAt: Date };
+
+type StoredProduct = Product & Timestamps;
+
+interface PriceList {
+  [productName: string]: { amount: number; currency: Currency };
+}
+
+type Formatter = (product: Product) => string;
+
+const format: Formatter = (p) => `${p.name}: ${p.price}`;
+
+const product: StoredProduct = {
+  id: 1,
+  name: 'Teclado',
+  price: 49.9,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const prices: PriceList = {
+  Teclado: { amount: 49.9, currency: 'USD' },
+};
+
+console.log(format(product));          // válido: StoredProduct es asignable a Product
+// product.id = 2;                     // error: "id" es de solo lectura
+// product.description.length;         // error: puede ser undefined
+```
+
+Puntos clave:
+
+1. `interface` con `extends` modela una jerarquía; `type` con `&` compone piezas independientes.
+2. `id` es `readonly` porque no debe cambiar tras crearse.
+3. `description?` puede faltar, y TypeScript obliga a comprobarlo antes de usarlo.
+4. `format` acepta un `StoredProduct` porque tiene todo lo que exige `Product` (tipado estructural).
+
+-----
+
+## Errores comunes
+
+### 1. Esperar que `type` o `interface` existan en ejecución
+
+```typescript
+interface User { name: string }
+if (value instanceof User) {} // error: "User" solo se refiere a un tipo
+```
+
+**Por qué pasa:** los tipos se borran al compilar; no hay ningún objeto `User` en JavaScript.
+**Solución:** valida en ejecución con `typeof`, `in` o una función guardia (ver [Type Narrowing](07-Type%20Narrowing.md)).
+
+### 2. Confiar en que una API externa cumple el tipo
+
+```typescript
+const user = (await response.json()) as User; // TypeScript lo acepta sin comprobar nada
+```
+
+**Por qué pasa:** `as` es una promesa tuya al compilador, no una validación.
+**Solución:** valida los datos externos en el borde de la aplicación (por ejemplo, con una librería de esquemas) antes de tratarlos como `User`.
+
+### 3. Olvidar comprobar una propiedad opcional
+
+```typescript
+function initials(p: { name: string; bio?: string }) {
+  return p.bio.slice(0, 1); // error con strict: "bio" puede ser undefined
+}
+```
+
+**Por qué pasa:** `bio?: string` significa `string | undefined`.
+**Solución:** `p.bio?.slice(0, 1)` o una comprobación previa.
+
+### 4. Creer que `readonly` protege en ejecución
+
+```typescript
+const point: Readonly<{ x: number }> = { x: 1 };
+(point as { x: number }).x = 9; // compila; en ejecución cambia
+```
+
+**Por qué pasa:** `readonly` solo lo comprueba el compilador. **Solución:** para inmutabilidad real usa `Object.freeze` (también superficial) o estructuras inmutables.
+
+### 5. Intersectar propiedades incompatibles
+
+```typescript
+type Broken = { id: string } & { id: number }; // id: never
+```
+
+**Por qué pasa:** el valor debería ser `string` y `number` a la vez. **Solución:** revisa el diseño; si las formas son alternativas, usa una unión.
+
+-----
+
+## Cuándo sí y cuándo no
+
+**`interface` cuando:**
+
+* Describes la forma de un objeto o una jerarquía con `extends`.
+* Quieres que otros puedan ampliarla (declaration merging), típico en librerías.
+* Una clase la va a implementar (`implements`).
+
+**`type` cuando:**
+
+* Necesitas uniones, tuplas, primitivos con nombre, tipos de función o tipos derivados (mapped y condicionales).
+* Quieres componer con intersecciones.
+
+**Regla práctica:** en código de aplicación ambos funcionan para objetos. Elige uno y mantén la coherencia del equipo. Una convención habitual es `interface` para formas de objeto públicas y `type` para todo lo demás.
+
+**Enums:** úsalos con moderación. Una unión de literales suele ser más simple y no genera código.
+
+-----
+
+## Resumen en 5 líneas
+
+1. Un tipo de objeto describe propiedades y sus tipos; TypeScript compara por forma (tipado estructural).
+2. `type` da nombre a cualquier tipo; `interface` nombra la forma de un objeto y se extiende con `extends`.
+3. `?` hace opcional una propiedad (`T | undefined`); `readonly` impide reasignarla, solo en compilación.
+4. `A & B` exige cumplir ambos tipos; `[key: string]: T` describe objetos con claves dinámicas.
+5. Los tipos se borran al compilar: no validan datos en ejecución.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>Declaration merging: cómo se fusionan las interfaces</summary>
+
+Si declaras dos `interface` con el mismo nombre en el mismo ámbito, TypeScript las **fusiona** en una sola:
+
+```typescript
+interface Window {
+  appVersion: string;
+}
+interface Window {
+  userId: number;
+}
+// Window ahora tiene ambas propiedades
+```
+
+Con `type`, declarar el mismo nombre dos veces da error (`Duplicate identifier`). La fusión permite ampliar tipos de librerías o globales (por ejemplo, agregar propiedades a `Window`), pero también puede causar fusiones accidentales si repites un nombre por descuido.
+
+</details>
+
+<details>
+<summary>`extends` frente a intersección `&`</summary>
+
+Ambos combinan formas, pero difieren al haber conflictos:
+
+```typescript
+interface A { id: string }
+interface B extends A { id: number } // error en la declaración: incompatible con A
+
+type C = { id: string } & { id: number }; // sin error aquí; id es never
+```
+
+Con `extends`, TypeScript avisa del conflicto al declarar. Con `&`, el conflicto queda oculto en un tipo con propiedad `never`. Además, `interface ... extends` permite nombrar la relación y suele dar mensajes de error más legibles. La intersección es más flexible: funciona con uniones y con cualquier tipo, no solo con objetos.
+
+</details>
+
+<details>
+<summary>Utility types básicos para objetos</summary>
+
+TypeScript incluye tipos derivados de uso frecuente:
+
+```typescript
+interface User { id: number; name: string; email: string }
+
+type UserPreview = Pick<User, 'id' | 'name'>;    // solo esas propiedades
+type UserWithoutId = Omit<User, 'id'>;           // todas menos id
+type UserPatch = Partial<User>;                  // todas opcionales
+type ReadonlyUser = Readonly<User>;              // todas readonly
+type Ages = Record<string, number>;              // firma de índice
+```
+
+Se estudian con más detalle en [Advanced Object Types](08-Advanced%20Object%20Types.md).
+
+</details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+Un tipo personalizado es un tipo que defines tú para describir tus datos. Se crea con `type` o con `interface`, y puede tener propiedades opcionales (`?`) y de solo lectura (`readonly`). Sirve para nombrar una forma una vez, reutilizarla y que el compilador detecte errores. Los tipos desaparecen al compilar: no validan datos en ejecución.
+
+### Respuesta ampliada (semi-senior)
+
+* **Tipado estructural:** dos tipos son compatibles si tienen la forma requerida, sin importar el nombre. Por eso un alias no crea un tipo nuevo.
+* **`type` frente a `interface`:** para objetos son casi intercambiables. `interface` admite declaration merging y `extends`; `type` admite uniones, tuplas, primitivos, tipos condicionales y mapped types.
+* **Composición:** `extends` (interfaces) o `&` (intersección). `extends` detecta conflictos al declarar; `&` los convierte en `never`.
+* **Modificadores:** `?` añade `undefined` al tipo; `readonly` es superficial y solo de compilación.
+* **Índices:** `[k: string]: T` para claves dinámicas. Con `noUncheckedIndexedAccess`, el acceso devuelve `T | undefined`.
+* **Enums:** generan código en ejecución; una unión de literales es una alternativa ligera.
+* **Límite:** los tipos son solo de compilación; los datos externos requieren validación en ejecución.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Cuál es la diferencia entre `type` e `interface`?**
+Para describir objetos casi ninguna. `interface` se puede fusionar y ampliar con `extends`; `type` puede nombrar cualquier tipo (uniones, tuplas, primitivos, funciones) y no se fusiona. Se puede usar cualquiera para objetos; lo importante es la coherencia.
+
+**2. ¿Qué es el declaration merging?**
+Es que dos `interface` con el mismo nombre en el mismo ámbito se combinan en una con todas las propiedades. Sirve para ampliar tipos existentes, como los de una librería. Con `type`, repetir el nombre es un error.
+
+**3. ¿Qué diferencia hay entre `extends` y una intersección?**
+Ambos combinan formas. Con `extends`, un conflicto de tipos en una propiedad es un error al declarar; con `&`, no hay error y la propiedad queda como `never`. La intersección además funciona con uniones y con tipos que no son objetos.
+
+**4. ¿Cuándo uso cuál?**
+`interface` para formas de objeto que pueden extenderse o que una clase implementa; `type` para uniones, tuplas, funciones, tipos derivados o intersecciones. Si dudas, sigue la convención del equipo.
+
+**5. ¿`readonly` hace inmutable un objeto?**
+No. Solo el compilador impide reasignar esa propiedad, y es superficial: un array o un objeto anidado se puede seguir mutando salvo que también sea `readonly`. En ejecución no hay protección.
+
+**6. ¿Qué es una firma de índice y qué riesgo tiene?**
+Es `[key: string]: T`, para objetos con claves dinámicas. El riesgo es que TypeScript asume que cualquier clave existe y devuelve `T`, aunque en ejecución sea `undefined`. `noUncheckedIndexedAccess` lo tipa como `T | undefined`.
+
+-----
+
+## Siguiente lección
+
+Ahora que puedes definir tus propios tipos, el paso que sigue es combinar varios posibles en uno solo: [Union Types](06-Union%20Types.md).

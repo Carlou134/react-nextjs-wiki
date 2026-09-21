@@ -1,209 +1,403 @@
-# Union Types
+# Union Types: un valor que puede ser de varios tipos
 
-## Introduction
+## En una frase
 
-TypeScript nos permite asignar tipos a las **variables** con diferentes niveles de especificidad. Si queremos asegurar que una variable sea una cadena de texto, podemos declararla como un `string`. Este tipo es muy específico, ya que TypeScript solo permitirá que la variable tenga un valor de tipo cadena.
+Una **unión** (`A | B`) es un tipo que acepta valores de `A` **o** de `B`; TypeScript solo te deja usar lo que es seguro para todos los miembros, hasta que compruebas cuál es.
 
-En el otro extremo del espectro de especificidad, podríamos declarar una variable como `any`. Este tipo es muy poco específico. TypeScript permitirá que cualquier valor de cualquier tipo sea asignado sin generar quejas o errores.
+-----
 
-Estos dos niveles de especificidad de tipos funcionan para muchas partes de nuestros programas. Sin embargo, a veces necesitamos encontrar un balance entre la especificidad extrema y ser totalmente imprecisos con nuestros tipos. Imagina que tenemos que escribir un programa que reciba la identificación de un empleado y luego imprima esa ID en la consola. El problema es que la ID de un empleado podría ser una cadena de texto o un número. Como necesitamos que nuestra variable ID permita más de un tipo, podríamos usar el tipo `any`, de esta forma:
+## Antes de empezar
 
-```typescript
-let ID: any;
+Conviene que ya sepas:
 
-console.log(`La ID es ${ID}.`);
+* Los tipos primitivos y los literales: [Types](01-Types.md).
+* Cómo declarar tipos propios con `type`: [Custom Types](05-Custom%20Types.md).
+
+Palabras nuevas (también están en el [Glosario](Glosario.md)):
+
+* **Unión (union type):** tipo formado por varios **miembros**; un valor pertenece a al menos uno de ellos. Se escribe con `|`.
+* **Miembro de la unión:** cada tipo que aparece en la unión.
+* **Tipo literal:** tipo que representa un único valor concreto, como `'red'` o `404`.
+* **Discriminante:** propiedad con tipo literal, presente en todos los miembros, que permite distinguirlos.
+* **`never`:** tipo sin valores posibles. Aparece cuando TypeScript descarta todos los casos.
+
+-----
+
+## El problema
+
+Un valor a veces puede tener más de un tipo. Por ejemplo, un identificador que llega como `string` o como `number`. Con `any` compila, pero desactiva la verificación:
+
+```ts
+let id: any = 1;
+id.toUpperCase(); // compila, pero falla en ejecución: id es un número
 ```
 
-El problema con el tipo `any` es que cualquier valor podría no funcionar bien con nuestro programa. Para solucionar esto, TypeScript nos permite ser flexibles con la especificidad de nuestros tipos al combinar diferentes tipos. Cuando combinamos tipos, se llama **unión**.
+Un solo tipo (`string`) es demasiado estricto; `any` es demasiado permisivo. La unión describe exactamente el punto medio: "uno de estos tipos, y ninguno más".
 
-![union-diagram](/Images/union_diagram.svg)
-
----
-
-## Defining Unions
-
-Algunos valores pueden tener más de un tipo posible. TypeScript representa estos tipos "uno u otro" usando una **unión**.
-
-Las uniones nos permiten definir múltiples tipos permitidos separando cada tipo con una barra vertical (`|`). Con una unión, podemos reescribir el programa del ejercicio anterior así:
-
-```typescript
-let ID: string | number;
-
-// número
-ID = 1;
-
-// o cadena
-ID = '001';
-
-console.log(`La ID es ${ID}.`);
+```
+  string        number
+ +--------+   +--------+
+ |        |   |        |        string | number
+ |  "a"   |   |   1    |   =   acepta "a" y 1,
+ |  "b"   |   |   2    |       rechaza true, null, {}
+ +--------+   +--------+
 ```
 
-En este ejemplo, `string | number` es una **unión** que permite que `ID` sea una cadena (`string`) o un número (`number`). Es más flexible que usar un solo tipo primitivo, pero mucho más específico que el tipo `any`.
+-----
 
-Las uniones se pueden escribir en cualquier lugar donde se defina un tipo, incluyendo los parámetros de funciones:
+## Cómo funciona
 
-```typescript
+### Definir una unión
+
+```ts
+let id: string | number;
+
+id = 1;      // válido
+id = '001';  // válido
+id = true;   // Error: Type 'boolean' is not assignable to type 'string | number'
+```
+
+Puede escribirse en cualquier posición donde vaya un tipo: variables, parámetros, retornos, propiedades.
+
+```ts
 function getMarginLeft(margin: string | number) {
-  return { 'marginLeft': margin };
+  return { marginLeft: margin };
 }
 ```
 
-Usar uniones para tipar los parámetros de funciones es especialmente útil porque las funciones suelen necesitar manejar múltiples tipos de entrada.
+### Solo lo común a todos los miembros
 
----
+Sobre un valor de tipo unión, TypeScript permite únicamente las propiedades y métodos que **existen en todos los miembros**. Es una regla de seguridad: no sabe cuál es el tipo real.
 
-## Type Narrowing
-
-El uso de **uniones** nos da más flexibilidad con la especificidad de los tipos, pero también hay más aspectos a considerar. Por ejemplo, observa esta unión:
-
-```typescript
-function getMarginLeft(margin: string | number) {
-  // ...
+```ts
+function format(value: string | number) {
+  value.toString();  // válido: ambos tienen toString()
+  value.toFixed(2);  // Error: Property 'toFixed' does not exist on type 'string'
 }
 ```
 
-Dado que `margin` puede ser una cadena (`string`) o un número (`number`), podríamos querer ejecutar diferentes lógicas en el cuerpo de la función `getMarginLeft()`, dependiendo de si es una cadena o un número. Para hacerlo, podemos implementar un **type guard** (guardián de tipo).
-Un *type guard* es una condición que verifica si una variable es de un tipo específico, como en este ejemplo:
+Con objetos ocurre lo mismo:
 
-```typescript
-function getMarginLeft(margin: string | number) {
-  // margin puede ser una cadena o un número aquí
-  
-  if (typeof margin === 'string') {
-    // aquí margin debe ser una cadena
+```ts
+type Goose = { isPettable: boolean; hasFeathers: boolean };
+type Moose = { isPettable: boolean; hasHoofs: boolean };
+
+function describe(animal: Goose | Moose) {
+  animal.isPettable; // válido: está en ambos
+  animal.hasHoofs;   // Error: Property 'hasHoofs' does not exist on type 'Goose | Moose'
+}
+```
+
+### Acceder a lo específico: reducción de tipo (narrowing)
+
+Para usar lo propio de un miembro, se comprueba primero cuál es. Dentro de esa comprobación, TypeScript **reduce** la unión a un solo miembro. Este mecanismo se llama *narrowing* y se estudia a fondo en [Type Narrowing](07-Type%20Narrowing.md). Aquí, lo mínimo:
+
+```ts
+function format(value: string | number) {
+  if (typeof value === 'string') {
+    return value.toUpperCase(); // aquí value es string
   }
+  return value.toFixed(2);      // aquí value es number
 }
 ```
 
-En el ejemplo anterior, TypeScript es capaz de leer el *type guard* e inferir que la variable `margin` dentro de esa condición debe ser una cadena.
-Dado que TypeScript sabe que `margin` es una cadena, nos permitirá usar métodos específicos de las cadenas, como este:
+Con objetos, el operador `in` comprueba si existe una propiedad:
 
-```typescript
-if (typeof margin === 'string') {
-  return margin.toLowerCase();
-}
-```
-
-Si intentamos llamar a `margin.toLowerCase()` fuera del *type guard* que verifica que es una cadena, TypeScript generaría un error, indicando que el método `.toLowerCase()` no existe en los valores de tipo número.
-Este error ocurre porque `margin` está tipado como una unión `string | number`.
-
-Este concepto se llama **type narrowing** (reducción de tipo).
-La **reducción de tipo** es un proceso en TypeScript que refina un valor con múltiples tipos en un solo tipo específico.
-En nuestros ejemplos, TypeScript ha reducido el tipo dentro del *type guard* a solo una cadena.
-La reducción de tipo nos permite usar uniones y luego aplicar lógica específica para cada tipo, sin que TypeScript interfiera.
-
----
-
-## Inferred Union Return Types
-
-Una de las cosas increíbles de TypeScript es que puede inferir los tipos en muchos casos, por lo que no tenemos que escribirlos manualmente. Un gran ejemplo de esto es el tipo de retorno de una función. TypeScript examina el contenido de una función e infiere qué tipos puede devolver. Si hay varios tipos de retorno posibles, TypeScript inferirá el tipo de retorno como una **unión**.
-
-Por ejemplo, toma este caso, donde llamamos a una función llamada `getBookFromServer()`, que podría fallar:
-
-```typescript
-function getBook() {
-  try {
-    return getBookFromServer();
-  } catch (error) {
-    return `Algo salió mal: ${error}`;
+```ts
+function describe(animal: Goose | Moose) {
+  if ('hasHoofs' in animal) {
+    return 'Tiene pezuñas'; // animal es Moose
   }
+  return 'Tiene plumas';    // animal es Goose
 }
 ```
 
-Si la llamada es exitosa, la función devolverá un tipo `Book` que describe un libro. Si la llamada falla, la función devolverá una cadena (`string`). `getBook()` puede devolver un tipo `Book` o `string`, y TypeScript infiere el tipo de retorno como la unión `Book | string`.
-Como TypeScript puede inferir el tipo de retorno de la función, no necesitamos definirlo manualmente.
+### Uniones de literales
 
----
+Los miembros de una unión pueden ser valores concretos. Así se modelan conjuntos cerrados de opciones:
 
-## Unions and Arrays
-
-Las **uniones** son aún más poderosas cuando se utilizan en combinación con **arreglos**.
-
-Por ejemplo, podemos representar el tiempo en TypeScript con un tipo `number` o `string`. Si tuviéramos una lista de fechas en ambos tipos, necesitaríamos un arreglo que permita valores de tipo `string` y `number`. Las uniones vienen a ayudarnos con esto.
-
-Para crear una unión que soporte múltiples tipos para los valores de un arreglo, debemos envolver la unión entre paréntesis (`(string | number)`), luego usar la notación de arreglo (`[]`).
-
-```typescript
-const dateNumber = new Date().getTime(); // devuelve un número
-const dateString = new Date().toString(); // devuelve una cadena
-
-const timesList: (string | number)[] = [dateNumber, dateString];
-```
-
-En el ejemplo anterior, la variable `timesList` está tipada para permitir los tipos `string` y `number` como valores dentro de su arreglo. Si tratamos de agregar un valor a `timesList` que no sea de esos tipos, como en `timesList.push(true)`, TypeScript mostraría un error indicando que los tipos `boolean` no están permitidos dentro de `timesList`.
-
-Una última cosa: los **paréntesis** son cruciales para tipar correctamente los arreglos. Si omitiéramos los paréntesis y escribiéramos `string | number[]`, ese tipo permitiría cadenas o arreglos que contengan **solo números**.
-
----
-
-## Common Key Value Pairs
-
-Cuando ponemos miembros de tipo en una **unión**, TypeScript solo nos permitirá usar los métodos y propiedades comunes que todos los miembros de la unión comparten. Mira este código:
-
-```typescript
-const batteryStatus: boolean | number = false;
-
-batteryStatus.toString(); // No hay error de TypeScript
-batteryStatus.toFixed(2); // Error de TypeScript
-```
-
-Dado que `batteryStatus` puede ser un `boolean` o un `number`, TypeScript solo nos permitirá llamar a los métodos que tanto `number` como `boolean` comparten. Ambos comparten el método `.toString()`, así que no hay problema allí. Pero, dado que solo `number` tiene el método `.toFixed()`, TypeScript marcará un error si intentamos llamarlo.
-
-Esta regla también se aplica a los **objetos de tipo** que definimos. Mira este código:
-
-```typescript
-type Goose = { 
-  isPettable: boolean; 
-  hasFeathers: boolean;
-  canThwartAPicnic: boolean;
-}
-
-type Moose = {
-  isPettable: boolean; 
-  hasHoofs: boolean;
-}
-
-const pettingZooAnimal: Goose | Moose = { isPettable: true };
-
-console.log(pettingZooAnimal.isPettable); // No hay error de TypeScript
-console.log(pettingZooAnimal.hasHoofs); // Error de TypeScript
-```
-
-Como antes, dado que `.isPettable` está presente en los tipos `Goose` y `Moose`, TypeScript nos permite llamarlo. Pero, como `.hasHoofs` solo es una propiedad de `Moose`, no podemos acceder a ella desde `pettingZooAnimal`. Cualquier propiedad o método que no sea compartido por todos los miembros de la unión no será permitido y producirá un error de TypeScript.
-
----
-
-## Unions with Literal Types
-
-Podemos usar **tipos literales** con las **uniones de TypeScript**. Las uniones de tipos literales son útiles cuando queremos crear estados distintos dentro de un programa.
-
-Por ejemplo, si estuviéramos escribiendo el código que controla los semáforos, podríamos escribir un programa como este:
-
-```typescript
+```ts
 type Color = 'green' | 'yellow' | 'red';
 
 function changeLight(color: Color) {
   // ...
 }
+
+changeLight('red');    // válido
+changeLight('purple'); // Error: Argument of type '"purple"' is not assignable to parameter of type 'Color'
 ```
 
-Con el código anterior, podríamos asegurarnos de que, cada vez que se llame a `changeLight()`, se pase solo uno de los colores permitidos para el semáforo. Si intentáramos llamar a `changeLight('purple')`, TypeScript generaría un error, ya que ese no es un color válido para un semáforo.
+Es la alternativa habitual a un `string` genérico: el editor autocompleta las opciones y el compilador detecta errores de escritura.
 
-Esta técnica nos permite escribir **funciones** que son específicas sobre los estados que pueden manejar, lo que nos ayuda a escribir código menos propenso a errores.
+### Inferencia de uniones en retornos
 
----
+Si una función devuelve valores de tipos distintos, TypeScript infiere el retorno como unión:
 
-## Review Unions
+```ts
+type Book = { title: string };
 
-🙌 ¡Bien hecho! Hemos aprendido diversas formas de crear tipos tan específicos como necesitemos con **uniones**. Para resumir, hemos aprendido:
+function findBook(id: number) {
+  if (id === 1) return { title: 'Clean Code' } as Book;
+  return 'No encontrado';
+}
+// tipo de retorno inferido: "No encontrado" | Book (una unión con el literal)
+```
 
-* Podemos combinar múltiples tipos con el carácter de barra vertical (`|`). Esta es la sintaxis para definir una unión. Cada tipo en una unión se llama **miembro de tipo**.
-* Podemos **reducir** qué métodos y propiedades están disponibles en un programa mediante la **reducción de tipo**. La **reducción de tipo** nos permite tipar una variable como una unión y luego reducir la unión con un **type guard** para llamar a métodos y propiedades específicas de cada miembro de la unión.
-* Si una función puede devolver múltiples tipos, TypeScript inferirá todos los tipos de retorno posibles como una unión.
-* Podemos usar uniones para permitir que los **arreglos** tengan valores de múltiples tipos.
-* Para llamar a un método o propiedad en una variable tipada como una unión, solo podemos llamar a métodos o propiedades que sean idénticos en todos los miembros de la unión.
-* Podemos definir estados dentro de nuestro programa utilizando **tipos literales** y **uniones**.
+### Uniones y arreglos
 
-¡Espero que te haya quedado claro! Si necesitas más detalles o tienes preguntas, ¡aquí estoy para ayudarte!
+Los paréntesis cambian el significado:
 
-----
+```ts
+const mixed: (string | number)[] = [1, 'a', 2]; // arreglo cuyos elementos son string o number
+const either: string | number[] = 'a';          // un string, O un arreglo de solo números
+```
+
+`(string | number)[]` es "un arreglo de uniones"; `string | number[]` es "una unión entre un `string` y un arreglo de `number`".
+
+### Unión discriminada
+
+Cuando los miembros son objetos, se les añade una propiedad **literal** común (el discriminante). Comprobarla reduce la unión a un miembro concreto:
+
+```ts
+type Circle = { kind: 'circle'; radius: number };
+type Square = { kind: 'square'; side: number };
+type Shape = Circle | Square;
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':
+      return Math.PI * shape.radius ** 2; // shape es Circle
+    case 'square':
+      return shape.side ** 2;             // shape es Square
+  }
+}
+```
+
+Es el patrón estándar para modelar estados: cada variante lleva solo los datos que le corresponden, y el compilador impide acceder a los de otra.
+
+### Intersección (`&`) frente a unión (`|`)
+
+Son operaciones opuestas:
+
+* `A | B`: el valor es `A` **o** `B`. Solo se puede usar lo común.
+* `A & B`: el valor es `A` **y** `B` a la vez. Tiene las propiedades de ambos.
+
+```ts
+type WithId = { id: number };
+type WithName = { name: string };
+
+type User = WithId & WithName;
+const u: User = { id: 1, name: 'Ana' }; // debe tener ambas propiedades
+```
+
+Una intersección de primitivos incompatibles, como `string & number`, se reduce a `never`.
+
+### `never` y comprobación de exhaustividad
+
+En cada rama, TypeScript descarta los miembros ya tratados. Si se cubren todos, lo que queda es `never`. Se aprovecha para que el compilador avise cuando se añade una variante y no se maneja:
+
+```ts
+function assertNever(value: never): never {
+  throw new Error(`Caso no manejado: ${JSON.stringify(value)}`);
+}
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case 'circle':
+      return Math.PI * shape.radius ** 2;
+    case 'square':
+      return shape.side ** 2;
+    default:
+      return assertNever(shape); // shape es never mientras todos los casos estén cubiertos
+  }
+}
+```
+
+Si mañana se agrega `Triangle` a `Shape` y no se añade su `case`, `shape` en el `default` será `Triangle`, y la llamada a `assertNever` dará error de compilación: `Argument of type 'Triangle' is not assignable to parameter of type 'never'`.
+
+-----
+
+## Ejemplo completo
+
+Estado de una petición, modelado con una unión discriminada. Es un patrón muy frecuente en componentes React:
+
+```tsx
+type RequestState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: string[] }
+  | { status: 'error'; message: string };
+
+function assertNever(value: never): never {
+  throw new Error(`Estado no manejado: ${JSON.stringify(value)}`);
+}
+
+function render(state: RequestState): string {
+  switch (state.status) {
+    case 'idle':
+      return 'Sin iniciar';
+    case 'loading':
+      return 'Cargando...';
+    case 'success':
+      return `Recibidos ${state.data.length} elementos`; // data existe solo aquí
+    case 'error':
+      return `Error: ${state.message}`;                  // message existe solo aquí
+    default:
+      return assertNever(state);
+  }
+}
+
+render({ status: 'success', data: ['a', 'b'] }); // "Recibidos 2 elementos"
+render({ status: 'error' });                     // Error: falta 'message'
+```
+
+Puntos clave:
+
+1. Cada estado tiene solo los datos que le corresponden; no hay un `data` opcional que pueda existir a destiempo.
+2. Comprobar `status` reduce la unión y desbloquea `data` o `message`.
+3. `assertNever` convierte un estado olvidado en un error de compilación.
+
+-----
+
+## Errores comunes
+
+### 1. Acceder a una propiedad que no es común
+
+```ts
+function len(x: string | number) {
+  return x.length; // Error: Property 'length' does not exist on type 'number'
+}
+```
+
+**Por qué pasa:** `x` podría ser un `number`, y `number` no tiene `length`.
+**Solución:** reduce primero: `typeof x === 'string' ? x.length : String(x).length`.
+
+### 2. Confundir `string | number[]` con `(string | number)[]`
+
+**Por qué pasa:** sin paréntesis, el sufijo `[]` se aplica solo a `number`.
+**Solución:** usa paréntesis cuando el arreglo contiene una unión.
+
+### 3. Asignar un objeto incompleto a una unión de objetos
+
+```ts
+const a: Goose | Moose = { isPettable: true };
+// Error: el objeto debe cumplir con Goose completo o con Moose completo
+```
+
+**Por qué pasa:** el valor debe ser asignable a *al menos un* miembro completo, no a la parte común.
+**Solución:** proporciona todas las propiedades de un miembro.
+
+### 4. Discriminante de tipo `string` en lugar de literal
+
+```ts
+type Bad = { kind: string; radius: number } | { kind: string; side: number };
+```
+
+**Por qué pasa:** con `string`, comprobar `kind` no distingue los miembros, así que no hay reducción.
+**Solución:** usa literales (`'circle'`, `'square'`).
+
+### 5. `switch` sin caso por defecto que compruebe exhaustividad
+
+**Por qué pasa:** al añadir una variante nueva, el `switch` no la maneja y, si el tipo de retorno lo permite (por ejemplo, `void`, `undefined` o uno inferido), la función devuelve `undefined` o cae en otra rama sin que el compilador avise.
+**Solución:** añade `default: return assertNever(x)`.
+
+-----
+
+## Cuándo sí y cuándo no
+
+**Usa uniones para:**
+
+* Valores que legítimamente pueden ser de varios tipos (`string | number`, `T | null`).
+* Conjuntos cerrados de opciones (uniones de literales).
+* Estados con datos distintos por variante (unión discriminada).
+
+**Evita:**
+
+* Uniones enormes de primitivos sin significado; suelen indicar un diseño confuso.
+* Un solo objeto con muchas propiedades opcionales (`data?`, `error?`) cuando en realidad son estados excluyentes: una unión discriminada los hace imposibles de combinar mal.
+* `any` cuando la unión describe el caso: `any` desactiva el chequeo, la unión lo conserva.
+
+-----
+
+## Resumen en 5 líneas
+
+1. `A | B` acepta valores de `A` o de `B`; se escribe con `|`.
+2. Solo se puede usar lo común a todos los miembros, hasta reducir con `typeof`, `in` o un discriminante.
+3. Las uniones de literales (`'a' | 'b'`) modelan opciones cerradas.
+4. La unión discriminada usa una propiedad literal común para distinguir variantes.
+5. `never` en el `default` de un `switch` garantiza que todos los casos están cubiertos.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>Uniones y `null` / `undefined`</summary>
+
+Con `strictNullChecks` (incluido en `strict`), `null` y `undefined` no son asignables a otros tipos. Para permitirlos se usa una unión: `string | null`. Es la base de tipos opcionales y de "todavía no hay dato", como `useState<User | null>(null)`.
+
+</details>
+
+<details>
+<summary>Uniones con `as const` en lugar de `enum`</summary>
+
+Un arreglo `as const` permite derivar la unión de literales sin repetirla:
+
+```ts
+const COLORS = ['green', 'yellow', 'red'] as const;
+type Color = (typeof COLORS)[number]; // 'green' | 'yellow' | 'red'
+```
+
+Así el valor en tiempo de ejecución y el tipo siempre coinciden.
+
+</details>
+
+<details>
+<summary>Distribución de tipos condicionales sobre uniones</summary>
+
+Los tipos condicionales se **distribuyen** sobre las uniones: `T extends U ? X : Y` con `T = A | B` se evalúa por separado para `A` y para `B`, y el resultado es la unión. Así funcionan utilidades como `Exclude<T, U>` y `Extract<T, U>`: `Exclude<'a' | 'b' | 'c', 'a'>` resulta en `'b' | 'c'`.
+
+</details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+Una unión de tipos permite que un valor sea de uno de varios tipos, por ejemplo `string | number`. TypeScript solo deja usar lo común a todos los miembros; para usar algo específico se comprueba el tipo con `typeof` u otra guarda, y así se reduce la unión.
+
+### Respuesta ampliada (semi-senior)
+
+* **Seguridad frente a `any`:** la unión restringe los valores posibles y conserva el chequeo; `any` lo desactiva.
+* **Reducción de tipo:** `typeof`, `instanceof`, `in`, igualdad y discriminantes refinan la unión dentro de cada rama.
+* **Unión discriminada:** propiedad literal común en cada miembro. Evita estados imposibles (por ejemplo, `data` y `error` a la vez) mejor que propiedades opcionales.
+* **Exhaustividad:** en el `default`, el valor restante tiene tipo `never`; asignarlo a `never` (`assertNever`) convierte una variante olvidada en error de compilación.
+* **Unión frente a intersección:** `|` es "o" (menos propiedades utilizables); `&` es "y" (más propiedades). Una intersección de primitivos distintos da `never`.
+* **Literales:** las uniones de literales reemplazan a `enum` en muchos casos, sin coste en tiempo de ejecución.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Por qué no puedo llamar a `toFixed` sobre `string | number`?**
+Porque el valor podría ser un `string`, que no tiene ese método. TypeScript solo permite lo común a todos los miembros hasta que se reduzca el tipo.
+
+**2. ¿Diferencia entre `string | number[]` y `(string | number)[]`?**
+La primera es un `string` o un arreglo de números. La segunda es un arreglo cuyos elementos pueden ser `string` o `number`.
+
+**3. ¿Qué es una unión discriminada?**
+Una unión de objetos donde cada miembro tiene una propiedad con tipo literal distinto, como `kind: 'circle'`. Al comprobarla, TypeScript sabe qué miembro es y qué otras propiedades existen.
+
+**4. ¿Para qué sirve `never` en un `switch`?**
+Si todos los casos están cubiertos, el valor en el `default` es `never`. Asignarlo a un parámetro `never` hace que, al añadir una variante, el compilador marque el caso faltante.
+
+**5. ¿Cuál es la diferencia entre `A | B` y `A & B`?**
+La unión es "A o B" y expone solo lo común; la intersección es "A y B" y expone las propiedades de ambos.
+
+**6. ¿Unión de literales o `enum`?**
+La unión de literales no genera código en ejecución y se integra con inferencia y `as const`. El `enum` genera un objeto en tiempo de ejecución; conviene solo si se necesita ese objeto o su comportamiento inverso (en enums numéricos).
+
+-----
+
+## Siguiente lección
+
+Ya sabes declarar uniones; ahora toca ver todas las formas de reducirlas con seguridad: [Type Narrowing](07-Type%20Narrowing.md).
