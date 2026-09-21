@@ -1,329 +1,344 @@
-# Intro to JSX
+# Introducción a JSX
 
-## Why React?
+## En una frase
 
-React.js es una biblioteca de JavaScript desarrollada por ingenieros de Facebook. Estas son solo algunas de las razones por las que las personas eligen programar con React:
-
-* **React es rápido.** Las aplicaciones hechas con React pueden manejar actualizaciones complejas y aun así sentirse ágiles y responsivas.
-* **React es modular.** En lugar de escribir archivos de código grandes y densos, puedes crear muchos archivos más pequeños y reutilizables. La modularidad de React puede ser una solución elegante a los problemas de mantenibilidad de JavaScript.
-* **React es escalable.** Los programas grandes que muestran muchos datos cambiantes son donde React se desempeña mejor.
-* **React es flexible.** Puedes usar React para proyectos interesantes que no tienen nada que ver con crear una aplicación web. La gente todavía está descubriendo el potencial de React. Hay mucho espacio para explorar.
-* **React es popular.** Aunque esta razón tiene poco que ver con la calidad de React, la verdad es que entender React te hará más empleable.
-
-Si eres nuevo en React, entonces este curso es para ti: no se espera ningún conocimiento previo de React. Comenzaremos desde lo más básico y avanzaremos lentamente. Al final, estarás listo para programar en React con una comprensión real de lo que estás haciendo.
+JSX es una sintaxis que te deja escribir estructura de interfaz con forma de HTML dentro de JavaScript; una herramienta de compilación la transforma en llamadas a funciones que producen los **elementos de React**.
 
 -----
 
-## Hello World
+## Antes de empezar
 
-Observa la siguiente línea de código:
+Conviene que ya sepas:
 
-```js
-const h1 = <h1>Hello world</h1>;
-```
+* Qué es una expresión en JavaScript (algo que produce un valor) y cómo se usan variables, objetos y arreglos.
+* Qué es el DOM: la representación del documento HTML que el navegador expone a JavaScript.
 
-¿Qué tipo de código híbrido extraño es ese? ¿Es JavaScript? ¿HTML? ¿O algo diferente?
+Palabras nuevas (también están en el [Glosario](Glosario.md)):
 
-Parece que debe ser JavaScript, ya que comienza con `const` y termina con `;`. Si intentaras ejecutarlo en un archivo HTML, no funcionaría.
-
-Sin embargo, el código también contiene `<h1>Hello world</h1>`, que se ve exactamente como HTML. Esa parte no funcionaría si intentaras ejecutarla en un archivo JavaScript.
-
-¿Qué está pasando?
-
------
-
-## The Mystery, Revealed
-
-Vuelve a observar la línea de código que escribiste. ¿Este código pertenece a un archivo JavaScript, a un archivo HTML o a algún otro lugar?
-
-La respuesta es… ¡un archivo JavaScript! A pesar de lo que parece, tu código en realidad no contiene nada de HTML.
-
-La parte que parece HTML, `<h1>Hello world</h1>`, es algo llamado **JSX**.
-
-Haz clic en **Next** para aprender sobre JSX.
+* **JSX:** extensión de sintaxis de JavaScript que permite escribir etiquetas con forma de HTML.
+* **Elemento de React:** objeto ligero que describe qué debe mostrarse en pantalla. Un elemento JSX produce uno.
+* **Compilar (transformar):** convertir JSX en JavaScript estándar antes de que llegue al navegador.
+* **Raíz (root):** el punto del DOM donde React toma el control y dibuja la interfaz.
+* **Renderizar:** hacer que React calcule y muestre en pantalla lo que describe un elemento.
 
 -----
 
-## What is JSX?
+## El problema
 
-**JSX** es una extensión de sintaxis para JavaScript. Fue creada para usarse con React. El código JSX se parece mucho al HTML.
+Una interfaz mezcla estructura (qué se muestra) con lógica (cuándo y con qué datos). Separarlas en archivos distintos, HTML por un lado y JavaScript por otro, obliga a mantenerlas sincronizadas a mano. React propone agrupar por **componente** en lugar de por tecnología, y JSX es la sintaxis que permite escribir la estructura junto a la lógica que la controla.
 
-¿Qué significa “extensión de sintaxis”?
-
-En este caso, significa que JSX no es JavaScript válido. ¡Los navegadores web no pueden leerlo!
-
-Si un archivo JavaScript contiene código JSX, entonces ese archivo tendrá que ser compilado. Esto significa que, antes de que el archivo llegue a un navegador web, un compilador de JSX traducirá cualquier JSX a JavaScript normal.
-
-Los servidores de Codecademy ya tienen un compilador de JSX instalado, así que por ahora no tienes que preocuparte por eso. Más adelante veremos cómo configurar un compilador de JSX en tu computadora personal.
-
-> **En TypeScript:** un archivo que combina TypeScript con JSX no usa la extensión `.ts`, sino `.tsx`. El compilador de TypeScript necesita esa extensión para saber que debe interpretar la sintaxis JSX (y también requiere la opción `"jsx"` configurada en `tsconfig.json` — la vemos en detalle en [00-typescript-fundamentals/02-Archivo tsconfig.md](../00-typescript-fundamentals/02-Archivo%20tsconfig.md)).
-
-----
-
-## JSX Elements
-
-Una unidad básica de **JSX** se llama **elemento JSX**.
-
-Aquí tienes un ejemplo de un elemento JSX:
+Esto genera una duda legítima con esta línea:
 
 ```jsx
-<h1>Hello world</h1>
+const heading = <h1>Hola mundo</h1>;
 ```
 
-¡Este elemento JSX se ve exactamente igual que HTML! La única diferencia notable es que lo encontrarías en un archivo JavaScript, en lugar de en un archivo HTML.
+Empieza con `const` y termina con `;`, así que parece JavaScript. Pero contiene `<h1>`, que un intérprete de JavaScript no entiende. Tampoco es HTML: no funcionaría dentro de un archivo `.html`. La respuesta es que es **JSX**, y vive en un archivo JavaScript.
 
 -----
 
-## JSX Elements And Their Surroundings
+## Cómo funciona
 
-Los **elementos JSX** se tratan como **expresiones de JavaScript**. Pueden ir en cualquier lugar donde puedan ir las expresiones de JavaScript. Esto significa que un elemento JSX puede guardarse en una variable, pasarse a una función, almacenarse en un objeto o en un arreglo… lo que se te ocurra.
+### JSX no es HTML ni JavaScript válido
 
-Aquí tienes un ejemplo de un elemento JSX guardado en una variable:
+JSX es una extensión de sintaxis. Un navegador no puede ejecutarla directamente; un compilador (Babel, SWC, esbuild o el propio TypeScript) la convierte antes en JavaScript estándar. Los proyectos creados con herramientas como Vite o Next.js ya traen esa configuración.
 
-```js
-const navBar = <nav>I am a nav bar</nav>;
+Con la transformación actual, esto:
+
+```jsx
+const heading = <h1 className="title">Hola mundo</h1>;
 ```
 
-Copiar al portapapeles
-
-Aquí tienes un ejemplo de varios elementos JSX almacenados en un objeto:
+se convierte, de forma aproximada, en:
 
 ```js
-const myTeam = {
-  center: <li>Benzo Walli</li>,
-  powerForward: <li>Rasha Loa</li>,
-  smallForward: <li>Tayshaun Dasmoto</li>,
-  shootingGuard: <li>Colmar Cumberbatch</li>,
-  pointGuard: <li>Femi Billon</li>
+import { jsx as _jsx } from 'react/jsx-runtime';
+
+const heading = _jsx('h1', { className: 'title', children: 'Hola mundo' });
+```
+
+El resultado de esa llamada es un elemento de React, es decir, un objeto que describe `<h1>`. No es un nodo del DOM. Cómo React usa esos objetos para actualizar la pantalla se explica en [El DOM virtual](02-The%20Virtual%20Dom.md).
+
+### Un elemento JSX es una expresión
+
+Como cada elemento se transforma en una llamada a función, se comporta como cualquier expresión: puedes guardarlo en una variable, pasarlo a una función, meterlo en un objeto o en un arreglo.
+
+```jsx
+const navBar = <nav>Menú principal</nav>;
+
+const team = {
+  center: <li>Ana</li>,
+  guard: <li>Luis</li>,
 };
+
+const items = [<li key="a">Uno</li>, <li key="b">Dos</li>];
 ```
 
-> **En TypeScript:** cuando guardás una expresión JSX en una variable, como `navBar` o `title` más abajo, TypeScript infiere automáticamente el tipo `JSX.Element` — no hace falta anotarlo a mano. Si en algún momento querés escribir esa anotación explícitamente (por ejemplo, en el tipo de retorno de una función), `JSX.Element` es el tipo que corresponde.
+(Los elementos dentro de un arreglo necesitan la prop `key`; se verá al trabajar con listas.)
 
------
+### Atributos
 
-## Attributes In JSX
-
-Los **elementos JSX** pueden tener **atributos**, al igual que los elementos HTML.
-
-Un atributo JSX se escribe usando una sintaxis similar a HTML: un nombre, seguido de un signo igual, seguido de un valor. El valor debe ir entre comillas, así:
-
-```txt
-my-attribute-name="my-attribute-value"
-```
-
-Aquí tienes algunos elementos JSX con atributos:
+Los elementos aceptan atributos con una sintaxis parecida a la de HTML. El valor puede ser un texto entre comillas o, entre llaves, cualquier expresión de JavaScript:
 
 ```jsx
-<a href='http://www.example.com'>Welcome to the Web</a>;
-
-const title = <h1 id='title'>Introduction to React.js: Part I</h1>;
+const link = <a href="https://example.com">Ir al sitio</a>;
+const photo = <img src="images/panda.jpg" alt="Un panda" width={500} height={500} />;
 ```
 
-Un solo elemento JSX puede tener muchos atributos, igual que en HTML:
+Las diferencias con HTML son deliberadas, porque JSX se traduce a propiedades de JavaScript:
+
+| HTML | JSX |
+| ---- | --- |
+| `class` | `className` |
+| `for` | `htmlFor` |
+| `onclick` | `onClick` |
+| `stroke-width` | `strokeWidth` |
+
+Los atributos `aria-*` y `data-*` conservan el guion. Las llaves y sus reglas se estudian en [JSX avanzado](03-Advanced%20JSX.md).
+
+### Etiquetas siempre cerradas
+
+En JSX toda etiqueta debe cerrarse. Los elementos sin contenido usan autocierre:
 
 ```jsx
-const panda = <img src='images/panda.jpg' alt='panda' width='500px' height='500px' />;
+<img src="a.png" alt="" />
+<input type="text" />
+<br />
 ```
 
-Fíjate que, al ser un elemento de una sola etiqueta, `<img />` necesita la barra de autocierre al final — sin ella, el compilador de JSX no sabe dónde termina el elemento.
+### Elementos anidados y varias líneas
 
-> **En TypeScript:** este tipo de error (olvidar la barra de autocierre) deja de ser un detalle menor. En un archivo `.tsx`, el compilador de TypeScript rechaza directamente el código en el momento de compilar —y tu editor te lo va a marcar en rojo al instante—, en lugar de dejarte descubrirlo recién cuando la app falle en el navegador.
-
-----
-
-## Nested JSX
-
-Puedes **anidar elementos JSX dentro de otros elementos JSX**, igual que en HTML.
-
-Aquí tienes un ejemplo de un elemento JSX `<h1>` anidado dentro de un elemento JSX `<a>`:
+Puedes anidar elementos igual que en HTML. Cuando la expresión ocupa varias líneas, es habitual envolverla entre paréntesis:
 
 ```jsx
-<a href="https://www.example.com"><h1>Click me!</h1></a>
-```
-
-Para que sea más legible, puedes usar **saltos de línea e indentación al estilo HTML**:
-
-```jsx
-<a href="https://www.example.com">
-  <h1>
-    Click me!
-  </h1>
-</a>
-```
-
-Si una expresión JSX ocupa más de una línea, entonces debes **envolver la expresión JSX de varias líneas entre paréntesis**. Al principio puede parecer extraño, pero te acostumbras:
-
-```jsx
-(
-  <a href="https://www.example.com">
-    <h1>
-      Click me!
-    </h1>
-  </a>
-)
-```
-
-Las expresiones JSX anidadas pueden guardarse en variables, pasarse a funciones, etc., ¡igual que las expresiones JSX no anidadas! Aquí tienes un ejemplo de una expresión JSX anidada guardada en una variable:
-
-```jsx
-const theExample = (
-  <a href="https://www.example.com">
-    <h1>
-      Click me!
-    </h1>
+const card = (
+  <a href="https://example.com">
+    <h1>Haz clic</h1>
   </a>
 );
 ```
 
-----
+Los paréntesis no son sintaxis de JSX: son paréntesis de agrupación de JavaScript. Evitan que la inserción automática de punto y coma cause problemas, sobre todo con `return`. Se profundiza en [Varias líneas de JSX en un componente](04-Use%20Multiline%20JSX%20in%20a%20Component.md).
 
-## JSX Outer Elements
+### Un solo elemento raíz
 
-Hay una regla que aún no hemos mencionado: **una expresión JSX debe tener exactamente un solo elemento externo**.
-
-En otras palabras, este código **sí funcionará**:
+Una expresión JSX debe tener **un único elemento exterior**. Esto funciona:
 
 ```jsx
 const paragraphs = (
-  <div id="i-am-the-outermost-element">
-    <p>I am a paragraph.</p>
-    <p>I, too, am a paragraph.</p>
+  <div>
+    <p>Soy un párrafo.</p>
+    <p>Yo también.</p>
   </div>
 );
 ```
 
-Pero este código **no funcionará**:
+Esto no:
 
 ```jsx
 const paragraphs = (
-  <p>I am a paragraph.</p> 
-  <p>I, too, am a paragraph.</p>
+  <p>Soy un párrafo.</p>
+  <p>Yo también.</p>
 );
 ```
 
-La primera etiqueta de apertura y la última etiqueta de cierre de una expresión JSX **deben pertenecer al mismo elemento JSX**.
+La razón es que cada expresión JSX se convierte en una sola llamada que devuelve un solo objeto, y una función no puede devolver dos valores a la vez. Si no quieres añadir un `<div>` extra al DOM, usa un **fragmento**, que agrupa sin generar nodo:
 
-Es fácil olvidar esta regla y terminar con errores difíciles de diagnosticar.
+```jsx
+const paragraphs = (
+  <>
+    <p>Soy un párrafo.</p>
+    <p>Yo también.</p>
+  </>
+);
+```
 
-Si notas que una expresión JSX tiene varios elementos externos, la solución suele ser simple: **envuelve la expresión JSX dentro de un elemento `<div>`**.
+### Renderizar: mostrar JSX en pantalla
 
-----
+Escribir un elemento no lo muestra. Para eso hay que decirle a React dos cosas: **dónde** dibujar y **qué** dibujar.
 
-## Rendering JSX
+```jsx
+import { createRoot } from 'react-dom/client';
 
-¡Ya aprendiste cómo escribir **elementos JSX**! Ahora es momento de aprender cómo **renderizarlos**.
-
-Renderizar una expresión JSX significa **hacer que aparezca en la pantalla**.
-
-----
-
-## Rendering JSX Explained
-
-Vamos a examinar el código que acabas de escribir en el último ejercicio:
-
-```js
 const container = document.getElementById('app');
 const root = createRoot(container);
-root.render(<h1>Hello world</h1>);
+root.render(<h1>Hola mundo</h1>);
 ```
 
-Antes de comenzar, es esencial entender que **React se basa en dos cosas para renderizar**: **qué contenido renderizar** y **dónde colocar el contenido**.
+* `document.getElementById('app')` obtiene el nodo del DOM que servirá de contenedor.
+* `createRoot(container)` crea una raíz de React sobre ese nodo. Responde a "dónde".
+* `root.render(...)` recibe lo que se quiere mostrar. Responde a "qué".
 
-Con eso en mente, veamos la primera línea:
+El argumento de `render` puede ser un elemento directo o una variable que lo contenga:
 
-```js
-const container = document.getElementById('app')
-```
-
-Esta línea:
-
-* Usa el objeto `document`, que representa nuestra página web.
-* Usa el método `getElementById()` de `document` para obtener el objeto `Element` que representa el elemento HTML con el id proporcionado (`app`).
-* Almacena el elemento en la variable `container`.
-
-En la siguiente línea:
-
-```js
-const root = createRoot(container)
-```
-
-Usamos `createRoot()` de la biblioteca `react-dom/client`, que **crea una raíz de React a partir de `container`** y la almacena en `root`.
-`root` puede usarse para **renderizar una expresión JSX**. Esta es la parte de React que responde a **“dónde colocar el contenido”**.
-
-Finalmente, la última línea:
-
-```js
-root.render(<h1>Hello world</h1>)
-```
-
-Usa el método `render()` de `root` para **renderizar el contenido pasado como argumento**.
-Aquí pasamos un elemento `<h1>`, que muestra *Hello world*.
-Esta es la parte de React que responde a **“qué contenido renderizar”**.
-
-> **En TypeScript:** `document.getElementById()` está tipado para devolver `HTMLElement | null` (podría no encontrar ningún elemento con ese id), mientras que `createRoot()` espera un `HTMLElement` a secas. Por eso, en un proyecto TypeScript vas a ver esta línea escrita con una aserción de no-nulo (`!`), asumiendo que el elemento sí existe en el HTML: `createRoot(document.getElementById('app')!)`. Profundizamos en esto en [01-Your First React Component.md](../02-componentes-y-props/01-Your%20First%20React%20Component.md).
-
------
-
-## Passing a Variable to render()
-
-En el ejercicio anterior, vimos cómo podemos crear una raíz de React usando `createRoot()` y usar su método `render()` para renderizar JSX.
-
-El argumento del método `render()` no necesita ser JSX directamente, pero sí debe evaluarse como una expresión JSX. El argumento también podría ser una variable, siempre que esa variable se evalúe como una expresión JSX.
-
-En este ejemplo, guardamos una expresión JSX en una variable llamada `toDoList`. Luego, pasamos `toDoList` como argumento de `render()`:
-
-```javascript
+```jsx
 const toDoList = (
   <ol>
     <li>Aprender React</li>
-    <li>Convertirse en Desarrollador</li>
+    <li>Conseguir un empleo</li>
   </ol>
+);
+
+root.render(toDoList);
+```
+
+`createRoot` es la API vigente desde React 18. La antigua `ReactDOM.render` fue eliminada en React 19.
+
+Si llamas a `root.render` varias veces, React conserva lo que no cambió y solo actualiza las diferencias en el DOM. Ese mecanismo, el DOM virtual, se explica en la [lección siguiente](02-The%20Virtual%20Dom.md).
+
+-----
+
+## Ejemplo completo
+
+```jsx
+import { createRoot } from 'react-dom/client';
+
+const user = { name: 'Ana', avatar: 'images/ana.png' };
+
+const profile = (
+  <section className="profile">
+    <img src={user.avatar} alt={`Foto de ${user.name}`} width={80} height={80} />
+    <h2>{user.name}</h2>
+    <p>Estudiando React.</p>
+  </section>
 );
 
 const container = document.getElementById('app');
 const root = createRoot(container);
-root.render(toDoList);
+root.render(profile);
 ```
 
----
+Cada elemento es una expresión, hay un solo elemento raíz (`section`), las etiquetas están cerradas, se usa `className` y los valores dinámicos van entre llaves.
 
-## The Virtual DOM
+-----
 
-Una cosa especial del método `render()` de una raíz de React es que **solo actualiza los elementos del DOM que han cambiado**.
+## Errores comunes
 
-Eso significa que si renderizas exactamente lo mismo dos veces seguidas, la segunda renderización **no hará nada**:
+**1. Devolver dos elementos sin envolver.**
+Qué pasa: error de compilación (por ejemplo, "Adjacent JSX elements must be wrapped in an enclosing tag").
+Por qué: una expresión JSX debe producir un solo elemento.
+Arreglo: envuelve en un elemento contenedor o en un fragmento `<>...</>`.
 
-```javascript
-const hello = <h1>Hola mundo</h1>;
+**2. Usar `class` en lugar de `className`.**
+Qué pasa: React muestra una advertencia y, según la versión, la clase puede no aplicarse como esperas.
+Por qué: JSX usa los nombres de las propiedades del DOM en camelCase.
+Arreglo: `className`.
 
-// Esto añadirá "Hola mundo" a la pantalla:
-root.render(hello, document.getElementById('app'));
+**3. Olvidar cerrar una etiqueta.**
+Qué pasa: error de compilación.
+Por qué: JSX es más estricto que HTML y no admite etiquetas sin cerrar.
+Arreglo: `<img />`, `<br />`, `<input />`.
 
-// Esto no hará absolutamente nada:
-root.render(hello, document.getElementById('app'));
+**4. `createRoot(null)`.**
+Qué pasa: error "Target container is not a DOM element".
+Por qué: `getElementById` no encontró el elemento (id mal escrito o script ejecutado antes de que exista el nodo).
+Arreglo: revisa el id y el orden de carga del script.
+
+**5. Pasar el componente en lugar del nodo.**
+Qué pasa: el mismo error anterior.
+Por qué: `createRoot` recibe un nodo del DOM, no JSX.
+Arreglo: `createRoot(domNode)` y luego `root.render(<App />)`.
+
+-----
+
+## En TypeScript
+
+Un archivo que usa JSX con TypeScript lleva la extensión `.tsx`, no `.ts`. Además, `tsconfig.json` necesita la opción `"jsx"` (por ejemplo `"react-jsx"`). Se explica en [Archivo tsconfig](../00-typescript-fundamentals/02-Archivo%20tsconfig.md).
+
+Tipos relevantes en esta lección:
+
+* Una expresión JSX guardada en una variable tiene tipo `React.JSX.Element`. No hace falta anotarlo: TypeScript lo infiere. En React 19 el espacio de nombres `JSX` global fue retirado de los tipos; si necesitas escribirlo, usa `React.JSX.Element`.
+* Para tipar "cualquier cosa que React pueda renderizar" (elementos, texto, números, `null`, arreglos), el tipo es `React.ReactNode`. Es más amplio que `JSX.Element`.
+* `document.getElementById()` devuelve `HTMLElement | null`, mientras que `createRoot` exige un nodo no nulo. Dos formas habituales de resolverlo:
+
+```tsx
+// Aserción de no nulo: asumes que el elemento existe
+const root = createRoot(document.getElementById('app')!);
+
+// Más seguro: comprobar y fallar con un mensaje claro
+const container = document.getElementById('app');
+if (!container) throw new Error('No se encontró el elemento #app');
+createRoot(container).render(<h1>Hola mundo</h1>);
 ```
 
-¡Esto es importante! Solo actualizar los elementos necesarios del DOM es una gran parte de lo que hace que React sea tan eficiente. Esto se logra usando el **DOM virtual de React**.
+El compilador también rechaza etiquetas sin cerrar o varios elementos raíz, y el editor lo marca antes de ejecutar. Se retoma en [Tu primer componente](../02-componentes-y-props/01-Your%20First%20React%20Component.md).
 
----
+-----
 
-## Review
+## Cuándo sí y cuándo no
 
-¡Felicidades! ¡Has aprendido a crear y renderizar elementos **JSX**! Este es el primer paso para volverte fluido en React.
+**Úsalo cuando:**
 
-En esta lección, aprendimos que:
+* Describes qué se muestra en función de datos: JSX mantiene estructura y lógica juntas.
+* Quieres que el compilador detecte errores de estructura antes de ejecutar.
 
-* React es un framework **modular, escalable, flexible y popular** para el front-end.
-* JSX es una **extensión de sintaxis de JavaScript** que nos permite tratar el HTML como expresiones.
-* ¡Los elementos JSX se pueden almacenar en variables, objetos, arreglos y más!
-* Los elementos JSX pueden tener **atributos** y **anidarse** entre sí, igual que en HTML.
-* JSX debe tener **exactamente un elemento exterior**, y otros elementos pueden estar anidados dentro de él.
-* `createRoot()` de `react-dom/client` se puede usar para **crear una raíz de React** en un elemento específico del DOM.
-* El método `render()` de una raíz de React se puede usar para **renderizar JSX en la pantalla**.
-* El método `render()` de una raíz de React **solo actualiza los elementos del DOM que han cambiado**, usando el **DOM virtual**.
+**Ten en cuenta:**
 
-A medida que continúes aprendiendo más sobre React, descubrirás cosas poderosas que puedes hacer con JSX, algunos problemas comunes de JSX y cómo **evitarlos**.
+* JSX es opcional. React puede usarse con `createElement` o `jsx()` directamente, aunque casi nadie lo hace por legibilidad.
+* JSX no es una plantilla de texto: no puedes escribir cualquier cosa de HTML y esperar que funcione igual (atributos, cierre de etiquetas, `class`).
 
----
+-----
 
+## Resumen en 5 líneas
+
+1. JSX es una sintaxis que se compila a llamadas `jsx()`; no es HTML y el navegador no la entiende sin compilar.
+2. Cada elemento JSX es una expresión y produce un elemento de React (un objeto descriptivo).
+3. Atributos en camelCase (`className`, `onClick`), etiquetas siempre cerradas.
+4. Una expresión JSX tiene un único elemento raíz; usa un fragmento `<>...</>` para no añadir nodos.
+5. `createRoot(container).render(jsx)` indica dónde y qué mostrar; en TypeScript se usa `.tsx`.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>Qué hace realmente el compilador</summary>
+
+Desde React 17 existe la "nueva transformación de JSX", que inserta automáticamente las importaciones desde `react/jsx-runtime`. Por eso ya no es necesario escribir `import React from 'react'` en cada archivo solo para usar JSX. El resultado de `jsx()` es un objeto simple con propiedades como `type` y `props`, que React lee para decidir qué mostrar.
+
+</details>
+
+<details>
+<summary>Por qué "un solo elemento raíz"</summary>
+
+No es una regla arbitraria: viene de JavaScript. Una función devuelve un solo valor, y cada expresión JSX se convierte en una sola llamada. Los fragmentos existen para cumplir esa regla sin añadir un nodo extra al DOM.
+
+</details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+JSX es una extensión de sintaxis de JavaScript que permite escribir estructura parecida a HTML dentro del código. No es HTML: un compilador la transforma en llamadas a funciones que crean elementos de React. Cada elemento JSX es una expresión, y debe tener un único elemento raíz.
+
+### Respuesta ampliada (semi-senior)
+
+JSX es azúcar sintáctico: `<h1 className="t">Hola</h1>` se compila a `jsx('h1', { className: 't', children: 'Hola' })`, que devuelve un objeto plano (un elemento de React) que describe la UI. Ese objeto no es un nodo del DOM; React lo compara con el anterior para decidir qué actualizar. Como es una expresión, se puede almacenar, pasar y devolver como cualquier valor, y por eso un componente puede devolver JSX. Las reglas (raíz única, etiquetas cerradas, atributos en camelCase) se derivan de que se traduce a JavaScript. Para montar la app se usa `createRoot(container).render(...)`, que sustituye a `ReactDOM.render`, eliminada en React 19. En TypeScript se usa `.tsx` y la opción `jsx` de `tsconfig`.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿JSX es obligatorio para usar React?**
+No. Se puede usar `createElement` o `jsx()` directamente, pero JSX es mucho más legible y es el estándar.
+
+**2. ¿Por qué `className` y no `class`?**
+JSX se traduce a propiedades de JavaScript y `class` es una palabra reservada; además, React usa los nombres de propiedades del DOM en camelCase.
+
+**3. ¿Para qué sirven los fragmentos?**
+Para agrupar varios elementos bajo un único elemento raíz sin añadir un nodo extra al DOM.
+
+**4. ¿Un elemento JSX es un nodo del DOM?**
+No. Es un objeto que describe lo que debería mostrarse. React lo usa para crear o actualizar el DOM real.
+
+**5. ¿Qué diferencia hay entre `JSX.Element` y `ReactNode`?**
+`JSX.Element` (`React.JSX.Element` en React 19) es el tipo de una expresión JSX. `ReactNode` es más amplio: incluye también texto, números, `null`, `undefined`, booleanos y arreglos.
+
+**6. ¿Por qué ya no hace falta importar React para usar JSX?**
+Porque la nueva transformación (React 17 en adelante) importa automáticamente `jsx` desde `react/jsx-runtime`.
+
+-----
+
+## Siguiente lección
+
+[El DOM virtual](02-The%20Virtual%20Dom.md)

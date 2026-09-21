@@ -1,235 +1,157 @@
-# Advanced JSX
+# JSX avanzado: JavaScript dentro del marcado
 
-## class vs className
+## En una frase
 
-Esta lección cubrirá **JSX más avanzado**. Aprenderás algunos trucos poderosos y algunos errores comunes que debes evitar.
+Dentro de JSX, las llaves `{}` abren una "ventana" a JavaScript: ahí van **expresiones** (valores, operadores, llamadas a funciones) para mostrar datos, fijar atributos, decidir qué renderizar y generar listas.
 
-La **gramática en JSX** es mayormente igual que en HTML, pero hay **diferencias sutiles** a las que hay que prestar atención. La más frecuente tiene que ver con la palabra **class**.
+-----
 
-En HTML, es común usar **class** como nombre de atributo:
+## Antes de empezar
 
-```html
-<h1 class="big">Título</h1>
-```
+Conviene que ya conozcas:
 
-En JSX, **no puedes usar la palabra class**. ¡Debes usar **className** en su lugar!
+* Qué es JSX y qué produce: [Introducción a JSX](01-Intro%20to%20JSX.md).
+* Cómo React representa la UI internamente: [El Virtual DOM](02-The%20Virtual%20Dom.md).
+
+Palabras nuevas (también están en el [Glosario](Glosario.md)):
+
+* **Expresión:** código que produce un valor (`2 + 3`, `name`, `formatDate(d)`, `a ? b : c`). Se puede usar donde se espera un valor.
+* **Sentencia:** instrucción que ejecuta una acción pero no produce un valor (`if`, `for`, `let x = 1`). No se puede usar donde se espera un valor.
+* **Manejador de evento (event handler):** función que React ejecuta cuando ocurre un evento, como un clic.
+* **`key`:** atributo especial que identifica cada elemento de una lista entre renders.
+
+-----
+
+## El problema
+
+JSX se parece a HTML, pero un componente necesita más que texto fijo: mostrar datos que cambian, reaccionar a clics, mostrar u ocultar partes de la interfaz y repetir elementos a partir de un array.
+
+Sin una forma de mezclar JavaScript con el marcado, todo sería estático. Además, hay diferencias de sintaxis con HTML que producen errores si no se conocen.
+
+-----
+
+## Cómo funciona
+
+### `className` en lugar de `class`
+
+En JSX, los atributos HTML y SVG se escriben en camelCase. El caso más frecuente es `class`, que se escribe `className`:
 
 ```jsx
 <h1 className="big">Título</h1>
 ```
 
-Esto se debe a que JSX se traduce a JavaScript, y **class** es una palabra reservada en JavaScript.
+`class` es una palabra reservada de JavaScript y JSX se convierte en JavaScript, por eso React eligió `className` (el nombre de la propiedad del DOM). En el HTML final se renderiza como `class`.
 
-Cuando JSX se renderiza, los atributos **className** de JSX se renderizan automáticamente como **class** en el HTML final.
+Otros ejemplos: `stroke-width` pasa a `strokeWidth` y `for` (en `<label>`) pasa a `htmlFor`. Los atributos `data-*` y `aria-*` conservan el guion.
 
----
+### Etiquetas autocerradas
 
-## Self-Closing Tags
+Algunos elementos no tienen contenido, como `<img>`, `<input>` o `<br>`. En HTML la barra final es opcional. En JSX es **obligatoria**: todas las etiquetas deben cerrarse.
 
-Otro error común en JSX tiene que ver con las **etiquetas autocerradas**.
-
-**¿Qué es una etiqueta autocerrada?**
-
-La mayoría de los elementos HTML usan **dos etiquetas**: una etiqueta de apertura (`<div>`) y una etiqueta de cierre (`</div>`). Sin embargo, algunos elementos HTML, como `<img>` y `<input>`, usan **solo una etiqueta**. La etiqueta que pertenece a un elemento de una sola etiqueta **no es de apertura ni de cierre**, sino una **etiqueta autocerrada**.
-
-Cuando escribes una etiqueta autocerrada en HTML, es **opcional** incluir una barra diagonal `/` justo antes del ángulo final:
-
-```html
-<!-- Correcto en HTML con barra: -->
+```jsx
+// Correcto
 <br />
+<img src="foto.jpg" alt="Perfil" />
 
-<!-- También correcto, sin la barra: -->
+// Error de sintaxis
 <br>
 ```
 
-Pero, en **JSX**, **tienes que incluir la barra**. Si escribes una etiqueta autocerrada en JSX y olvidas la barra, **se generará un error**:
+### Llaves `{}`: expresiones, no sentencias
+
+Todo lo que está entre etiquetas JSX se interpreta como texto, no como código:
 
 ```jsx
-// Correcto en JSX:
-<br />
-
-// TOTALMENTE INCORRECTO en JSX:
-<br>
+<h1>2 + 3</h1>      {/* muestra el texto "2 + 3" */}
+<h1>{2 + 3}</h1>    {/* muestra 5 */}
 ```
 
-> **En TypeScript:** en un archivo `.tsx`, olvidarte de la barra de autocierre no es un error que descubras recién al correr la app — el compilador lo marca de inmediato como error de sintaxis, directamente en el editor.
-
----
-
-## JavaScript In Your JSX In Your JavaScript
-
-Hasta ahora, nos hemos enfocado en escribir **expresiones JSX**. Es similar a escribir fragmentos de HTML, pero **dentro de un archivo JavaScript**.
-
-En esta lección, vamos a agregar algo nuevo: **JavaScript regular**, escrito **dentro de una expresión JSX**, dentro de un **archivo JavaScript**.
-
----
-
-## Curly Braces in JSX
-
-El código del último ejercicio **no se comportó como uno podría esperar**. En lugar de sumar 2 y 3, **se imprimió “2 + 3” como un texto**. ¿Por qué?
-
-Esto sucedió porque **2 + 3 estaba ubicado entre las etiquetas `<h1>` y `</h1>`**.
-
-Cualquier código que se encuentre **entre las etiquetas de un elemento JSX** será leído como JSX, ¡no como JavaScript normal! JSX **no suma números**, sino que los interpreta como texto, igual que HTML.
-
-Necesitas una forma de escribir código que diga:
-*"Aunque estoy ubicado entre etiquetas JSX, trátame como JavaScript ordinario y no como JSX."*
-
-Puedes hacer esto **envolviendo tu código entre llaves `{}`**.
-
----
-
-## 20 Digits of Pi in JSX
-
-
-**¡Ahora puedes inyectar JavaScript normal dentro de expresiones JSX!** Esto será extremadamente útil.
-
-Acá tenés una expresión JSX que muestra los primeros veinte dígitos de pi:
+Las llaves indican "aquí empieza JavaScript". Solo aceptan **expresiones**:
 
 ```jsx
-const pi = (
-  <div>
-    <h1>PI, a Special Number</h1>
-    <p>The number pi is an important number. It is approximately {Math.PI.toFixed(20)}</p>
-  </div>
-);
+<p>{price * quantity}</p>
+<p>{formatDate(today)}</p>
+<p>{user.name.toUpperCase()}</p>
 ```
 
-Estudia la expresión y observa lo siguiente:
-* El código está escrito en un archivo JavaScript. Por defecto, todo se tratará como JavaScript normal.
-* Busca `<div>` en la primera línea del `return`. Desde ahí y hasta `</div>`, el código se tratará como JSX.
-* Busca `Math`. Desde ahí y hasta `(20)`, el código volverá a tratarse como JavaScript normal.
-* Las llaves `{}` en sí mismas no se tratarán ni como JSX ni como JavaScript. Son marcadores que señalan el inicio y el final de una inyección de JavaScript dentro de JSX, de forma similar a como las comillas señalan los límites de una cadena de texto.
+Una sentencia como `if` o `for` no produce un valor y no cabe entre llaves. Las llaves solo se pueden usar en dos lugares: como contenido entre etiquetas (`<h1>{name}</h1>`) y como valor de un atributo, justo después del `=` (`src={avatar}`). No sirven para el nombre de una etiqueta ni de un atributo.
 
-----
+Las llaves marcan el inicio y el fin de la inyección, igual que las comillas delimitan un texto. No son parte del JavaScript resultante.
 
-## Variables in JSX
+### Variables y atributos
 
-Cuando inyectas JavaScript dentro de **JSX**, ese JavaScript forma parte del mismo entorno que el resto del JavaScript en tu archivo.
-
-Eso significa que puedes acceder a variables mientras estás dentro de una expresión JSX, incluso si esas variables fueron declaradas fuera del bloque de código JSX.
-
-> ```js
-> // Declara una variable:
-> const name = 'Gerdo';
->
-> // Accede a tu variable dentro de una expresión JSX:
-> const greeting = <p>Hola, {name}!</p>;
-> ```
-
-----
-
-## Variable Attributes in JSX
-
-Al escribir **JSX**, es común usar variables para establecer atributos.
-
-Aquí tienes un ejemplo de cómo podría funcionar esto:
-
-> ```js
-> // Usa una variable para establecer los atributos `height` y `width`:
->
-> const sideLength = "200px";
->
-> const panda = (
->   <img 
->     src="images/panda.jpg" 
->     alt="panda" 
->     height={sideLength} 
->     width={sideLength} />
-> );
-> ```
-
-Observa cómo en este ejemplo cada atributo del `<img />` está en su propia línea. Esto puede hacer que tu código sea más legible si tienes muchos atributos para un solo elemento.
-
-Las propiedades de objetos también se usan a menudo para establecer atributos:
-
-> ```js
-> const pics = {
->   panda: "http://bit.ly/1Tqltv5",
->   owl: "http://bit.ly/1XGtkM3",
->   owlCat: "http://bit.ly/1Upbczi"
-> }; 
->
-> const panda = (
->   <img 
->     src={pics.panda} 
->     alt="Lazy Panda" />
-> );
->
-> const owl = (
->   <img 
->     src={pics.owl} 
->     alt="Unimpressed Owl" />
-> );
->
-> const owlCat = (
->   <img 
->     src={pics.owlCat} 
->     alt="Ghastly Abomination" />
-> ); 
-> ```
-
-----
-
-## Event Listeners in JSX
-
-Los elementos **JSX** pueden tener escuchadores de eventos, igual que los elementos HTML. Programar en React implica trabajar constantemente con escuchadores de eventos.
-
-Creas un escuchador de eventos dándole a un elemento JSX un atributo especial. Aquí tienes un ejemplo:
+El código dentro de las llaves comparte el ámbito del resto del archivo, así que puede leer variables declaradas fuera del JSX:
 
 ```jsx
-<img onClick={clickAlert} />
+const name = 'Gerardo';
+const greeting = <p>Hola, {name}</p>;
 ```
 
-El nombre del atributo del escuchador de eventos debe ser algo como `onClick` u `onMouseOver`: la palabra **on** más el tipo de evento que estás escuchando. Puedes revisar la [lista de componentes comunes en la documentación de React](https://react.dev/reference/react-dom/components/common#) para ver los nombres de eventos compatibles.
+También sirve para atributos. Con llaves se pasa el **valor** de la variable; con comillas, un texto literal:
 
-El valor del atributo del escuchador de eventos debe ser una función. El ejemplo anterior solo funcionaría si `clickAlert` fuera una función válida definida en otro lugar:
+```jsx
+const sideLength = '200px';
+const pics = { panda: '/images/panda.jpg' };
 
-```js
-function clickAlert() {
-  alert('¡Hiciste clic en esta imagen!');
+<img
+  src={pics.panda}
+  alt="Panda"
+  width={sideLength}
+  height={sideLength}
+/>
+
+<img src="{pics.panda}" />   {/* error: pasa el texto literal "{pics.panda}" */}
+```
+
+Para pasar un objeto se usan **dobles llaves**: las externas abren JavaScript y las internas son el objeto. Es el caso típico de `style`, que exige propiedades en camelCase:
+
+```jsx
+<ul style={{ backgroundColor: 'black', color: 'pink' }}>
+```
+
+### Eventos (`onClick`)
+
+Los manejadores se asignan con atributos que empiezan con `on` y siguen en camelCase (`onClick`, `onChange`, `onMouseOver`). En HTML se escriben en minúsculas (`onclick`).
+
+El valor debe ser una **función**, que React ejecuta cuando ocurre el evento:
+
+```jsx
+function Photo() {
+  function handleClick() {
+    alert('Clic en la imagen');
+  }
+
+  return <img src="/foto.jpg" alt="Foto" onClick={handleClick} />;
 }
-
-<img onClick={clickAlert} />
 ```
 
-Ten en cuenta que en HTML los nombres de los escuchadores de eventos se escriben completamente en minúsculas, como `onclick` u `onmouseover`. En JSX, los nombres de los escuchadores de eventos se escriben en **camelCase**, como `onClick` u `onMouseOver`.
-
-> **En TypeScript:** una función como `clickAlert` que no recibe el objeto del evento y no devuelve nada se tipa simplemente como `() => void`. Pero si tu manejador necesita el evento (por ejemplo, para leer `event.target`), React expone tipos específicos por cada tipo de evento y elemento, como `React.MouseEventHandler<HTMLImageElement>` para un clic sobre una `<img>`. Vas a ver este patrón en detalle en [11-typescript-y-react/01-Tipado de Props y Funciones.md](../11-typescript-y-react/01-Tipado%20de%20Props%20y%20Funciones.md).
-
----
-
-## JSX Conditionals: If Statements That Don't Work
-
-¡Excelente trabajo! Has aprendido cómo usar llaves `{}` para inyectar JavaScript dentro de una expresión **JSX**.
-
-Aquí hay una regla que necesitas conocer: **no puedes inyectar una sentencia `if` dentro de una expresión JSX**.
-
-Este código se romperá:
+Se **pasa** la función; no se **llama**. `onClick={handleClick()}` ejecutaría la función durante el render, no al hacer clic. Para pasar argumentos, se envuelve en una función flecha:
 
 ```jsx
-(
-  <h1>
-    {
-      if (purchase.complete) {
-        '¡Gracias por realizar tu pedido!'
-      }
-    }
-  </h1>
-)
+<button onClick={() => alert('Hola')}>Saludar</button>
+<button onClick={() => remove(id)}>Eliminar</button>
 ```
 
-¿Qué pasa si quieres que una expresión JSX se renderice solo bajo ciertas circunstancias? No puedes inyectar una sentencia `if`. ¿Qué puedes hacer entonces?
+Por convención, los manejadores se nombran `handleAlgo`, y las props de función de tus propios componentes empiezan con `on` (`onSave`). Los eventos "burbujean" hacia los elementos padre; `e.stopPropagation()` detiene ese recorrido y `e.preventDefault()` cancela el comportamiento por defecto del navegador (por ejemplo, el envío de un formulario).
 
-Tienes muchas opciones. En las próximas lecciones exploraremos algunas formas sencillas de escribir condicionales (expresiones que solo se ejecutan bajo ciertas condiciones) en JSX.
+### Condicionales
 
----
+Como `if` es una sentencia, no se puede escribir entre llaves:
 
-## JSX Conditionals: If Statements That Do Work
+```jsx
+// Error de sintaxis
+<h1>
+  {
+    if (purchase.complete) {
+      'Gracias por tu compra'
+    }
+  }
+</h1>
+```
 
-¿Cómo puedes escribir un condicional si no puedes inyectar una sentencia `if` dentro de JSX?
+Hay tres formas de expresar condiciones.
 
-Una opción es escribir una sentencia `if` y **no** inyectarla dentro de **JSX**.
+**`if` fuera del JSX.** Se calcula el resultado en una variable y se inserta con llaves:
 
 ```jsx
 function ConcertInfo({ price }) {
@@ -243,168 +165,288 @@ function ConcertInfo({ price }) {
 
   return (
     <div>
-      <h1>Próximo show</h1>
+      <h1>Próximo concierto</h1>
       {ticketInfo}
     </div>
   );
 }
 ```
 
-Este componente funciona porque las palabras `if` y `else` no están inyectadas entre etiquetas JSX: la sentencia `if` está por fuera, en su propia declaración de variable, y solo la variable resultante (`ticketInfo`) se inyecta con llaves dentro del JSX. No es necesaria ninguna inyección de JavaScript de la sentencia `if` en sí.
+Es la opción más legible cuando hay varias ramas.
 
-Esta es una forma común de expresar condicionales en JSX.
-
----
-
-## JSX Conditionals: The Ternary Operator
-
-Hay una forma más compacta de escribir condicionales en JSX: **el operador ternario**.
-
-El operador ternario funciona de la misma manera en React que en JavaScript normal. Sin embargo, aparece sorprendentemente a menudo en React.
-
-Recuerda cómo funciona: se escribe `x ? y : z`, donde `x`, `y` y `z` son expresiones de JavaScript. Cuando se ejecuta el código, `x` se evalúa como “verdadero” (*truthy*) o “falso” (*falsy*). Si `x` es verdadero, entonces todo el operador ternario devuelve `y`. Si `x` es falso, entonces todo el operador ternario devuelve `z`.
-
-Así es como podrías usar el operador ternario dentro de una expresión **JSX**:
+**Operador ternario** (`condición ? A : B`). Es una expresión, así que cabe entre llaves. Sirve cuando hay **dos** resultados posibles:
 
 ```jsx
-const headline = (
-  <h1>
-    { age >= drinkingAge ? 'Buy Drink' : 'Do Teen Stuff' }
-  </h1>
-);
+<h1>{age >= 18 ? 'Adulto' : 'Menor'}</h1>
 ```
 
-En el ejemplo anterior, si `age` es mayor o igual que `drinkingAge`, entonces `headline` será igual a `<h1>Buy Drink</h1>`. De lo contrario, `headline` será igual a `<h1>Do Teen Stuff</h1>`.
-
----
-
-## JSX Conditionals: &&
-
-Vamos a cubrir una última forma de escribir condicionales en React: **el operador `&&`**.
-
-Al igual que el operador ternario, `&&` no es específico de React, pero aparece muy a menudo en React.
-
-En los dos últimos ejercicios, escribiste sentencias que a veces renderizaban un gatito y otras veces un perrito. `&&` no habría sido la mejor opción para ese código.
-
-`&&` funciona mejor para condicionales que a veces realizan una acción y otras veces no hacen nada en absoluto.
-
-Aquí tienes un ejemplo:
-
-```jsx
-const tasty = (
-  <ul>
-    <li>Applesauce</li>
-    { !baby && <li>Pizza</li> }
-    { age > 15 && <li>Brussels Sprouts</li> }
-    { age > 20 && <li>Oysters</li> }
-    { age > 25 && <li>Grappa</li> }
-  </ul>
-);
-```
-
-Si la expresión a la izquierda de `&&` se evalúa como verdadera, entonces el **JSX** a la derecha de `&&` se renderizará. Sin embargo, si la primera expresión es falsa, el JSX a la derecha de `&&` se ignorará y no se renderizará.
-
-> **En TypeScript:** ojo con un error clásico que TypeScript **no** te va a detectar, porque no es un error de tipos, sino de comportamiento en tiempo de ejecución. Si escribís `{items.length && <List items={items} />}` y `items.length` es `0`, React no omite nada: `0` es un valor válido para renderizar en JSX, así que termina imprimiendo literalmente el número `0` en la pantalla. `items.length` sigue siendo de tipo `number`, así que TypeScript no tiene motivo para quejarse. La forma segura es forzar un booleano explícito: `{items.length > 0 && <List items={items} />}`.
-
----
-
-## .map in JSX
-
-El método de arreglos **`.map()`** aparece con frecuencia en React. Es bueno acostumbrarse a usarlo junto con JSX.
-
-Si quieres crear una lista de elementos JSX, usar **`.map()`** suele ser la forma más eficiente. Al principio puede verse un poco extraño:
-
-```js
-const strings = ['Home', 'Shop', 'About Me'];
-
-const listItems = strings.map(string => <li>{string}</li>);
-
-<ul>{listItems}</ul>
-```
-
-En el ejemplo anterior, comenzamos con un arreglo de cadenas de texto. Llamamos a **`.map()`** sobre este arreglo, y la llamada a `.map()` devuelve un nuevo arreglo de elementos `<li>`.
-
-En la última línea del ejemplo, observa que `{listItems}` se evaluará como un arreglo, ¡porque es el valor devuelto por `.map()`! Los `<li>` en JSX no tienen que estar en un arreglo como este, pero pueden estarlo.
-
-```jsx
-// Esto es válido en JSX, no en un arreglo explícito:
-<ul>
-  <li>item 1</li>
-  <li>item 2</li>
-  <li>item 3</li>
-</ul>
-
-// ¡Esto también es válido!
-const liArray = [
-  <li>item 1</li>, 
-  <li>item 2</li>, 
-  <li>item 3</li>
-];
-
-<ul>{liArray}</ul>
-```
-
----
-
-## Keys
-
-Cuando creas una lista en **JSX**, a veces tu lista necesitará incluir algo llamado **keys** (claves):
+**Operador `&&`.** Sirve cuando algo se muestra **o no se muestra nada**. Si la izquierda es verdadera, se devuelve la derecha; si es falsa, se devuelve la izquierda:
 
 ```jsx
 <ul>
-  <li key="li-01">Example1</li>
-  <li key="li-02">Example2</li>
-  <li key="li-03">Example3</li>
+  <li>Manzana</li>
+  {isAdmin && <li>Panel de administración</li>}
+  {age > 18 && <li>Vino</li>}
 </ul>
 ```
 
-Una **key** es un atributo de JSX. El nombre del atributo es `key`. El valor del atributo debe ser algo único, similar a un atributo `id`.
+**La trampa del `0`.** `false`, `null`, `undefined` y `true` no renderizan nada, pero el número `0` **sí se renderiza**. Con `&&`, si la izquierda es `0`, la expresión completa vale `0`:
 
-Las **keys** no hacen nada visible. React las usa internamente para llevar el control de las listas. Si no usas keys cuando deberías, React podría mezclar accidentalmente los elementos de la lista en un orden incorrecto.
-
-No todas las listas necesitan keys. Una lista necesita keys si se cumple alguna de las siguientes condiciones:
-
-* Los elementos de la lista tienen memoria de un renderizado al siguiente. Por ejemplo, cuando se renderiza una lista de tareas, cada elemento debe “recordar” si fue marcado como completado. Los elementos no deberían perder esa información al renderizarse.
-* El orden de la lista puede cambiar. Por ejemplo, una lista de resultados de búsqueda podría reorganizarse de un renderizado a otro.
-
-Si ninguna de estas condiciones se cumple, entonces no tienes que preocuparte por las keys. ¡Y si no estás seguro, nunca está de más usarlas! 😄
-
-> **En TypeScript:** la prop `key` está tipada por React como `React.Key`, que acepta `string | number` (nunca `boolean`, `undefined` ni un objeto). Si usás el `id` de un objeto como key y ese `id` es opcional en tu tipo (`id?: string`), TypeScript te va a marcar error hasta que lo manejes explícitamente — es una buena señal para revisar si de verdad ese campo puede faltar.
-
-----
-
-## React.createElement
-
-¡Puedes escribir código React sin usar **JSX** en absoluto!
-
-La mayoría de los programadores de React sí usan JSX, pero debes entender que **es posible escribir código React sin él**.
-
-La siguiente expresión JSX:
-
-```js
-const h1 = <h1>Hello world</h1>;
+```jsx
+{messageCount && <p>Mensajes nuevos</p>}       {/* con 0 muestra "0" en pantalla */}
+{messageCount > 0 && <p>Mensajes nuevos</p>}   {/* correcto: la izquierda es un booleano */}
 ```
 
-puede reescribirse sin JSX, así:
+La regla: la izquierda de `&&` debe ser un booleano, no un número.
 
-```js
-const h1 = React.createElement(
-  "h1",
-  null,
-  "Hello world"
-);
+### Listas con `.map` y `key`
+
+Para crear una lista de elementos a partir de un array, se usa `.map()`, que devuelve un array nuevo. React sabe renderizar arrays de elementos JSX:
+
+```jsx
+const links = ['Inicio', 'Tienda', 'Contacto'];
+
+<ul>
+  {links.map((link) => (
+    <li key={link}>{link}</li>
+  ))}
+</ul>
 ```
 
-Cuando un elemento JSX se compila, el compilador transforma el elemento JSX en el método que ves arriba: **React.createElement()**. Cada elemento JSX es, en secreto, una llamada a `React.createElement()`.
+Cada elemento de una lista necesita un atributo **`key`**: un identificador **único entre sus hermanos** y **estable** entre renders. No es visible ni llega al componente como prop: React lo usa para saber qué elemento es cuál cuando la lista cambia (se agrega, se elimina o se reordena) y así conservar o actualizar el elemento correcto. Sin `key`, React muestra una advertencia y usa el índice como identificador.
 
-No entraremos en detalle sobre cómo funciona `React.createElement()`, pero puedes consultar [la documentación de React sobre `createElement()`](https://react.dev/reference/react/createElement) para aprender más.
+Reglas:
 
-----
-
-## Review
-
-¡Felicidades! Has aprendido una gran variedad de conceptos de JSX. Si sientes que aún no los dominas todos, ¡no te preocupes! Estos conceptos aparecerán una y otra vez a lo largo de tu aprendizaje de React.
-
-¡Ahora estás listo para poner en práctica tus conocimientos de JSX!
+* Debe ser único entre los elementos de **esa** lista (puede repetirse en otra lista distinta).
+* Debe ser estable: no se genera durante el render (`Math.random()` haría que todos los elementos se recreen en cada render).
+* Lo ideal es un identificador que venga de los datos (`item.id`).
+* Si cada elemento renderiza varios nodos, se usa `<Fragment key={id}>`; la forma corta `<>...</>` no admite `key`.
 
 -----
+
+## Ejemplo completo
+
+```jsx
+const products = [
+  { id: 1, name: 'Teclado', price: 45, stock: 3 },
+  { id: 2, name: 'Mouse', price: 20, stock: 0 },
+  { id: 3, name: 'Monitor', price: 180, stock: 8 },
+];
+
+export default function ProductList() {
+  function handleBuy(id) {
+    console.log('Comprar producto', id);
+  }
+
+  return (
+    <section className="catalog">
+      <h1>Catálogo</h1>
+      {products.length > 0 ? (
+        <ul>
+          {products.map((product) => (
+            <li key={product.id}>
+              {product.name}: ${product.price}
+              {product.stock === 0 && <span> (agotado)</span>}
+              <button
+                disabled={product.stock === 0}
+                onClick={() => handleBuy(product.id)}
+              >
+                Comprar
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No hay productos.</p>
+      )}
+    </section>
+  );
+}
+```
+
+Aparecen todos los conceptos: `className`, llaves con expresiones, ternario para dos ramas, `&&` con un booleano (`=== 0`), evento con función flecha, y `.map` con `key` tomada de los datos.
+
+-----
+
+## Errores comunes
+
+### 1. `class` en lugar de `className`
+
+**Qué pasa:** React muestra una advertencia y el atributo no se comporta como se espera.
+**Por qué:** en JSX los atributos usan los nombres de las propiedades del DOM.
+**Arreglo:** escribir `className`.
+
+### 2. Etiqueta sin cerrar
+
+```jsx
+<img src="foto.jpg" alt="Foto">   // error de sintaxis
+```
+
+**Por qué:** JSX exige que todas las etiquetas estén cerradas.
+**Arreglo:** `<img src="foto.jpg" alt="Foto" />`.
+
+### 3. Sentencia dentro de las llaves
+
+`{if (x) { ... }}` o `{for (...) { ... }}` producen un error de sintaxis.
+**Por qué:** las llaves aceptan expresiones, y una sentencia no produce un valor.
+**Arreglo:** mover el `if` fuera del JSX, o usar ternario, `&&` o `.map`.
+
+### 4. Llamar al manejador en lugar de pasarlo
+
+```jsx
+<button onClick={handleClick()}>Guardar</button>   // se ejecuta al renderizar
+```
+
+**Por qué:** `handleClick()` con paréntesis ejecuta la función en el render y pasa su resultado.
+**Arreglo:** `onClick={handleClick}` o `onClick={() => handleClick(id)}`.
+
+### 5. `&&` con un número a la izquierda
+
+```jsx
+{items.length && <List items={items} />}   // con 0 muestra "0"
+```
+
+**Por qué:** `0` es un valor renderizable y `&&` lo devuelve tal cual.
+**Arreglo:** `{items.length > 0 && <List items={items} />}`.
+
+### 6. Comillas en lugar de llaves en un atributo
+
+`src="{url}"` pasa el texto literal `{url}`. Para pasar el valor de la variable se escribe `src={url}`.
+
+### 7. Lista sin `key`, o con `key` inestable
+
+**Qué pasa:** advertencia en consola; con `key` basado en índice o aleatorio, en listas que cambian pueden mezclarse estados (por ejemplo, el texto escrito en un input) o recrearse elementos.
+**Arreglo:** usar un identificador único y estable de los datos.
+
+-----
+
+## En TypeScript
+
+En un archivo `.tsx`, olvidar el cierre de una etiqueta es un error de sintaxis que el editor marca de inmediato.
+
+**Eventos.** React exporta tipos por evento y por elemento. Si el manejador se declara aparte, se tipa así:
+
+```tsx
+function handleClick(event: React.MouseEvent<HTMLButtonElement>) {
+  console.log(event.currentTarget.name);
+}
+
+function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+  console.log(event.target.value);
+}
+```
+
+Si el manejador se escribe en línea (`onClick={(e) => ...}`), TypeScript infiere el tipo de `e`. También existen tipos para la función completa, como `React.MouseEventHandler<HTMLButtonElement>`.
+
+**Listas.** La prop `key` acepta `string | number` (`React.Key`, que también admite `null` y `undefined` en el tipo). Si el `id` del objeto es opcional (`id?: string`), conviene garantizar que exista antes de usarlo como `key`:
+
+```tsx
+type Product = { id: string; name: string };
+
+function List({ products }: { products: Product[] }) {
+  return (
+    <ul>
+      {products.map((p) => (
+        <li key={p.id}>{p.name}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**El `0` con `&&`.** TypeScript no lo detecta: `items.length` es `number` y la expresión es válida. Es un problema de comportamiento en ejecución, no de tipos. La solución es la misma: comparar (`> 0`) o convertir a booleano.
+
+-----
+
+## Cuándo sí y cuándo no
+
+* **`if` fuera del JSX:** hay varias ramas o la lógica es larga. Mantiene el JSX limpio.
+* **Ternario:** dos alternativas visibles. Con ternarios anidados se pierde legibilidad; en ese caso conviene un `if` previo o un componente aparte.
+* **`&&`:** algo se muestra o no se muestra. Asegúrate de que la izquierda sea booleana.
+* **`.map`:** una lista de elementos a partir de un array. Usa como `key` un identificador de los datos. El índice solo es aceptable en listas estáticas que nunca se reordenan ni cambian.
+* **Sin JSX:** es posible escribir React sin JSX llamando a `createElement`, pero rara vez conviene.
+
+-----
+
+## Resumen en 5 líneas
+
+1. En JSX se usa `className`, todas las etiquetas se cierran (`<br />`) y los atributos van en camelCase.
+2. Las llaves `{}` inyectan **expresiones** JavaScript como contenido o como valor de atributo; no aceptan sentencias.
+3. Los eventos usan `onClick={handleClick}`: se pasa la función, no se llama.
+4. Para condicionar: `if` fuera del JSX, ternario para dos ramas, `&&` para mostrar u omitir (con booleano a la izquierda, por el caso del `0`).
+5. Las listas se generan con `.map` y cada elemento lleva una `key` única y estable, preferiblemente un `id` de los datos.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>Qué es JSX por debajo</summary>
+
+JSX no es HTML: es sintaxis que un compilador transforma en llamadas a funciones de JavaScript que producen objetos que describen la UI (elementos React). Con el transform clásico, `<h1>Hola</h1>` se convierte en `React.createElement('h1', null, 'Hola')`; el transform moderno, usado por defecto en los proyectos actuales, genera llamadas a `jsx` importadas de `react/jsx-runtime`, sin necesidad de importar `React` en cada archivo. Ver [`createElement`](https://react.dev/reference/react/createElement) en la documentación de React.
+
+</details>
+
+<details>
+<summary>Qué valores renderiza React y cuáles ignora</summary>
+
+`true`, `false`, `null` y `undefined` son válidos como hijos pero no renderizan nada. Textos y números se renderizan, incluido `0`. Por eso `{cond && <A />}` es seguro con un booleano, y no lo es con un número.
+
+</details>
+
+<details>
+<summary>Fragments</summary>
+
+Un componente debe devolver un único elemento raíz. Para devolver varios sin añadir un nodo extra al DOM se usa `<>...</>` (Fragment). Si un Fragment necesita `key` (por ejemplo, dentro de un `.map`), se escribe `<Fragment key={id}>`, importado de `react`.
+
+</details>
+
+<details>
+<summary>Por qué el índice es una mala `key` en listas que cambian</summary>
+
+Si la clave es la posición, al insertar o eliminar un elemento todos los siguientes cambian de clave. React interpretará que "el elemento de la posición 2" sigue siendo el mismo y reutilizará su estado (por ejemplo, lo escrito en un input) para un dato distinto. Con un `id` propio, el estado sigue al dato.
+
+</details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+JSX permite escribir marcado dentro de JavaScript. Se usa `className` en vez de `class`, se cierran todas las etiquetas y, con llaves `{}`, se inserta JavaScript (variables, llamadas, ternarios). Las listas se renderizan con `.map` y cada elemento lleva una `key` única.
+
+### Respuesta ampliada (semi-senior)
+
+* **Compilación:** JSX se transforma en llamadas a funciones que crean elementos React; por eso hereda restricciones de JavaScript, como no poder usar `class`.
+* **Llaves:** aceptan expresiones, no sentencias. Se usan como hijos o como valor de atributo; `{{ }}` es un objeto dentro de las llaves.
+* **Condicionales:** `if` fuera del JSX para varias ramas, ternario para dos, `&&` para mostrar u omitir. Con `&&`, la izquierda debe ser booleana porque `0` sí se renderiza.
+* **Eventos:** se pasa la función, no su resultado. Los eventos burbujean; se controlan con `stopPropagation` y `preventDefault`.
+* **Listas:** `.map` con `key` única entre hermanos, estable y de los datos. React no pasa `key` al componente como prop.
+* **TypeScript:** eventos tipados como `React.MouseEvent<HTMLButtonElement>` o `React.ChangeEvent<HTMLInputElement>`; el caso del `0` no lo detecta el compilador.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Por qué se usa `className` y no `class`?**
+Porque JSX se compila a JavaScript, donde `class` es palabra reservada, y React usa los nombres de propiedades del DOM (`className`). En el HTML final se renderiza como `class`.
+
+**2. ¿Por qué se necesita `key` y por qué no conviene usar el índice?**
+React usa la `key` para identificar cada elemento entre renders y conservar su estado correctamente. Con el índice, si la lista se reordena o cambia, las claves apuntan a datos distintos y se pueden mezclar estados. Es mejor un `id` estable de los datos.
+
+**3. ¿`&&` o ternario? ¿Qué es el bug del `0`?**
+`&&` cuando algo se muestra o no; ternario cuando hay dos alternativas. Si la izquierda de `&&` es `0`, la expresión vale `0` y React lo renderiza; se evita con una comparación booleana (`count > 0 &&`).
+
+**4. ¿Qué diferencia hay entre expresión y sentencia en JSX?**
+Una expresión produce un valor (`a + b`, `cond ? x : y`) y cabe entre llaves. Una sentencia (`if`, `for`) ejecuta una acción sin producir un valor y no cabe; se coloca fuera del JSX.
+
+**5. ¿Cómo se manejan los eventos?**
+Se asigna una función al atributo `onEvento` en camelCase (`onClick={handleClick}`). Se pasa la función, no se llama; si necesita argumentos, se envuelve en una flecha (`() => remove(id)`).
+
+**6. ¿Qué diferencia hay entre `onClick={handleClick}` y `onClick={handleClick()}`?**
+El primero pasa la función para que React la ejecute al hacer clic. El segundo la ejecuta durante el render y pasa su resultado, que casi nunca es lo deseado.
+
+-----
+
+## Siguiente lección
+
+Ya sabes inyectar JavaScript en JSX. El siguiente paso es ver cómo escribir JSX en varias líneas dentro de un componente: [JSX multilínea en un componente](04-Use%20Multiline%20JSX%20in%20a%20Component.md).
