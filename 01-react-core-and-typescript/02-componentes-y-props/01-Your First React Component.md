@@ -1,280 +1,337 @@
-# Your First React Component
+# Tu primer componente de React
 
-## React Components
+## En una frase
 
-Las aplicaciones de React están hechas de **componentes**.
+Un componente de React es una función de JavaScript cuyo nombre empieza con mayúscula y que devuelve JSX; se exporta desde su archivo y se monta en la página con `createRoot(...).render(<Componente />)`.
 
-Un componente es una pequeña pieza de código reutilizable que se encarga de una sola tarea. Esa tarea suele ser renderizar algo de HTML y volver a renderizarlo cuando cambian algunos datos.
+-----
 
-Mira el código de abajo. Este código creará y renderizará un nuevo componente de React:
+## Antes de empezar
 
-```js
-import { createRoot } from 'react-dom/client';
+Conviene que ya sepas:
 
+* Qué es JSX y cómo se escribe: [fundamentos de JSX](../01-fundamentos-jsx/README.md).
+* Cómo funcionan `import` y `export` en módulos de JavaScript.
+
+Palabras nuevas (también están en el [Glosario](Glosario.md)):
+
+* **Componente:** pieza reutilizable de interfaz. En React moderno se define como una función.
+* **Raíz (root):** punto de la página donde React toma el control de la interfaz.
+* **Renderizar:** producir la interfaz que describe un componente y mostrarla en pantalla.
+* **PascalCase:** convención donde cada palabra del nombre empieza con mayúscula (`MyComponent`).
+
+-----
+
+## El problema
+
+Una interfaz real se compone de muchas partes: barra de navegación, buscador, lista, formulario. Si todo vive en un solo bloque de HTML, es difícil reutilizarlo y mantenerlo. Los componentes permiten dividir la interfaz en piezas independientes, cada una con una responsabilidad clara, y componerlas entre sí.
+
+-----
+
+## Cómo funciona
+
+### 1. Un componente es una función que devuelve JSX
+
+```jsx
 function MyComponent() {
-  return <h1>Hello world</h1>;
-}
-
-createRoot(document.getElementById('app')).render(<MyComponent />);
-```
-
-Muchas de estas cosas pueden parecer desconocidas, pero no te preocupes. Vamos a descomponer ese código, una pequeña parte a la vez. ¡Al final de esta lección, entenderás cómo construir un componente en React!
-
------
-
-## Import React and createRoot
-
-Podemos importar la librería **React** siempre que nuestro código necesite algo del paquete `react`. Por ejemplo:
-
-```js
-import React from 'react';
-```
-
-Esto nos da acceso al objeto **React** y a las utilidades que proporciona. En React moderno, no es necesario importar React solo para escribir **JSX**, pero aun así podemos importarlo siempre que necesitemos alguna característica o función del paquete React.
-
-Además de escribir componentes, también necesitamos una forma de conectar nuestra aplicación con la página. Para hacerlo, usamos la función **createRoot** del paquete `react-dom/client`. Así es como la importamos y la usamos:
-
-```js
-import { createRoot } from 'react-dom/client';
-import App from './App';
-
-createRoot(document.getElementById('app')).render(<App />);
-```
-
-
-Usando **createRoot**, conectamos nuestro componente principal (normalmente `App`) a un elemento del archivo HTML para que nuestra aplicación de React pueda aparecer en la página.
-
------
-
-## Import ReactDOM
-
-Otra importación que necesitamos, además de React, es **ReactDOM**:
-
-```js
-import ReactDOM from 'react-dom/client';
-```
-
-Los métodos importados desde `react-dom` interactúan con el **DOM**.
-
-Los métodos importados desde `react` no trabajan con el DOM en absoluto. No interactúan directamente con nada que no sea parte de React.
-
-Para aclarar: el DOM se usa en aplicaciones de React, pero **no es parte de React**. Después de todo, el DOM también se utiliza en muchísimas aplicaciones que no usan React. Los métodos importados desde `react` son solo para propósitos propios de React, como crear componentes o escribir elementos **JSX**.
-
------
-
-## Create a Function Component
-
-Has aprendido que un componente de React es una pequeña pieza de código reutilizable que se encarga de una sola tarea, la cual a menudo implica renderizar HTML y volver a renderizarlo cada vez que cambian algunos datos.
-
-Es útil pensar en los componentes como partes más pequeñas de nuestra interfaz. En conjunto, son los bloques de construcción que forman una aplicación de React. En un sitio web, podemos crear un componente para la barra de búsqueda, otro componente para la barra de navegación y otro componente para el contenido del panel principal.
-
-Aquí hay otro dato sobre los componentes: podemos usar funciones de JavaScript para definir un nuevo componente de React. A esto se le llama **componente funcional**.
-
-En el pasado, los componentes de React se definían usando clases de JavaScript. Pero desde la introducción de los **Hooks** (algo de lo que hablaremos más adelante), los componentes funcionales se han convertido en el estándar en las aplicaciones modernas de React.
-
-Después de definir nuestro componente funcional, podemos usarlo para crear tantas instancias de ese componente como queramos.
-
-Veamos el ejemplo del primer ejercicio:
-
-```js
-function MyComponent() {
-  return <h1>Hello, I'm a functional React Component!</h1>;
-}
-
-export default MyComponent;
-```
-
-En la tercera línea, se define una función con el nombre **MyComponent**. Dentro de ella, la función devuelve un elemento de React en sintaxis **JSX**:
-
-```js
-return <h1>Hello, I'm a functional React Component!</h1>;
-```
-
-En conjunto, esto forma un componente funcional básico de React.
-
-En la última línea del bloque de código anterior, **MyComponent** se exporta para que pueda usarse más adelante.
-
-Mucho de esto todavía puede parecer desconocido, ¡pero ya entiendes más de lo que entendías antes! ¡Sigamos adelante! 🚀
-
-> **En TypeScript:** para un componente sin props, como este, no hace falta anotar nada extra: `function MyComponent() { return <h1>...</h1>; }` ya es TypeScript válido, y el tipo de retorno se infiere solo. Es común encontrarse con el tipo `React.FC` (por ejemplo, `const MyComponent: React.FC = () => ...`) en proyectos y tutoriales más viejos, pero hoy se recomienda **evitarlo**: `React.FC` agrega automáticamente una prop `children` implícita a todos los componentes, tengan o no sentido para ellos, lo cual generó suficientes problemas como para que la comunidad haya vuelto a preferir la función simple, tipando `children` explícitamente solo en los componentes que realmente lo reciben.
-
------
-
-## Name a Functional Component
-
-¡Bien! Crear una función de JavaScript es la forma de declarar un nuevo componente funcional.
-
-Cuando declaras un nuevo componente funcional, necesitas darle un nombre a ese componente. En nuestro componente terminado, el nombre era **MyComponent**:
-
-```js
-function MyComponent() {
-  return <h1>Hello world</h1>;
+  return <h1>Hola mundo</h1>;
 }
 ```
 
-Los nombres de los componentes funcionales deben comenzar con mayúscula y, por convención, se crean usando **PascalCase**. Debido a la forma en que se compilan las etiquetas **JSX**, el uso de mayúsculas indica que se trata de un componente de React y no de una etiqueta HTML.
+La función no muestra nada por sí sola. Solo **describe** qué interfaz corresponde. React la ejecuta cuando el componente se usa y convierte el resultado en elementos del DOM.
 
-¡Este es un detalle específico de React! Si estás creando un componente, asegúrate de que su nombre comience con una letra mayúscula para que React lo interprete como un componente. Si comienza con una letra minúscula, React intentará buscar un componente integrado como `div` o `input` y fallará.
+Antes de los Hooks (React 16.8) también existían componentes de clase. Hoy los componentes de función son la forma estándar de escribir componentes nuevos.
 
------
+### 2. El nombre empieza con mayúscula
 
-## Function Component Instructions
+Los nombres de componentes van en PascalCase: `MyComponent`, `NavBar`, `UserCard`. No es solo estilo. React usa la primera letra para distinguir:
 
-¡Repasemos lo que hemos aprendido hasta ahora! Mira dentro de **App.js** y **index.js** y encuentra cada uno de estos puntos:
+* `<section />` (minúscula): una etiqueta HTML.
+* `<Profile />` (mayúscula): un componente.
 
-* En **App.js**, podemos importar React siempre que nuestro componente necesite algo del paquete `react`. En React moderno, no es obligatorio importar React solo para escribir **JSX**, pero aun así podemos importarlo cuando necesitemos alguna funcionalidad de la librería React.
-* En **index.js**, importamos la función **createRoot** desde `'react-dom/client'`. Esta función permite que React conecte nuestra aplicación con el DOM del navegador.
-* En **App.js**, definimos un componente funcional escribiendo una función normal de JavaScript. Un componente funcional es como una receta: no muestra nada por sí solo hasta que lo renderizamos en el DOM.
-* Cada vez que creamos un componente funcional, necesitamos darle un nombre escrito en **PascalCase** (UpperCamelCase), como `MyComponent`.
-* Algo que todavía no hemos comentado es el cuerpo de tu componente funcional: las llaves que van después de la declaración de la función y todo el código que hay dentro de ellas.
+Si nombras un componente en minúscula, React lo trata como una etiqueta HTML y no lo encuentra como componente.
 
-Como cualquier función de JavaScript, un componente necesita un cuerpo. Este cuerpo contiene las instrucciones que le dicen a React qué debe mostrar el componente.
+### 3. El `return` es obligatorio
 
-Aquí está el cuerpo de la función de **App.js**:
+El cuerpo de la función puede tener cualquier código de JavaScript, pero debe terminar devolviendo lo que se va a mostrar (normalmente JSX). Si el JSX ocupa varias líneas, se envuelve en paréntesis abiertos en la misma línea del `return`:
 
-```js
-return <h1>Hello, this is a function component body.</h1>;
-```
-
-Puede parecer una simple línea de JSX, pero esta línea es la instrucción que le dice a React exactamente qué debe renderizar el componente.
-
------
-
-## The Return Keyword in Functional Components
-
-Cuando definimos un componente funcional, básicamente estamos definiendo una **fábrica** que puede construir la combinación adecuada de elementos cada vez que hacemos referencia a su nombre. Lo hace consultando un conjunto de instrucciones que tú debes proporcionar.
-
-Si estás pensando: *“Eso suena exactamente a para qué sirve una función normal de JavaScript”*, entonces tienes razón. Los componentes funcionales pueden entenderse de forma muy similar a las funciones normales de JavaScript, excepto que su trabajo es ensamblar una parte de la interfaz basándose en las instrucciones dadas.
-
-Hablemos un poco más sobre estas instrucciones.
-
-Para empezar, estas instrucciones deben tomar la forma del cuerpo de una función. Eso significa que estarán delimitadas por llaves, como en este ejemplo:
-
-```js
-function Button() {
-  // Las instrucciones van aquí, entre las llaves.
-}
-```
-
-Nuestras instrucciones pueden incluir una combinación de marcado, CSS y JavaScript para producir el resultado deseado. La única cosa que siempre debemos incluir es una sentencia **return**.
-
-Se espera que la función produzca código **JSX** que pueda usarse para renderizar algo en la pantalla del navegador. Por lo tanto, cuando definimos componentes funcionales, debemos devolver un elemento JSX.
-
-```js
+```jsx
 function BackButton() {
-  return <button>Back To Home</button>;
+  return (
+    <button>
+      Volver al inicio
+    </button>
+  );
 }
 ```
 
-Por supuesto, esto todavía no hace que `<button>Back To Home</button>` se muestre en la pantalla del navegador. Solo hemos definido nuestro componente.
+Sin esos paréntesis, JavaScript inserta un punto y coma tras `return` y el JSX de la línea siguiente nunca se ejecuta (ver "Errores comunes").
 
-¡Sigamos adelante para ver cómo renderizarlo y por qué la sentencia `return` era necesaria! 🚀
+### 4. Exportar e importar
 
-------
+Cada componente suele vivir en su propio archivo. Para usarlo desde otro, se exporta y se importa:
 
-## Importing and Exporting React Components
-
-Hay un poco más de trabajo que debemos hacer antes de poder usar nuestro componente definido y lograr que se renderice en el DOM.
-
-Mencionamos anteriormente que una aplicación de React normalmente tiene dos archivos principales: **App.js** e **index.js**. El archivo **App.js** es el nivel superior de tu aplicación, y **index.js** es el punto de entrada.
-
-Hasta ahora, hemos definido el componente dentro de **App.js**, pero como **index.js** es el punto de entrada, tenemos que exportarlo a **index.js** para poder renderizarlo.
-
-Los componentes en React son geniales porque son reutilizables. Podemos mantener las piezas de nuestros componentes separadas, organizadas y reutilizables colocándolas en archivos separados y exportándolas donde las necesitemos.
-
-Para exportarlos, podemos anteponer la declaración **export** y especificar si se trata de una exportación por defecto o con nombre. En este caso, usaremos la exportación por defecto. Si necesitas repasar cómo funcionan las exportaciones, puedes consultar la documentación web de MDN.
-
-Después de la definición del componente funcional, en **App.js**, podemos exportar nuestro componente por defecto de esta manera:
-
-```js
-export default MyComponent;
+```jsx
+// App.jsx
+export default function App() {
+  return <h1>Hola mundo</h1>;
+}
 ```
 
-Luego, podemos ir a nuestro archivo **index.js** para importar el componente desde `'./App'`:
-
-```js
-import MyComponent from './App';
+```jsx
+// main.jsx
+import App from './App';
 ```
 
-Esto nos permitirá usar **MyComponent** en **index.js**.
+Con `export default`, el archivo expone un valor principal y quien importa elige el nombre. Por convención, se importa con el mismo nombre del componente. También existe la exportación con nombre (`export function App() {}` e `import { App } from './App'`), donde el nombre importado debe coincidir.
 
-----
+### 5. Usarlo como una etiqueta
 
-## Using and Rendering a Component
+Un componente se usa escribiendo su nombre como etiqueta JSX. Sin contenido dentro, se escribe autocerrado:
 
-Ahora que ya tenemos un componente funcional definido, podemos empezar a usarlo.
-
-Podemos usarlo con una sintaxis similar a HTML que se parece a una etiqueta autocerrada:
-
-```js
+```jsx
 <MyComponent />
 ```
 
-Si necesitas anidar otros componentes dentro, también puedes usar una etiqueta de apertura y cierre:
+### 6. Montarlo en la página con `createRoot`
 
-```js
-<MyComponent>
-  <OtherComponent />
-</MyComponent>
+`createRoot` viene del paquete `react-dom/client`, porque conecta React con el DOM del navegador. Los paquetes se reparten así:
+
+* `react`: lo propio de React (hooks, JSX, definición de componentes). No toca el DOM.
+* `react-dom`: la conexión con el DOM del navegador. El DOM existe sin React; por eso esta parte va aparte.
+
+```jsx
+import { createRoot } from 'react-dom/client';
+import App from './App';
+
+const container = document.getElementById('root');
+const root = createRoot(container);
+root.render(<App />);
 ```
 
-Sin embargo, para mostrar nuestro componente en el navegador, debemos usar los métodos **createRoot()** y **render()** de la librería `react-dom/client`. Esto se hace en nuestro archivo de entrada, normalmente **index.js**.
+Paso a paso:
 
-### Renderizado en React 19+
+1. `document.getElementById('root')` obtiene un elemento que ya existe en el HTML.
+2. `createRoot(container)` crea una raíz de React sobre ese elemento.
+3. `root.render(<App />)` le indica a React qué mostrar dentro de la raíz.
 
-Primero, llamamos a **createRoot()** para crear una raíz de React. Una aplicación de React generalmente tiene un único elemento raíz en el DOM, y React gestiona todo lo que hay dentro de él.
+A partir de ahí, React administra todo lo que hay dentro de ese elemento. Una aplicación normal crea la raíz una sola vez y el resto de componentes se agregan desde `App`.
 
-```js
-import { createRoot } from "react-dom/client";
-```
-
-Luego, pasamos un elemento del DOM desde **index.html** a **createRoot()**:
-
-```js
-const root = createRoot(document.getElementById("app"));
-```
-
-Veámoslo paso a paso:
-
-* `document.getElementById("app")` selecciona un elemento del DOM desde **index.html**.
-* `createRoot()` recibe ese elemento y lo convierte en una raíz de React.
-* `createRoot()` devuelve un objeto con un método `.render()` que podemos usar para renderizar nuestro componente.
-
-Finalmente, renderizamos nuestro componente:
-
-```js
-createRoot(document.getElementById("app")).render(<MyComponent />);
-```
-
-A partir de este punto, React toma el control de la interfaz de usuario dentro de la raíz. En una aplicación típica de React, solo se configura la raíz una vez, y todos los componentes adicionales se agregan a través de tu componente principal **App.js**.
-
-> **En TypeScript:** `document.getElementById()` devuelve `HTMLElement | null` — TypeScript no puede saber, en tiempo de compilación, si el elemento con ese id realmente existe en el HTML. Pero `createRoot()` espera un `HTMLElement`, no algo que pueda ser `null`. Por eso, en un proyecto TypeScript esta línea suele escribirse con una **aserción de no-nulo** (el signo `!`), que le dice al compilador "confiá en mí, sé que esto no va a ser `null`":
->
-> ```tsx
-> const root = createRoot(document.getElementById("app")!);
-> ```
->
-> Es una de las pocas aserciones de no-nulo que se consideran razonables de usar, porque el elemento raíz de tu `index.html` es algo que vos mismo controlás y sabés que está ahí.
+Sobre importar `React`: con el JSX transform actual (React 17 en adelante) no hace falta `import React from 'react'` para escribir JSX. Solo se importa desde `react` lo que realmente se usa, por ejemplo `useState`.
 
 -----
 
-## Review
+## Ejemplo completo
 
-En esta lección, has aprendido un concepto fundamental de React: **los componentes**.
+`index.html` (fragmento):
 
-Antes de terminar, aquí tienes un resumen:
+```html
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+```
 
-* Las aplicaciones de React se construyen a partir de componentes.
-* Los componentes son responsables de renderizar partes de la interfaz de usuario.
-* Para crear componentes, importamos desde `react` solo cuando es necesario (por ejemplo, hooks).
-* Para renderizar componentes en el navegador, importamos **createRoot** desde `react-dom/client`.
-* Los componentes de React pueden definirse usando funciones normales de JavaScript, conocidas como **componentes funcionales**.
-* Los nombres de los componentes funcionales deben comenzar con una letra mayúscula, y **PascalCase** es la convención estándar de nombres.
-* Los componentes funcionales deben devolver elementos de React escritos en **JSX**.
-* Los componentes pueden exportarse e importarse entre archivos para mantener el código organizado y reutilizable.
-* Un componente de React puede usarse como una etiqueta similar a HTML, a menudo como un elemento autocerrado.
-* Para renderizar un componente de React, es necesario llamar a **createRoot()** para especificar un nodo raíz del DOM y luego llamar a **.render()** sobre la raíz devuelta.
+`src/Greeting.jsx`:
 
-¡Uf! Fue bastante información, pero los componentes están en el corazón de React y son una gran parte de lo que hace que React sea una herramienta tan poderosa 🚀
+```jsx
+export default function Greeting() {
+  return (
+    <section>
+      <h1>Hola, soy un componente de función</h1>
+      <p>Me definí una vez y puedo usarme cuantas veces quieras.</p>
+    </section>
+  );
+}
+```
+
+`src/main.jsx`:
+
+```jsx
+import { createRoot } from 'react-dom/client';
+import Greeting from './Greeting';
+
+createRoot(document.getElementById('root')).render(<Greeting />);
+```
+
+Flujo: el navegador carga el HTML, ejecuta `main.jsx`, se crea la raíz sobre `#root` y React inserta el resultado de `Greeting` dentro de ese elemento.
 
 -----
+
+## Errores comunes
+
+### 1. Nombre en minúscula
+
+```jsx
+function greeting() {
+  return <h1>Hola</h1>;
+}
+
+<greeting />
+```
+
+**Qué pasa:** React busca una etiqueta HTML llamada `greeting`; el componente no se renderiza como tal.
+**Por qué:** la primera letra decide si la etiqueta es HTML o componente.
+**Solución:** renombra a `Greeting`.
+
+### 2. `return` sin paréntesis con JSX en otra línea
+
+```jsx
+function Bad() {
+  return
+    <h1>Hola</h1>;
+}
+```
+
+**Qué pasa:** el componente devuelve `undefined` y no se muestra nada.
+**Por qué:** la inserción automática de punto y coma de JavaScript convierte `return` en `return;`.
+**Solución:** abre el paréntesis en la misma línea: `return (`.
+
+### 3. Olvidar el `return`
+
+```jsx
+function Bad() {
+  <h1>Hola</h1>;
+}
+```
+
+**Qué pasa:** el componente no muestra nada. La función devuelve `undefined`, que no es una interfaz válida para renderizar.
+**Por qué:** una función sin `return` devuelve `undefined`.
+**Solución:** agrega `return`.
+
+### 4. Olvidar exportar o importar
+
+**Qué pasa:** error del tipo `X is not defined` o el import falla.
+**Por qué:** los módulos son privados por defecto. Un componente no exportado no existe fuera de su archivo.
+**Solución:** agrega `export` en el archivo del componente e impórtalo donde se use. Verifica que el tipo de exportación (por defecto o con nombre) coincida con el tipo de import.
+
+### 5. Usar `ReactDOM.render`
+
+```jsx
+ReactDOM.render(<App />, document.getElementById('root'));
+```
+
+**Qué pasa:** en React 19 no existe.
+**Por qué:** se eliminó en favor de `createRoot`, introducido en React 18.
+**Solución:** usa `createRoot` desde `react-dom/client`, como en el ejemplo.
+
+### 6. Definir un componente dentro de otro
+
+**Qué pasa:** errores de estado y rendimiento.
+**Por qué:** cada render del padre crea una función nueva y React la trata como un componente distinto.
+**Solución:** define cada componente en el nivel superior del archivo, y pasa datos con props (ver [Props](03-Props.md)).
+
+-----
+
+## En TypeScript
+
+Un componente sin props no necesita anotaciones. El tipo de retorno se infiere:
+
+```tsx
+export default function Greeting() {
+  return <h1>Hola</h1>;
+}
+```
+
+En proyectos y tutoriales antiguos verás `React.FC`. Hoy se recomienda evitarlo: la función simple es más clara y permite tipar `children` solo en los componentes que lo reciben. Las props se tipan en [Props](03-Props.md).
+
+Al montar la raíz, `document.getElementById()` devuelve `HTMLElement | null`, mientras que `createRoot` espera un `HTMLElement`. Hay dos formas de resolverlo:
+
+```tsx
+// 1. Aserción de no-nulo: le dices al compilador que el elemento existe.
+createRoot(document.getElementById('root')!).render(<App />);
+
+// 2. Verificación explícita: falla con un mensaje claro si no existe.
+const container = document.getElementById('root');
+if (!container) throw new Error('No se encontró el elemento #root');
+createRoot(container).render(<App />);
+```
+
+El `!` es aceptable aquí porque el elemento está en tu propio `index.html`, pero solo es una promesa al compilador: si el elemento no existe, fallará en ejecución. La segunda opción da un error más legible.
+
+-----
+
+## Cuándo sí y cuándo no
+
+* **Un componente por responsabilidad:** extrae un componente cuando una pieza de interfaz tiene identidad propia o se repite.
+* **Un archivo por componente:** es la convención más común; facilita encontrar y reutilizar el código.
+* **`export default` o exportación con nombre:** ambas son válidas. La exportación con nombre obliga a usar el mismo nombre al importar; la de por defecto permite elegirlo. Sigue la convención de tu equipo.
+* **No crees más de una raíz sin motivo:** una aplicación normal tiene una sola. Varias raíces se usan al integrar React en una página que no es de React.
+
+-----
+
+## Resumen en 5 líneas
+
+1. Un componente es una función que devuelve JSX y describe una parte de la interfaz.
+2. Su nombre va en PascalCase; la mayúscula lo distingue de una etiqueta HTML.
+3. El `return` es obligatorio; si el JSX ocupa varias líneas, va entre paréntesis.
+4. Se exporta desde su archivo, se importa donde se necesite y se usa como `<Componente />`.
+5. Se muestra en la página con `createRoot(elemento).render(<App />)`, de `react-dom/client`.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>Por qué la mayúscula cambia el significado</summary>
+
+El JSX se transforma en llamadas a funciones que reciben el "tipo" del elemento. Si la etiqueta empieza con minúscula, el tipo es una cadena (`'section'`) y React crea un elemento del DOM. Si empieza con mayúscula, el tipo es la referencia a una variable (`Profile`) y React llama a esa función. Por eso el nombre debe estar en el alcance y escrito con mayúscula inicial.
+
+</details>
+
+<details>
+<summary>Volver a llamar a render sobre la misma raíz</summary>
+
+La documentación de React indica que llamar a `render` de nuevo sobre la misma raíz es válido: React actualiza el DOM para reflejar el nuevo JSX. Es poco común, porque normalmente los componentes cambian su interfaz mediante estado y no volviendo a llamar a `render`.
+
+</details>
+
+<details>
+<summary>Componentes de clase</summary>
+
+Antes de React 16.8 el estado y el ciclo de vida solo estaban disponibles en componentes de clase. Los Hooks permitieron hacerlo en funciones y hoy los componentes de función son la opción estándar. Los de clase siguen soportados, pero no se recomiendan para código nuevo.
+
+</details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+Un componente de React es una función de JavaScript que devuelve JSX y describe una parte de la interfaz. Su nombre empieza con mayúscula para que React lo distinga de una etiqueta HTML. Se exporta desde su archivo y se monta en la página con `createRoot` y `render`.
+
+### Respuesta ampliada (semi-senior)
+
+* **Definición:** una función que recibe props y devuelve lo que React debe renderizar. Debe ser pura respecto a sus entradas: mismas props, mismo resultado.
+* **Nombre con mayúscula:** JSX distingue tipo cadena (etiqueta del DOM) y tipo referencia (componente) según la primera letra.
+* **Punto de entrada:** `createRoot` de `react-dom/client` crea la raíz sobre un nodo del DOM; `render` indica el árbol a mostrar. Sustituye a `ReactDOM.render`, eliminado en React 19.
+* **Separación de paquetes:** `react` define componentes y hooks sin depender del DOM; `react-dom` los conecta con el navegador. Esa separación permite otros renderizadores (por ejemplo, React Native).
+* **Módulos:** cada componente se exporta e importa como cualquier módulo ES.
+* **Definición en el nivel superior:** declarar un componente dentro de otro lo recrea en cada render y hace que React lo trate como un tipo distinto.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Por qué el nombre de un componente debe empezar con mayúscula?**
+Porque JSX usa esa letra para decidir si es una etiqueta HTML (minúscula) o un componente (mayúscula).
+
+**2. ¿Qué devuelve un componente?**
+Normalmente JSX, pero también puede devolver `null` para no mostrar nada. Si la función no tiene `return`, devuelve `undefined`, que suele indicar un olvido.
+
+**3. ¿Hay que importar React para escribir JSX?**
+No con el JSX transform actual (React 17 en adelante). Solo se importa desde `react` lo que se use, como hooks.
+
+**4. ¿Qué diferencia hay entre `react` y `react-dom`?**
+`react` define componentes y hooks sin conocer el DOM. `react-dom` conecta React con el DOM del navegador.
+
+**5. ¿Qué reemplaza `createRoot` y desde cuándo?**
+Reemplaza a `ReactDOM.render`. Se introdujo en React 18 y `render` se eliminó en React 19.
+
+**6. ¿`export default` o exportación con nombre?**
+Ambas funcionan. La de por defecto deja elegir el nombre al importar; la de nombre obliga a usar el mismo. Depende de la convención del proyecto.
+
+-----
+
+## Siguiente lección
+
+Ya sabes definir, exportar y montar un componente. Ahora se usa un componente dentro de otro: [Los componentes renderizan otros componentes](02-Components%20Render%20Other%20Components.md). Después seguirá [Props](03-Props.md), y más adelante [The State Hook](../04-hooks-y-context/01-The%20State%20Hook.md).

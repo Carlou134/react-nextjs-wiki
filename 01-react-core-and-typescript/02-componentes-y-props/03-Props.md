@@ -1,110 +1,55 @@
-# Props
+# Props: pasar datos entre componentes
 
-## Props
+## En una frase
 
-Cuando pensamos en el contexto de una aplicación React, los componentes son pequeñas partes de un todo. Juntos, conforman la interfaz que los usuarios verán.
-
-Con cada componente desempeñando un papel en la interfaz, hay momentos en los que los componentes deben poder comunicarse con otros componentes.
-
-En esta lección, aprenderás otra forma en que los componentes pueden interactuar: un componente pasando información a otro componente.
-
-La información que se pasa de un componente a otro se conoce como **props**.
-
-Las **props** se pueden usar para personalizar la salida de cada componente, dependiendo de la información que se pase.
-
-Al permitir que los componentes se comuniquen entre sí, podemos agregar un nivel de flexibilidad que antes no era posible.
-
-Al final de esta lección, deberías ser capaz de:
-
-* Pasar, acceder y mostrar **props**.
-* Usar **props** para crear sentencias condicionales.
-* Definir manejadores de eventos en un componente y pasarlos a otros componentes.
-* Trabajar con los **children** de un componente.
-* Asignar valores predeterminados a las **props**.
-
-¡Comencemos!
-
-------
-
-## ¿Cuándo usar cada concepto de esta lección?
-
-- **Acceder a props** (`props.name`) — siempre que un componente necesite mostrar o usar algo que le llega desde afuera.
-- **Pasar props** — cuando el padre necesita personalizar o configurar a un hijo (`<Product name="..." price={...} />`).
-- **Renderizado condicional según props** — cuando es el **hijo** el que tiene que decidir qué mostrar según lo que recibió, sin que el padre le diga literalmente "mostrate de tal forma".
-- **Evento como prop** (el patrón `Talker`/`Button`) — cuando el padre necesita reaccionar a algo que pasa **dentro** del hijo, como un click. El padre define la lógica (`talk`), el hijo decide el momento en que se dispara (`onClick={talk}`).
-- **Convención `handleX` / `onX`** — siempre que definís un manejador de eventos y lo pasás como prop, para que cualquiera que lea el código entienda de qué se trata sin tener que rastrear la implementación.
-- **`children`** — cuando el contenido interno de un componente varía completamente según quien lo use (layouts, wrappers, cards), al punto de que enumerar ese contenido como props nombradas no tendría sentido.
-- **Valores por defecto** — cuando una prop es opcional y existe un valor razonable para cuando nadie la pasa explícitamente.
-
-------
-
-## Access a Component's props
-
-Cada componente tiene algo llamado **props**.
-
-Las **props** de un componente son un objeto. Contienen información sobre ese componente.
-
-¡Probablemente ya lo has visto antes, pero tal vez no te habías dado cuenta! Echemos un vistazo al tag HTML de un botón. Hay varias piezas de información que podemos pasar al tag de botón, como el tipo del botón.
-
-```html
-<button type="submit" value="Submit"> Submit </button>
-```
-
-En este ejemplo, hemos pasado dos piezas de información al tag del botón: un tipo y un valor. Dependiendo del atributo **type** que le demos al elemento `<button>`, este tratará el formulario de manera diferente. De la misma manera, podemos pasar información a nuestros propios componentes para especificar cómo se comportan.
-
-Las **props** sirven para el mismo propósito en los componentes que los argumentos para las funciones.
-
-Para acceder al objeto **props** de un componente, puedes hacer referencia al objeto **props** y usar la notación de punto para sus propiedades. Aquí tienes un ejemplo:
-
-```jsx
-props.name
-```
-
-Esto recuperaría la propiedad **name** del objeto **props**.
+Las **props** son el objeto con los datos que un componente padre entrega a un hijo al renderizarlo; son de solo lectura y viajan en una sola dirección, de arriba hacia abajo.
 
 -----
 
-## Pass `props` to a Component
+## Antes de empezar
 
-Para aprovechar las **props**, necesitamos pasar información a un componente de React. En el ejercicio anterior, renderizamos un objeto **props** vacío porque no pasamos ninguna **prop** a nuestro componente **PropsDisplayer**.
+Conviene que ya sepas:
 
-¿Cómo pasamos las **props**? Dándole un atributo al componente:
+* Qué es un componente de función y cómo devuelve JSX: [Tu primer componente](01-Your%20First%20React%20Component.md).
+* Cómo un componente renderiza a otros: [Componentes que renderizan componentes](02-Components%20Render%20Other%20Components.md).
 
-```jsx
-<Greeting name="Jamel" />
-```
+Palabras nuevas (también están en el [Glosario](Glosario.md)):
 
-Supongamos que quieres pasar un mensaje al componente, como "¡Somos geniales!". Así es como lo harías:
-
-```jsx
-<SloganDisplay message="¡Somos geniales!" />
-```
-
-Como puedes ver, para pasar información a un componente, necesitas un nombre para la información que deseas pasar.
-
-En el ejemplo anterior, usamos el nombre **message**. Puedes usar cualquier nombre que desees.
-
-Si quieres pasar información que no sea una cadena de texto, entonces envuelve esa información en llaves. Así es como pasarías un arreglo:
-
-```jsx
-<Greeting myInfo={["Astronauta", "Narek", "43"]} />
-```
-
-En este siguiente ejemplo, pasamos varias piezas de información al componente `<Greeting />`. Los valores que no son cadenas de texto están envueltos en llaves:
-
-```jsx
-<Greeting name="The Queen Mary" city="Long Beach, California" age={56} haunted={true} />
-```
+* **Props:** objeto que React construye con los atributos escritos en la etiqueta del componente y entrega como primer parámetro de la función.
+* **Componente padre / hijo:** el padre es el que escribe `<Hijo />` en su JSX; el hijo es el que se renderiza.
+* **Manejador de eventos (event handler):** función que se ejecuta como respuesta a un evento, como un clic.
+* **Callback:** función que se pasa a otra para que esta la llame cuando corresponda.
 
 -----
 
-## Render a Component's props
+## El problema
 
-Las **props** nos permiten personalizar el componente al pasarle información.
+Un componente que muestra siempre el mismo contenido solo sirve una vez. Para reutilizarlo hay que poder configurarlo desde afuera:
 
-Hemos aprendido cómo pasar información al objeto **props** de un componente. A menudo querrás que un componente muestre la información que le pasas.
+```jsx
+function GreetingJamel() { return <h1>Hola, Jamel</h1>; }
+function GreetingEsmeralda() { return <h1>Hola, Esmeralda</h1>; }
+```
 
-Para asegurarte de que un componente de función pueda usar el objeto **props**, define tu componente de función con **props** como parámetro:
+Copiar el componente por cada nombre no escala. Las props resuelven esto: el componente se escribe una vez y el padre le entrega los datos que cambian. Funcionan como los argumentos de una función.
+
+-----
+
+## Cómo funciona
+
+### Pasar props
+
+Se pasan como atributos en la etiqueta del componente. Los textos van entre comillas; cualquier otro valor (número, booleano, arreglo, objeto, función) va entre llaves:
+
+```jsx
+<Greeting name="The Queen Mary" age={56} haunted={true} tags={["barco", "museo"]} />
+```
+
+El nombre del atributo lo eliges tú.
+
+### Recibir props
+
+React reúne todos los atributos en un único objeto y lo pasa como primer parámetro:
 
 ```jsx
 function Button(props) {
@@ -112,359 +57,402 @@ function Button(props) {
 }
 ```
 
-En este ejemplo, **props** se acepta como parámetro y los valores del objeto se acceden con el patrón de notación de punto (objeto.nombreDePropiedad).
+Es equivalente a recibir `{ displayText: "..." }` y leer su propiedad con notación de punto. Si no se pasa ninguna prop, `props` es un objeto vacío, no `undefined`.
 
-Alternativamente, dado que **props** es un objeto, también puedes usar la sintaxis de desestructuración de esta manera:
+### Desestructurar
+
+Como `props` es un objeto, se puede desestructurar en el parámetro. Es la forma más habitual porque deja visibles las props que usa el componente:
 
 ```jsx
-function Button({displayText}) {
+function Button({ displayText }) {
   return <button>{displayText}</button>;
 }
 ```
 
-> **En TypeScript:** acá es donde vas a sentir el mayor cambio respecto de JSX puro. Cada componente necesita declarar la forma de sus props con un `type` (o `interface`), y usarlo para anotar el parámetro:
->
-> ```tsx
-> type ButtonProps = {
->   displayText: string;
-> };
->
-> function Button({ displayText }: ButtonProps) {
->   return <button>{displayText}</button>;
-> }
-> ```
->
-> A cambio de escribir ese tipo, ganás que TypeScript te avise en el momento —no cuando la app ya está corriendo— si te olvidaste de pasar una prop obligatoria, si le pasaste un tipo de dato equivocado (un número donde se esperaba un string), o si escribiste mal el nombre de una prop al usar el componente. Vemos el tipado de props en detalle, con más ejemplos, en [11-typescript-y-react/01-Tipado de Props y Funciones.md](../11-typescript-y-react/01-Tipado%20de%20Props%20y%20Funciones.md).
+Ambas formas son equivalentes.
 
------
+### Pasar props de componente a componente
 
-## Pass props From Component To Component
-
-Has aprendido cómo pasar una **prop** a un componente:
-
-```jsx
-<Greeting firstName="Esmerelda" />
-```
-
-También has aprendido cómo acceder y mostrar una **prop** pasada:
-
-```jsx
-return <h1>{props.firstName}</h1>;
-```
-
-El uso más común de las **props** es pasar información a un componente desde otro componente.
-
-Las **props** en React viajan en una sola dirección, de arriba a abajo, de padre a hijo.
-
-Vamos a explorar un poco más la relación padre-hijo al pasar **props**.
+Es el uso más común: un padre entrega datos a un hijo.
 
 ```jsx
 function App() {
-    return <Product name="Apple Watch" price={399} rating="4.5/5.0" />;
+  return <Product name="Apple Watch" price={399} rating="4.5/5.0" />;
 }
 ```
 
-En este ejemplo, **App** es el componente padre y **Product** es el componente hijo. **App** pasa tres **props** a **Product** (name, price y rating), que luego pueden ser leídas dentro del componente hijo.
+`App` es el padre y `Product` el hijo. Las props viajan en una sola dirección (**flujo unidireccional**): del padre al hijo, nunca al revés. Si el hijo necesita comunicar algo al padre, el padre le pasa una función (ver más abajo).
 
-Las **props** pasadas son inmutables, lo que significa que no se pueden cambiar. Si un componente quiere nuevos valores para sus **props**, debe depender del componente padre para que le pase los nuevos valores.
+Las props son **de solo lectura**: cada render recibe un objeto nuevo y el componente no debe modificarlo. Si un componente necesita valores distintos, el padre le pasa nuevas props en su siguiente render. Si el dato debe cambiar dentro del propio componente, ese dato es **estado**, no una prop.
 
-¡Vamos a practicar esto!
+Para reenviar todas las props a otro componente existe la sintaxis spread (`<Avatar {...props} />`). Úsala con moderación: oculta qué datos se pasan realmente.
 
------
+### Renderizar según las props
 
-## Render Different UI Based on props
-
-Puedes hacer más con las **props** que solo mostrarlas. También puedes usar las **props** para tomar decisiones.
+Una prop no solo se muestra: también sirve para decidir qué mostrar.
 
 ```jsx
-function LoginMsg(props) {
-  if (props.password === 'a-tough-password') {
+function LoginMsg({ isValid }) {
+  if (isValid) {
     return <h2>Inicio de sesión exitoso.</h2>;
-  } else {
-    return <h2>Falló el inicio de sesión.</h2>;
   }
+  return <h2>Falló el inicio de sesión.</h2>;
 }
 ```
 
-En este ejemplo, usamos las **props** pasadas para tomar una decisión, en lugar de renderizar el valor en la pantalla.
+Aquí la prop no se imprime; determina qué JSX devuelve el componente. (En el ejemplo se recibe un booleano ya calculado por el padre; nunca compares ni muestres contraseñas reales en un componente.)
 
-Si la contraseña recibida es igual a `'a-tough-password'`, el mensaje resultante en `<h2></h2>` será diferente.
+### Manejadores de eventos como props
 
-¡La contraseña pasada no se muestra en ninguno de los casos! La **prop** se usa para decidir qué se va a mostrar. ¡Esta es una técnica común!
-
------
-
-## Put an Event Handler in a Function Component
-
-Puedes, y a menudo lo harás, pasar funciones como **props**. Es especialmente común pasar funciones de manejo de eventos: un componente padre define **qué** debe pasar cuando ocurre un evento, y se lo entrega a un componente hijo para que decida **cuándo** dispararlo.
-
-Antes de poder pasar un manejador de eventos a algún lado, primero hay que definirlo. Se define exactamente igual que cualquier otra función dentro de un componente de función:
+Una función también es un valor y se puede pasar como prop. El patrón habitual: el padre define **qué** ocurre y el hijo decide **cuándo** se dispara.
 
 ```jsx
 function Talker() {
   function talk() {
-    let speech = '';
-    for (let i = 0; i < 10000; i++) {
-      speech += 'blah ';
-    }
-    alert(speech);
+    alert('blah blah blah');
   }
 
   return <Button talk={talk} />;
 }
 
-export default Talker;
-```
-
-En este componente **Talker**, `talk` es una función común de JavaScript, definida dentro del cuerpo del componente: cuando se la invoque, va a construir un texto largo y mostrarlo en una alerta. Hasta acá no hay nada nuevo — `talk` es solo una función. Lo interesante empieza en la línea `return`, donde esa función se pasa como **prop** al componente `Button`.
-
------
-
-## Pass an Event Handler as a prop
-
-Fíjate en la línea `return` de **Talker**:
-
-```jsx
-return <Button talk={talk} />;
-```
-
-Acá está el punto clave de esta lección: `talk={talk}` pasa la **función en sí** — no el resultado de ejecutarla. Nota que no hay paréntesis después de `talk`. Si hubiéramos escrito `talk={talk()}`, la función se habría ejecutado inmediatamente durante el renderizado de `Talker` (mostrando la alerta enseguida), y lo que se pasaría como prop sería el valor que `talk()` devuelve — en este caso `undefined` — no la función. Al pasarla sin paréntesis, le entregamos a `Button` la **referencia** a la función, para que sea `Button` quien decida cuándo (y si) llamarla.
-
-Esto conecta con algo que ya sabés: las funciones en JavaScript son valores como cualquier otro, así que se pueden pasar como props de la misma manera que pasarías un string o un número.
-
-En tiempo de ejecución, la secuencia es la siguiente: React renderiza `Talker`, `Talker` crea la función `talk`, se la pasa a `Button` como prop, y `Button` decide en qué momento invocarla — normalmente dentro de un manejador de eventos como `onClick`.
-
------
-
-## Receive an Event Handler as a prop
-
-Del lado de `Button`, la función `talk` llega como una propiedad más dentro del objeto `props`. Para dispararla cuando el usuario haga clic, hay que adjuntarla al elemento `<button>` como manejador del evento `onClick`:
-
-```jsx
-function Button(props) {
-  return <button onClick={props.talk}>Talk</button>;
-}
-```
-
-Vale la pena entender por qué `props` es un objeto. Cuando `Talker` escribe `<Button talk={talk} color="red" />`, React agrupa **todos** los atributos que le pasaste al componente dentro de un único objeto `props`, algo equivalente a:
-
-```js
-props = {
-  talk: talk,
-  color: "red"
-};
-```
-
-Por eso accedés a la función con `props.talk`: es simplemente la propiedad `talk` de ese objeto. Y, al igual que en `Talker`, se la pasa a `onClick` sin paréntesis (`props.talk`, no `props.talk()`) — es React quien la va a invocar automáticamente cuando detecte el clic.
-
-Dado que `props` es un objeto, también podés desestructurarlo directamente en los parámetros de la función, lo cual suele ser más legible cuando el componente usa pocas props:
-
-```jsx
 function Button({ talk }) {
-  return <button onClick={talk}>Talk</button>;
+  return <button onClick={talk}>Hablar</button>;
 }
 ```
 
-Ambas versiones hacen exactamente lo mismo; la segunda es simplemente la forma más común de escribirlo en código moderno de React.
+Se pasa la **función**, sin paréntesis. `talk={talk()}` la ejecutaría durante el render de `Talker` y pasaría su resultado (`undefined`) como prop. React es quien llama a `talk` cuando ocurre el clic.
 
-> **En TypeScript:** una prop que es una función también se tipa con una firma de función, no solo con un nombre genérico. Si `talk` no recibe argumentos y no devuelve nada útil, se tipa como `() => void`:
->
-> ```tsx
-> type ButtonProps = {
->   talk: () => void;
-> };
->
-> function Button({ talk }: ButtonProps) {
->   return <button onClick={talk}>Talk</button>;
-> }
-> ```
->
-> Esto es lo que hace que el error de "pasar `talk()` en lugar de `talk`" sea mucho menos probable en la práctica: si en algún punto `talk` esperara un argumento y te olvidás de pasárselo al invocarla, TypeScript te lo va a marcar.
+Secuencia: React renderiza `Talker`, este crea `talk` y se la pasa a `Button`; cuando el usuario hace clic, React invoca la función.
 
-----
+### Convención `handleX` y `onX`
 
-## handleEvent, onEvent, and props.onEvent
+Hay dos nombres que elegir, ambos en el padre:
 
-Cuando pasás un manejador de eventos como prop, hay dos nombres que tenés que elegir, y ambos se deciden en el componente padre (el que define el manejador y lo pasa hacia abajo):
-
-1. El nombre del **manejador de eventos** en sí.
-2. El nombre de la **prop** que usás para pasarlo.
-
-En el ejemplo de `Talker`, elegimos llamar `talk` tanto a la función como a la prop:
-
-```jsx
-function talk() { /* ... */ }
-
-return <Button talk={talk} />;
-```
-
-Estos dos nombres pueden ser cualquier cosa que quieras, pero existe una convención muy extendida en la comunidad de React que conviene seguir. Para el nombre del manejador, se usa la palabra **handle** seguida del tipo de evento: si escuchás un `"click"`, el manejador se llama **handleClick**; si escuchás un `"hover"`, se llama **handleHover**:
+* El manejador: `handle` + evento (`handleClick`, `handleHover`).
+* La prop que lo transporta: `on` + evento (`onClick`, `onHover`).
 
 ```jsx
 function MyComponent() {
   function handleHover() {
-    alert('Soy un manejador de eventos.');
-    alert('Se llamará en respuesta a eventos "hover".');
+    console.log('hover');
   }
 
   return <Child onHover={handleHover} />;
 }
 ```
 
-Para el nombre de la prop, se usa la palabra **on** seguida del tipo de evento: **onClick**, **onHover**, y así sucesivamente — como se ve en el ejemplo anterior, donde la prop se llama `onHover`.
-
-Ahora bien, hay un punto que suele generar confusión: `onClick` (o cualquier otro `on...`) **no es una palabra mágica que React reconozca en todos lados**. Su significado depende de dónde se use.
-
-Cuando `onClick` se coloca sobre un **elemento HTML nativo** — como `<button>`, `<div>` o `<img>` — React sí le da un tratamiento especial: registra un verdadero **escuchador de eventos** del DOM, y ejecuta la función que le pasaste cuando ocurre el clic real.
+`onClick` no es un evento mágico en todos lados. Sobre un elemento nativo (`<button>`, `<div>`), React registra un evento real del DOM. Sobre un componente propio (`<Button onClick={...} />`), es solo el nombre de una prop; el evento existe cuando, dentro del componente, esa prop se asigna a un elemento nativo:
 
 ```jsx
-// <button> es un elemento HTML nativo: onClick SÍ es un evento real
-<button onClick={props.onClick}>
-  Click me!
-</button>
-```
-
-Pero cuando `onClick` se coloca sobre un **componente propio** — como `<Button />` — React no le atribuye ningún significado especial. `<Button />` no es HTML, es una función de JavaScript que vos escribiste; React simplemente empaqueta `onClick` dentro del objeto `props` de ese componente, igual que haría con cualquier otro nombre de atributo (`talk`, `color`, `size`, lo que sea):
-
-```jsx
-// Button no es HTML: acá onClick es solo el nombre de una prop, sin comportamiento propio
-<Button onClick={handleClick} />
-
-// React internamente arma:
-// props = { onClick: handleClick }
-```
-
-En este segundo caso, todavía **no existe ningún escuchador de eventos**. Solo se genera un evento real en el momento en que, dentro de la definición de `Button`, esa prop termina adjuntada a un elemento HTML nativo:
-
-```jsx
-function Button(props) {
-  return (
-    <button onClick={props.onClick}>
-      Click me!
-    </button>
-  );
+function Button({ onClick }) {
+  return <button onClick={onClick}>Click me</button>;
 }
 ```
 
-Ahí es donde ocurre la conexión: `props.onClick` (el nombre que elegiste para tu prop) se asigna al `onClick` del `<button>` (el evento real del DOM), y recién en ese punto el clic queda conectado a la función.
+Por eso, `onX` en componentes propios es una convención de nombres, no un mecanismo del lenguaje.
 
-La regla general para tener en mente es esta: **los eventos del navegador solo existen sobre elementos HTML**. Sobre un componente propio, cualquier nombre que empiece con `on` —lo elijas vos— es apenas una convención de nomenclatura, no un mecanismo del lenguaje ni de React. React no sabe de antemano qué eventos vas a necesitar en tus propios componentes; solo entiende eventos cuando, en algún nivel de la jerarquía, la prop llega a un elemento HTML real.
+### `props.children`
 
-----
-
-## props.children
-
-Cada objeto **props** de un componente tiene una propiedad llamada **children**.
-
-`props.children` devolverá todo lo que esté entre las etiquetas JSX de apertura y cierre de un componente.
-
-Hasta ahora, todos los componentes que has visto han sido etiquetas autocerradas, como `<MyFunctionComponent />`. ¡No tienen que serlo! Podrías escribir `<MyFunctionComponent></MyFunctionComponent>` y aún así funcionaría.
-
-`props.children` devolvería todo lo que esté entre `<MyFunctionComponent>` y `</MyFunctionComponent>`.
-
-Al usar **props.children**, podemos separar el componente exterior, en este caso **MyFunctionComponent**, del contenido, lo que lo hace flexible y reutilizable.
+Todo lo escrito entre la etiqueta de apertura y la de cierre de un componente llega en la prop `children`:
 
 ```jsx
-function BigButton(props) {
-  return <button>{props.children}</button>;
+function BigButton({ children }) {
+  return <button>{children}</button>;
 }
+
+<BigButton>Texto</BigButton>          // children es el string "Texto"
+<BigButton><LilButton /></BigButton>  // children es el elemento <LilButton />
+<BigButton />                         // children es undefined
 ```
 
-Con este mismo componente `BigButton`, el valor de `props.children` cambia según lo que le pases entre sus etiquetas de apertura y cierre:
+Con varios hijos, `children` es un arreglo; con uno solo, es ese valor sin envolver. Sirve para componentes contenedor (layouts, tarjetas, paneles) cuyo contenido cambia por completo según quien los use. Es la base de la composición.
+
+### Valores por defecto
+
+Si una prop puede omitirse, define un valor por defecto al desestructurar:
 
 ```jsx
-// Ejemplo 1: props.children es el string "I am a child of BigButton."
-<BigButton>I am a child of BigButton.</BigButton>
-
-// Ejemplo 2: props.children es el elemento <LilButton />
-<BigButton>
-  <LilButton />
-</BigButton>
-
-// Ejemplo 3: al ser autocerrado, no hay nada entre etiquetas, así que props.children es undefined
-<BigButton />
-```
-
-> **En TypeScript:** `children` se tipa con `React.ReactNode`, un tipo pensado específicamente para cubrir todo lo que React puede renderizar: un string, un número, un elemento JSX, un array de elementos, o incluso `undefined`/`null` (para cuando no se pasa nada, como en el Ejemplo 3):
->
-> ```tsx
-> type BigButtonProps = {
->   children: React.ReactNode;
-> };
->
-> function BigButton({ children }: BigButtonProps) {
->   return <button>{children}</button>;
-> }
-> ```
->
-> Si tu componente puede usarse sin hijos (como el Ejemplo 3), marcá la prop como opcional con `children?: React.ReactNode`.
-
-Si un componente tiene más de un hijo entre sus etiquetas JSX, entonces `props.children` devolverá esos hijos en un arreglo. Sin embargo, si un componente tiene solo un hijo, entonces `props.children` devolverá ese único hijo, **sin envolverlo en un arreglo**.
-
-----
-
-## Giving Default Values to props
-
-Mira el componente **Button**. Fíjate que en la línea 6, **Button** espera recibir una **prop** llamada **text**. El **text** recibido se mostrará dentro de un elemento `<button>`.
-
-¿Qué pasa si nadie le pasa texto a **Button**?
-
-Si nadie le pasa texto a **Button**, entonces lo que se mostrará será un botón vacío. Sería mejor si **Button** pudiera mostrar un mensaje predeterminado en su lugar.
-
-Puedes hacer que esto suceda especificando un valor predeterminado para la **prop**. ¡Hay dos formas de hacerlo!
-
-El primer método es especificar el valor predeterminado directamente en la definición de la función:
-
-```jsx
-function Example({text='This is default text'}) {
-   return <h1>{text}</h1>;
-}
-```
-
-También puedes establecer el valor predeterminado dentro del cuerpo de la función:
-
-```jsx
-function Example(props) {
-  const {text = 'This is default text'} = props;
+function Example({ text = 'Texto por defecto' }) {
   return <h1>{text}</h1>;
 }
 ```
 
-Si a `<Example />` no se le pasa ningún texto, entonces mostrará “This is default text”.
+También puedes hacerlo en el cuerpo: `const { text = 'Texto por defecto' } = props;`.
 
-Si a `<Example />` se le pasa algún texto, entonces mostrará ese texto pasado como **prop**.
+El valor por defecto se usa solo si la prop falta o vale `undefined`. Con `null`, `0` o `''` **no** se aplica.
 
-> **En TypeScript:** los valores por defecto se combinan naturalmente con las **props opcionales**. Si `text` tiene un valor por defecto, entonces quien use `<Example />` no está obligado a pasarlo — y eso hay que reflejarlo en el tipo marcando la prop con `?`:
->
-> ```tsx
-> type ExampleProps = {
->   text?: string;
-> };
->
-> function Example({ text = 'This is default text' }: ExampleProps) {
->   return <h1>{text}</h1>;
-> }
-> ```
->
-> Si te olvidás del `?` y dejás `text: string`, TypeScript te va a exigir la prop igual, aunque en tiempo de ejecución el valor por defecto funcione — porque, desde el punto de vista de los tipos, una prop sin `?` es obligatoria.
+`Componente.defaultProps` en componentes de función fue eliminado en React 19; los defaults al desestructurar son la alternativa oficial. Los componentes de clase lo conservan.
 
 -----
 
-## Review
+## Ejemplo completo
 
-¡Eso completa nuestra lección sobre **props**! Aquí están algunas de las habilidades que has aprendido:
+```tsx
+import type { ReactNode } from 'react';
 
-* Pasar una **prop** al darle un atributo a una instancia de componente
-* Acceder a una **prop** pasada a través de `props.propName`
-* Mostrar una **prop**
-* Usar una **prop** para tomar decisiones sobre qué mostrar
-* Definir un manejador de eventos en un componente de función
-* Pasar un manejador de eventos como una **prop**
-* Recibir un manejador de eventos como **prop** y adjuntarlo a un escuchador de eventos
-* Seguir las convenciones de nombres para los manejadores de eventos y sus atributos
-* Acceder a **props.children**
-* Asignar valores predeterminados a las **props**
+type CardProps = {
+  title: string;
+  price?: number;
+  onBuy: (title: string) => void;
+  children?: ReactNode;
+};
 
-¡Eso es mucho! No te preocupes si todo esto parece un poco confuso. ¡Pronto tendrás mucha práctica!
+function Card({ title, price = 0, onBuy, children }: CardProps) {
+  return (
+    <article>
+      <h2>{title}</h2>
+      {price === 0 ? <p>Gratis</p> : <p>${price}</p>}
+      {children}
+      <button onClick={() => onBuy(title)}>Comprar</button>
+    </article>
+  );
+}
+
+const products = [
+  { id: 1, title: 'Apple Watch', price: 399 },
+  { id: 2, title: 'Guía de React', price: 0 },
+];
+
+export default function Shop() {
+  function handleBuy(title: string) {
+    console.log(`Compraste: ${title}`);
+  }
+
+  return (
+    <section>
+      {products.map((p) => (
+        <Card key={p.id} title={p.title} price={p.price} onBuy={handleBuy}>
+          <small>Envío incluido</small>
+        </Card>
+      ))}
+    </section>
+  );
+}
+```
+
+Puntos clave:
+
+1. `Shop` (padre) define `handleBuy` y lo pasa como `onBuy`; `Card` decide cuándo llamarlo.
+2. `price` es opcional y tiene valor por defecto; `children` se renderiza donde `Card` lo indica.
+3. Se pasa `key` en el `map`; React la usa para identificar cada elemento y no llega a `Card` como prop.
+4. `onClick={() => onBuy(title)}` usa una función flecha porque hay que pasar un argumento.
 
 -----
+
+## Errores comunes
+
+### 1. Mutar las props
+
+```jsx
+function Badge(props) {
+  props.label = props.label.toUpperCase();   // error
+  return <span>{props.label}</span>;
+}
+```
+
+**Por qué pasa:** parece una variable local. **Qué ocurre:** las props son de solo lectura; modificarlas produce comportamiento impredecible (en modo estricto, el objeto está congelado y falla). **Solución:** deriva un valor nuevo durante el render.
+
+```jsx
+function Badge({ label }) {
+  const upper = label.toUpperCase();
+  return <span>{upper}</span>;
+}
+```
+
+### 2. Ejecutar la función en lugar de pasarla
+
+```jsx
+<button onClick={handleClick()}>Enviar</button>   // se ejecuta al renderizar
+```
+
+**Por qué pasa:** con paréntesis la función se invoca durante el render y `onClick` recibe su resultado. **Solución:** pasa la referencia (`onClick={handleClick}`) o una función que la llame (`onClick={() => handleClick(id)}`).
+
+### 3. Olvidar `key` al renderizar listas
+
+```jsx
+{products.map((p) => <Card title={p.title} />)}   // advertencia de key
+```
+
+**Por qué pasa:** React necesita identificar cada elemento entre renders. **Solución:** usa un identificador estable (`key={p.id}`). Evita el índice si la lista se reordena o se borran elementos. Recuerda que `key` no se lee como `props.key`; si el hijo necesita el valor, pásalo con otro nombre.
+
+### 4. Guardar en estado una copia de una prop
+
+```jsx
+const [name, setName] = useState(props.name);   // no se actualiza si la prop cambia
+```
+
+**Por qué pasa:** `useState` usa el valor inicial solo en el primer render. **Solución:** usa la prop directamente. Copiarla solo tiene sentido si es un valor inicial editable y se nombra así (`initialName`).
+
+### 5. Esperar que `children` siempre exista
+
+`children` es `undefined` cuando el componente se usa autocerrado. **Solución:** decide si es obligatorio o tipa como opcional y maneja el caso vacío.
+
+-----
+
+## En TypeScript
+
+### Tipar las props
+
+Declara la forma de las props con `type` o `interface` y anota el parámetro desestructurado:
+
+```tsx
+type ButtonProps = {
+  displayText: string;
+};
+
+function Button({ displayText }: ButtonProps) {
+  return <button>{displayText}</button>;
+}
+```
+
+TypeScript avisa en compilación si falta una prop obligatoria, si el tipo es incorrecto o si escribes mal un nombre. Para props, `type` e `interface` son intercambiables; elige uno y sé consistente. Más detalle en [Tipado de Props y Funciones](../11-typescript-y-react/01-Tipado%20de%20Props%20y%20Funciones.md).
+
+### Props opcionales y valores por defecto
+
+Una prop con valor por defecto se marca con `?`; sin él, TypeScript la exige aunque el default exista:
+
+```tsx
+type ExampleProps = {
+  text?: string;
+};
+
+function Example({ text = 'Texto por defecto' }: ExampleProps) {
+  return <h1>{text}</h1>;
+}
+```
+
+### `children`
+
+Se tipa con `React.ReactNode`, que cubre todo lo renderizable (texto, números, elementos, arreglos, `null`, `undefined`). Si el componente puede usarse sin hijos, márcalo opcional:
+
+```tsx
+import type { ReactNode } from 'react';
+
+type BigButtonProps = {
+  children?: ReactNode;
+};
+
+function BigButton({ children }: BigButtonProps) {
+  return <button>{children}</button>;
+}
+```
+
+Alternativa: `PropsWithChildren<Props>`, que agrega `children?: ReactNode` al tipo.
+
+### Callbacks y eventos
+
+Tipa las funciones con su firma completa:
+
+```tsx
+type ButtonProps = {
+  talk: () => void;                            // sin argumentos
+  onBuy: (id: number) => void;                 // con argumento
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;   // evento del DOM
+};
+```
+
+Para pasar un manejador a un elemento nativo, usa el tipo del evento (`React.MouseEvent<HTMLButtonElement>`, `React.ChangeEvent<HTMLInputElement>`). Si un callback exige un argumento y lo llamas sin él, TypeScript lo marca.
+
+### Sobre `React.FC`
+
+No es necesario: anotar el parámetro (`function Button(props: ButtonProps)`) es más simple, deja los genéricos y el valor de retorno inferidos y evita depender de un tipo extra. Es una preferencia de estilo habitual, no una regla de React.
+
+-----
+
+## Cuándo sí y cuándo no
+
+Guía de uso de cada concepto:
+
+* **Pasar props:** cuando el padre necesita configurar al hijo.
+* **Renderizado según props:** cuando el hijo decide qué mostrar según lo que recibió.
+* **Evento como prop:** cuando el padre debe reaccionar a algo que ocurre dentro del hijo.
+* **`handleX` / `onX`:** siempre que definas un manejador y lo pases como prop, para que se entienda sin rastrear la implementación.
+* **`children`:** cuando el contenido interno varía tanto que enumerarlo como props nombradas no tiene sentido.
+* **Valores por defecto:** cuando una prop es opcional y existe un valor razonable si nadie la pasa.
+
+Props, estado y Context:
+
+* **Props:** datos que llegan de un ancestro y el componente solo lee. Es la opción por defecto.
+* **Estado:** datos que el propio componente controla y cambian con el tiempo (ver [useState](../04-hooks-y-context/01-The%20State%20Hook.md)).
+* **Context:** datos que muchos componentes a distintos niveles necesitan (tema, usuario), cuando pasarlos nivel por nivel (**prop drilling**) se vuelve incómodo (ver [React Context](../04-hooks-y-context/04-React%20Context.md)).
+
+Antes de usar Context, prueba la composición: pasar `children` o componentes ya armados evita atravesar niveles intermedios sin necesidad.
+
+-----
+
+## Resumen en 5 líneas
+
+1. Las props son un objeto de solo lectura que el padre pasa al hijo con atributos JSX.
+2. Se reciben como parámetro y suelen desestructurarse: `function Button({ text })`.
+3. Las funciones también son props; se pasan sin paréntesis y se nombran `handleX` (manejador) y `onX` (prop).
+4. `children` recibe el contenido entre las etiquetas; los valores por defecto se ponen al desestructurar.
+5. Con TypeScript, declara un `type` de props; usa `?` para las opcionales y `ReactNode` para `children`.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>Por qué las props son inmutables</summary>
+
+React asume que un componente es una función pura respecto a sus props y su estado: mismas entradas, mismo JSX. Si mutaras las props, el padre y otros componentes que comparten ese objeto verían cambios sin que React lo sepa, y no habría re-render. Cada render recibe un objeto de props nuevo; para cambiar datos, se usa estado en el dueño del dato.
+
+</details>
+
+<details>
+<summary>Prop drilling y cómo evitarlo</summary>
+
+Ocurre cuando una prop atraviesa varios componentes intermedios que no la usan, solo para llegar a uno más profundo. Opciones: (1) composición con `children` o pasando elementos ya construidos, (2) Context para datos globales o de amplio alcance, (3) acercar el estado al componente que lo usa. No conviene saltar a Context al primer nivel de anidación: dos o tres niveles de props explícitas son legibles y fáciles de rastrear.
+
+</details>
+
+<details>
+<summary>`ref` como prop en React 19</summary>
+
+Desde React 19, los componentes de función pueden recibir `ref` como una prop más, por lo que `forwardRef` ya no es necesario en componentes nuevos. Las refs pasadas a componentes de clase siguen apuntando a la instancia y no llegan como prop.
+
+</details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+Las props son los datos que un componente padre pasa a un hijo mediante atributos JSX. El hijo las recibe como un objeto de solo lectura, normalmente desestructurado. Permiten reutilizar un componente con distintos datos y también pasar funciones para que el hijo avise al padre.
+
+### Respuesta ampliada (semi-senior)
+
+* **Flujo unidireccional:** los datos bajan del padre al hijo; el hijo se comunica hacia arriba llamando callbacks recibidos como props.
+* **Solo lectura:** cada render recibe un objeto nuevo; el componente no debe mutarlo. Lo que cambia dentro del componente es estado.
+* **Funciones como props:** se pasa la referencia, no el resultado. La convención es `handleX` para el manejador y `onX` para la prop.
+* **`children` y composición:** permiten componentes contenedor y evitan prop drilling sin recurrir a Context.
+* **Valores por defecto:** al desestructurar; solo aplican con `undefined`. `defaultProps` en componentes de función se eliminó en React 19.
+* **Tipado:** `type` o `interface` para las props, `?` para opcionales, `ReactNode` para `children` y firmas explícitas para callbacks.
+* **Errores típicos:** mutar props, `onClick={fn()}`, olvidar `key`, copiar props a estado.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Cuál es la diferencia entre props y estado?**
+Las props llegan desde el padre y son de solo lectura; el estado pertenece al componente, lo conserva React entre renders y se cambia con su setter. Cambiar cualquiera de los dos provoca un nuevo render.
+
+**2. ¿Por qué se dice que el flujo de datos es unidireccional?**
+Porque los datos solo bajan del padre al hijo. Para que el hijo influya en el padre, este le pasa una función y el hijo la invoca.
+
+**3. ¿Se pueden mutar las props?**
+No. Son de solo lectura; hacerlo rompe el modelo de React y no provoca re-render. Deriva un valor nuevo o, si el dato debe cambiar, elévalo a estado del padre.
+
+**4. ¿Qué es el prop drilling y cómo se evita?**
+Pasar una prop por varios niveles intermedios que no la usan. Se reduce con composición (`children`), acercando el estado a quien lo usa o con Context si el dato es de amplio alcance.
+
+**5. ¿Para qué sirve `children`?**
+Recibe el contenido entre las etiquetas del componente. Permite crear contenedores reutilizables (layouts, tarjetas) sin conocer de antemano su contenido.
+
+**6. ¿Cómo se definen valores por defecto en React 19?**
+Al desestructurar: `function Card({ size = 'md' })`. Solo se aplican si la prop falta o es `undefined`. `defaultProps` en componentes de función ya no se soporta.
+
+-----
+
+## Siguiente lección
+
+Con componentes y props dominados, sigue el orden de carpetas: primero el tooling ([Creating a React App](../03-tooling-y-devtools/01-Creating%20a%20React%20App.md)) y después los Hooks, empezando por [useState](../04-hooks-y-context/01-The%20State%20Hook.md).
