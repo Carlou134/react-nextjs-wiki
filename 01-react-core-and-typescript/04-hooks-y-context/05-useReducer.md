@@ -1,95 +1,110 @@
-# useReducer
+# useReducer: ordenar los cambios de estado complejos
 
-## ¿Por Qué Usar useReducer?
+## En una frase
 
-Hasta ahora hemos gestionado el estado de nuestros componentes con el **State Hook** (`useState()`). Funciona muy bien mientras el estado es simple: un booleano, una cadena, un número, o incluso un objeto con pocas propiedades relacionadas entre sí.
-
-Sin embargo, a medida que la lógica de actualización de un componente crece —varias acciones posibles, múltiples piezas de estado que deben cambiar de forma coordinada, actualizaciones que dependen fuertemente del estado anterior—, mantener todo con `useState()` empieza a ensuciar el código. Terminamos escribiendo varios manejadores de eventos parecidos entre sí, cada uno repitiendo su propia lógica de copiar el estado anterior con el operador spread, y resulta fácil olvidar algún campo o introducir inconsistencias entre actualizaciones que deberían mantenerse sincronizadas.
-
-React ofrece el Hook **useReducer()** para estos casos. En lugar de modificar el estado directamente a través de múltiples funciones actualizadoras, `useReducer()` centraliza toda la lógica de actualización en una única función llamada **reducer**, y expone una función `dispatch()` para "anunciar" qué tipo de actualización queremos realizar.
-
-En esta lección aprenderemos:
-
-* Qué problema resuelve `useReducer()` frente a `useState()`.
-* La firma de `useReducer()` y el significado de cada uno de sus valores.
-* Cómo funciona la función reducer.
-* El patrón de `dispatch()` con objetos de acción.
-* Un ejemplo completo de un contador construido con `useReducer()`.
-* Cuándo conviene preferir `useReducer()` en lugar de `useState()`.
+`useReducer` te deja juntar **toda la lógica de cambio de un estado en una sola función** (el *reducer*), y para cambiarlo solo "envías un pedido" con `dispatch`.
 
 -----
 
-## La Firma de useReducer
+## Antes de empezar
 
-El Hook `useReducer()` es una exportación nombrada de la librería de React, igual que `useState()`:
+Conviene que ya sepas:
 
-```javascript
-import { useReducer } from 'react';
+* Cómo guardar datos que cambian con `useState`, y por qué no se modifican arrays y objetos sino que se hacen copias: [useState](01-The%20State%20Hook.md).
+* Cómo compartir datos entre componentes lejanos con Context: [React Context](04-React%20Context.md). Solo lo necesitas para la sección "Combinarlo con Context".
+
+Palabras nuevas (todas están explicadas también en el [glosario](Glosario.md)):
+
+* **Reducer:** una función que recibe el estado actual y una acción, y devuelve el estado nuevo. Es la regla que decide cómo cambia el estado.
+* **Acción (action):** un objeto que describe qué quieres que pase. Por ejemplo `{ type: 'increment' }`.
+* **Dispatch:** la función que usas para enviar una acción al reducer.
+* **Payload:** el dato extra que viaja dentro de la acción, cuando el reducer lo necesita (por ejemplo, el producto a agregar).
+* **Función pura:** una función que, con los mismos datos de entrada, siempre devuelve lo mismo, y no hace nada "por fuera" (no llama a APIs, no cambia otras variables).
+* **Unión discriminada (TypeScript):** un tipo formado por varias opciones que comparten un campo (por ejemplo `type`) que dice cuál opción es.
+
+-----
+
+## El problema
+
+Con `useState`, cada cambio suele tener su propia función. Cuando el mismo estado se puede cambiar de muchas maneras, el código se llena de manejadores parecidos:
+
+```jsx
+const [items, setItems] = useState([]);
+
+function addItem(item) {
+  setItems((prev) => [...prev, item]);
+}
+
+function removeItem(id) {
+  setItems((prev) => prev.filter((item) => item.id !== id));
+}
+
+function clearItems() {
+  setItems([]);
+}
 ```
 
-Se invoca así:
+Con tres acciones todavía se aguanta. Pero imagina diez, o un estado con varios campos que tienen que cambiar juntos: cada manejador repite su propia copia con spread (`...prev`), y es fácil olvidarte de un campo o dejar datos inconsistentes.
 
-```javascript
+`useReducer` resuelve esto: toda la lógica de cambio vive en **un solo lugar**, y el resto del componente solo dice *qué pasó*.
+
+-----
+
+## Cómo funciona
+
+### Las tres piezas
+
+`useReducer` trabaja con tres piezas:
+
+* **state:** el valor actual del estado, igual que en `useState`.
+* **dispatch(acción):** la función para pedir un cambio. Es como **enviar un pedido**: tú no cambias el estado, solo avisas qué quieres que pase.
+* **reducer(state, action):** la función que recibe el pedido y decide cuál es el estado nuevo. Es la **regla** que se aplica a cada pedido.
+
+El recorrido siempre es el mismo:
+
+```
+1. Algo pasa (un clic)   ->  dispatch({ type: 'increment' })
+2. React llama al reducer ->  reducer(estadoActual, { type: 'increment' })
+3. El reducer devuelve el estado nuevo
+4. React guarda ese estado y vuelve a renderizar el componente
+```
+
+### Paso 1: importarlo y llamarlo
+
+```jsx
+import { useReducer } from 'react';
+
 const [state, dispatch] = useReducer(reducer, initialState);
 ```
 
-Esta línea tiene tres partes que conviene distinguir con claridad:
+Fíjate en que hay dos cosas distintas en esa línea:
 
-1. **`reducer`**: una función que nosotros definimos, con la firma `(state, action) => newState`. Es la única responsable de calcular cómo cambia el estado.
-2. **`initialState`**: el valor con el que se inicializa el estado durante el primer renderizado, del mismo modo que el argumento que le pasamos a `useState()`.
-3. El valor de retorno es un arreglo de dos elementos que extraemos mediante **desestructuración de arreglos**, siguiendo la misma convención que ya conocemos de `useState()`:
-   * **`state`**: el valor actual del estado.
-   * **`dispatch`**: una función que usamos para enviar una acción al reducer y así solicitar una actualización de estado.
+* Lo que **le pasas** a `useReducer`: la función `reducer` y el estado inicial `initialState`.
+* Lo que **te devuelve**: un array de dos posiciones, `[state, dispatch]`.
 
-### Cómo funciona la desestructuración de arreglos (y por qué importa acá)
+Son dos pares de nombres que aparecen en la misma línea, pero **no son lo mismo**. No es una cosa vista dos veces.
 
-Vale la pena detenerse en esto, porque `const [state, dispatch] = useReducer(reducer, initialState)` mezcla dos mecánicas de JavaScript que conviene distinguir con claridad.
+### Paso 2: los nombres se eligen por posición
 
-La **desestructuración de arreglos** asigna por **posición**, no por nombre. `useReducer()` siempre devuelve un arreglo de dos elementos, en un orden fijo: el estado actual va primero, `dispatch` va segundo. Los nombres `state` y `dispatch` que usamos para capturarlos son una elección nuestra —igual que con `useState()`— y podríamos llamarlos de cualquier otra forma sin que cambie nada del comportamiento, siempre que respetemos el orden:
+Los corchetes `[state, dispatch]` son *desestructuración de arrays*: sacan las dos posiciones del array y les ponen nombre. Se asigna **por posición**: el primero es el estado, el segundo es `dispatch`. Los nombres los eliges tú:
 
-```javascript
+```jsx
 const [contador, enviarAccion] = useReducer(reducer, initialState);
-// contador es el primer elemento del arreglo (el estado)
-// enviarAccion es el segundo (dispatch), aunque lo hayamos llamado distinto
+// contador es la posición 0 (el estado)
+// enviarAccion es la posición 1 (dispatch), aunque lo hayas llamado distinto
 ```
 
-Esto es exactamente lo opuesto a la **desestructuración de objetos** (la que usamos, por ejemplo, al consumir `props` o el valor de un Context): ahí se asigna por **nombre de propiedad**, no por posición, y el orden no importa — pero el nombre sí tiene que coincidir con la propiedad real del objeto (o renombrarse explícitamente con `:`).
+La desestructuración de **objetos** (con llaves) funciona al revés: asigna **por nombre**. El orden no importa, pero el nombre tiene que coincidir con la propiedad del objeto:
 
-Este detalle explica un error de tipeo bastante común: como los nombres del lado izquierdo (`state`, `dispatch`) son una elección libre, es tentador reutilizar en esa misma línea nombres que ya estás usando para otra cosa — típicamente, el nombre de la función reducer o del estado inicial:
-
-```javascript
-// ❌ colisión de nombres
-const [reducer, initialState] = useReducer(reducer, initialState);
+```jsx
+const { state, dispatch } = algunObjeto;   // busca las propiedades "state" y "dispatch"
 ```
 
-Este código no funciona, y el motivo es una regla de JavaScript que va más allá de `useReducer()`: cuando declarás una variable con `const` (o `let`), esa variable queda reservada para **todo el alcance** en el que se declara desde el principio del bloque, aunque todavía no tenga un valor asignado — un período llamado **zona muerta temporal (temporal dead zone)**. Como el `const [reducer, initialState] = ...` de arriba declara un `reducer` nuevo en el mismo alcance donde ya existía una función llamada `reducer`, el `reducer` que aparece del lado derecho de esa misma línea (dentro de `useReducer(reducer, initialState)`) ya no apunta a tu función reducer definida más arriba: apunta a esta variable nueva, todavía sin inicializar. El resultado es un error en tiempo de ejecución: `Cannot access 'reducer' before initialization`.
+### Paso 3: el reducer
 
-La forma de evitarlo es simplemente no reutilizar esos nombres: llamá a tus variables desestructuradas `state` y `dispatch` (o algo igual de descriptivo, como `contador`/`dispatchContador` si tenés varios reducers en el mismo archivo), y dejá que la función reducer y el estado inicial conserven sus propios nombres sin cruzarse.
+El reducer es una **función pura**: recibe `(state, action)` y devuelve el estado nuevo. Usa un `switch` sobre `action.type` para decidir qué hacer:
 
-Al igual que con cualquier otro Hook, `useReducer()` solo puede llamarse en el nivel superior de un componente de función (o de un Hook personalizado), nunca dentro de condicionales ni bucles.
-
-> **En TypeScript:** el punto donde más vale la pena invertir tipado es en `action`, porque distintos tipos de acción suelen traer distintos `payload`. La forma idiomática es una **unión discriminada**: un `type` que enumera cada acción posible, todas compartiendo el campo `type` como "discriminante":
->
-> ```tsx
-> type Action =
->   | { type: 'increment' }
->   | { type: 'decrement' }
->   | { type: 'setCount'; payload: number };
-> ```
->
-> Con esto, dentro del `switch` del reducer, TypeScript **estrecha (narrows)** automáticamente el tipo de `action` en cada `case`: en `case 'setCount'`, sabe que `action.payload` existe y es `number`; en `case 'increment'`, ni siquiera te deja intentar leer `action.payload`, porque esa variante del tipo no lo tiene. Esto evita el error clásico de despachar `{ type: 'setCount' }` olvidándote del `payload`, o de escribir mal el `type` de una acción — casos que, en JavaScript puro, solo se descubrirían en tiempo de ejecución. El tipado completo de `useReducer()` combinado con Context se ve en detalle en [11-typescript-y-react/03-Tipado de useReducer y Context API.md](../11-typescript-y-react/03-Tipado%20de%20useReducer%20y%20Context%20API.md).
-
------
-
-## Cómo Funciona La Función Reducer
-
-El **reducer** es una función **pura**: recibe el estado actual y un objeto de **acción**, y devuelve el siguiente estado. Nunca modifica el estado que recibe; siempre calcula y devuelve un valor nuevo.
-
-Que sea una función pura —sin llamadas a APIs, sin efectos secundarios, sin depender de datos externos que puedan cambiar— es lo que la hace predecible: dado el mismo estado y la misma acción, un reducer siempre produce el mismo resultado. Esta pureza también la hace muy fácil de probar de forma aislada, ya que podemos llamar a `reducer(state, action)` directamente en un test, sin necesidad de renderizar ningún componente.
-
-Un reducer típico usa una sentencia `switch` sobre la propiedad `type` de la acción para decidir qué transformación aplicar:
-
-```javascript
+```jsx
 function reducer(state, action) {
   switch (action.type) {
     case 'increment':
@@ -104,38 +119,60 @@ function reducer(state, action) {
 }
 ```
 
-El caso `default`, que simplemente devuelve el estado sin modificar, es importante: evita que el reducer produzca un resultado inesperado (como `undefined`) si en algún momento se despacha una acción con un `type` que no reconoce.
+Tres reglas del reducer:
 
------
+* **Nunca modifica el estado que recibe.** Siempre devuelve uno **nuevo** (igual que con `useState`: copias, no cambios in situ).
+* **Siempre devuelve algo.** Cada `case` termina en un `return`.
+* **El `default` devuelve el estado sin cambios.** Así, si llega una acción que el reducer no conoce, no se rompe nada ni se devuelve `undefined`.
 
-## El Patrón de Dispatch
+Que sea "pura" significa que no llama a APIs ni hace cosas por fuera: con el mismo estado y la misma acción, siempre da el mismo resultado. Eso la hace predecible.
 
-Nunca actualizamos el estado directamente. En su lugar, llamamos a `dispatch()` con un **objeto de acción**, que por convención incluye al menos una propiedad `type` describiendo qué ocurrió:
+### Paso 4: dispatch y payload
 
-```javascript
+Para cambiar el estado, llamas a `dispatch` con un objeto de acción. Por convención, tiene al menos un `type` que dice qué pasó:
+
+```jsx
 dispatch({ type: 'increment' });
 ```
 
-Llamar a `dispatch()` no actualiza el estado de forma sincrónica por sí mismo: lo que hace es programar una llamada a `reducer(currentState, action)` y decirle a React que debe volver a renderizar el componente con el valor que ese reducer devuelva, de forma muy similar a como la función actualizadora que devuelve `useState()` programa un nuevo renderizado.
+`dispatch` no cambia el estado en el momento: programa una llamada a `reducer(estadoActual, acción)` y le avisa a React que vuelva a renderizar con lo que el reducer devuelva.
 
-Cuando una acción necesita transportar información adicional además de su tipo, es común incluir una propiedad `payload`:
+A veces el reducer necesita un dato más. Ese dato viaja en una propiedad llamada `payload`:
 
-```javascript
+```jsx
 dispatch({ type: 'setCount', payload: 10 });
 ```
 
-Y el reducer la usa para calcular el nuevo estado:
-
-```javascript
+```jsx
 case 'setCount':
   return { count: action.payload };
 ```
 
+El punto que más confunde: **el `payload` viaja desde quien llama a `dispatch` hacia el reducer**. Nunca sale del reducer. El reducer solo lo **recibe**, como parte del segundo parámetro `action`.
+
+```
+Quien llama a dispatch  --- { type, payload } --->  reducer
+                                                       |
+                                                       v
+                                              devuelve el estado nuevo
+```
+
+### ¿Cuándo hace falta payload?
+
+Hace falta cuando el reducer necesita un dato que **no puede saber por sí mismo** a partir del `state`. Por ejemplo: qué producto agregar, qué `id` quitar, qué valor guardar.
+
+No hace falta cuando alcanza con saber **qué acción fue**:
+
+```jsx
+dispatch({ type: 'clear' });                       // vaciar: no hace falta ningún dato extra
+dispatch({ type: 'add', payload: item });          // agregar: el reducer no sabe cuál item
+```
+
+Ojo: el payload **no es solo para hacer cuentas**. Sirve para cualquier dato que venga de afuera, se haga una cuenta con él o no. Agregar un item no calcula nada, y aun así necesita payload, porque el reducer no puede adivinar qué item querías agregar.
+
 -----
 
-## Ejemplo Completo: Un Contador
-
-Juntemos todas las piezas en un componente `Counter` completo:
+## Ejemplo completo 1: un contador
 
 ```jsx
 import { useReducer } from 'react';
@@ -169,47 +206,391 @@ function Counter() {
 }
 ```
 
-El flujo completo, cada vez que el usuario hace clic en alguno de los botones, es el siguiente:
+Qué pasa, paso a paso:
 
-1. Se llama a `dispatch()` con el objeto de acción correspondiente (por ejemplo, `{ type: 'increment' }`).
-2. React invoca a `reducer()`, pasándole el `state` actual y esa acción.
-3. `reducer()` calcula y devuelve el siguiente estado.
-4. React actualiza `state` con ese valor y vuelve a renderizar el componente `Counter`.
+1. `useReducer(reducer, initialState)` arranca con `{ count: 0 }`.
+2. Al hacer clic en "+", se ejecuta `dispatch({ type: 'increment' })`.
+3. React llama a `reducer({ count: 0 }, { type: 'increment' })`, que devuelve `{ count: 1 }`.
+4. React guarda ese estado y vuelve a ejecutar `Counter`, que muestra `Contador: 1`.
 
-Nótese que, desde el punto de vista del componente, la lógica de "qué significa incrementar" o "qué significa reiniciar" no vive en el JSX ni en manejadores de eventos dispersos: vive enteramente dentro del reducer, en un único lugar.
-
------
-
-## ¿Cuándo Usar useReducer en Lugar de useState?
-
-`useState()` sigue siendo la opción más simple y la que deberíamos usar por defecto para la mayoría de los componentes. `useReducer()` empieza a justificar su complejidad adicional cuando aparecen algunas de estas señales.
-
-La primera es un **formulario con muchos campos relacionados** que deben validarse o transformarse de forma consistente. En lugar de tener un `useState()` por cada campo —o un único objeto de estado actualizado por muchos manejadores casi idénticos—, un reducer con acciones como `updateField`, `resetForm`, `submitStart`, `submitSuccess` o `submitError` mantiene toda esa lógica en un solo lugar, en vez de dispersarla por el componente.
-
-La segunda señal es tener **múltiples sub-valores que deben permanecer coherentes entre sí**. Un ejemplo típico es una especie de máquina de estados que describe si una operación está en `idle`, `loading`, `success` o `error`, junto con los datos o el mensaje de error asociados a cada uno de esos estados. Modelar esto con varios `useState()` independientes abre la puerta a combinaciones inconsistentes (por ejemplo, `loading` en `true` y, al mismo tiempo, un error ya establecido); con un reducer, cada acción decide explícitamente la forma completa del siguiente estado.
-
-La tercera señal es cuando **el siguiente estado depende del anterior de una manera no trivial**, más allá de un simple incremento o de copiar un objeto con el operador spread. Cuanto más elaborada es esa lógica, más beneficio se obtiene al extraerla a una función pura y testeable por separado del componente.
-
-Por último, `useReducer()` combina naturalmente con **Context** para compartir estado más estructurado entre muchos componentes, exponiendo `state` y `dispatch` a través de un Provider en lugar de múltiples funciones actualizadoras sueltas. Ese patrón se explica con más detalle en la sección "Context con useReducer" de la lección de **React Context**.
+Fíjate que el JSX no sabe **cómo** se incrementa: solo dice "incrementa". Esa lógica vive únicamente en el reducer.
 
 -----
 
-## ¿Cuándo usar cada práctica de esta lección?
+## Ejemplo completo 2: un carrito de compras (TypeScript)
 
-- **Acción sin `payload`** (`{ type: 'increment' }`) — cuando la acción no necesita transportar información adicional; el `type` solo le dice al reducer qué transformación aplicar.
-- **Acción con `payload`** (`{ type: 'setCount', payload: 10 }`) — cuando el reducer necesita un dato externo para calcular el siguiente estado (un valor escrito por el usuario, un id, una respuesta de API).
-- **`useReducer()` solo, dentro de un componente** — cuando el estado complejo es local a ese componente y nadie más de la aplicación necesita leerlo ni modificarlo (por ejemplo, el estado de un formulario grande que vive y muere dentro de una sola pantalla).
-- **`useReducer()` combinado con Context** — en cuanto ese mismo estado complejo necesite compartirse con componentes que no son descendientes directos, o que están varios niveles más abajo en el árbol. Es la combinación que usás cuando las dos señales aparecen juntas: "esto tiene muchas acciones relacionadas" **y** "esto lo necesitan leer varios componentes distintos".
+Aquí hay tres acciones distintas, y dos de ellas necesitan payload.
+
+```tsx
+import { useReducer } from 'react';
+
+type CartItem = { id: number; name: string; price: number };
+type CartState = { items: CartItem[] };
+
+type Action =
+  | { type: 'add'; payload: CartItem }
+  | { type: 'remove'; payload: { id: number } }
+  | { type: 'clear' };
+
+const initialState: CartState = { items: [] };
+
+function cartReducer(state: CartState, action: Action): CartState {
+  switch (action.type) {
+    case 'add':
+      return { items: [...state.items, action.payload] };
+    case 'remove':
+      return { items: state.items.filter((item) => item.id !== action.payload.id) };
+    case 'clear':
+      return { items: [] };
+    default:
+      return state;
+  }
+}
+
+function Cart() {
+  const [state, dispatch] = useReducer(cartReducer, initialState);
+
+  return (
+    <div>
+      <button onClick={() => dispatch({ type: 'add', payload: { id: Date.now(), name: 'Teclado', price: 50 } })}>
+        Agregar teclado
+      </button>
+      <button onClick={() => dispatch({ type: 'clear' })}>Vaciar</button>
+
+      <ul>
+        {state.items.map((item) => (
+          <li key={item.id}>
+            {item.name} - ${item.price}
+            <button onClick={() => dispatch({ type: 'remove', payload: { id: item.id } })}>Quitar</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+Qué pasa, paso a paso:
+
+1. `Action` describe **todos** los pedidos posibles. `add` lleva un `CartItem` completo; `remove` lleva solo el `id` (para quitar un producto alcanza con saber cuál es); `clear` no lleva nada.
+2. `cartReducer` tiene la firma `(state: CartState, action: Action): CartState`: recibe un estado y una acción, y promete devolver un estado.
+3. En `add`, se crea un array **nuevo** con el item al final. En `remove`, `filter` crea un array nuevo sin ese `id`. Nunca se toca `state.items` directamente.
+4. El componente solo hace `dispatch`. No tiene ninguna lógica de cómo se agrega o se quita.
+
+> **Sobre el `id`:** cada producto necesita un `id` **único**, porque `remove` borra todos los que tengan ese `id` y React lo usa como `key`. Por eso el botón usa `Date.now()`, que da un número distinto en cada clic. En una app real, el `id` suele venir de tu base de datos.
 
 -----
 
-## Resumen
+## Combinarlo con Context
 
-* `useReducer()` centraliza la lógica de actualización de estado en una función **reducer**, en lugar de repartirla entre múltiples manejadores de eventos.
-* Su firma es `const [state, dispatch] = useReducer(reducer, initialState)`.
-* El **reducer** es una función pura con la forma `(state, action) => newState`; nunca modifica el estado directamente, siempre devuelve uno nuevo.
-* Actualizamos el estado llamando a `dispatch()` con un **objeto de acción**, típicamente con una propiedad `type` y, opcionalmente, un `payload`.
-* `useReducer()` conviene especialmente en formularios complejos, estados con múltiples sub-valores que deben mantenerse coherentes, y transiciones de estado no triviales.
-* Para la mayoría de los componentes, `useState()` sigue siendo la opción más simple y adecuada; `useReducer()` es una herramienta para cuando esa simplicidad deja de ser suficiente.
+Si otros componentes lejanos también necesitan el carrito, puedes poner el `useReducer` dentro de un Provider de Context. La ventaja: los consumidores ya **no necesitan varios setters** (uno por operación). Les alcanza con `dispatch`, y toda la lógica sigue en el reducer.
+
+Reutilizamos `CartItem`, `CartState`, `Action`, `initialState` y `cartReducer` del ejemplo anterior.
+
+### Paso 1: el tipo del contexto y el contexto
+
+```tsx
+import { createContext, useContext, useMemo, useReducer } from 'react';
+
+type CartContextType = {
+  state: CartState;
+  dispatch: React.Dispatch<Action>;
+};
+
+const CartContext = createContext<CartContextType | undefined>(undefined);
+```
+
+`React.Dispatch<Action>` es el tipo de la función `dispatch`: una función que recibe una `Action`. El contexto arranca en `undefined` porque todavía no hay Provider; el `| undefined` en el tipo lo refleja.
+
+### Paso 2: el Provider
+
+```tsx
+function CartProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(cartReducer, initialState);
+  const value = useMemo(() => ({ state, dispatch }), [state]);
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+}
+```
+
+El Provider llama a `useReducer` y comparte `{ state, dispatch }`. El `useMemo` hace que el objeto `value` solo se cree de nuevo cuando `state` cambia; así los consumidores no se vuelven a renderizar por un objeto nuevo sin necesidad. (`dispatch` es siempre la misma función, por eso no hace falta ponerlo en la lista.)
+
+### Paso 3: el hook `useCart`
+
+```tsx
+function useCart() {
+  const context = useContext(CartContext);
+  if (context === undefined) {
+    throw new Error('useCart debe usarse dentro de un CartProvider');
+  }
+  return context;
+}
+```
+
+Envolvemos `useContext` en un hook propio. La guardia de `undefined` avisa con un mensaje claro si te olvidaste del Provider, y de paso hace que TypeScript sepa que `context` ya no es `undefined`.
+
+### Paso 4: usarlo en un componente
+
+```tsx
+function AddButton() {
+  const { state, dispatch } = useCart();
+
+  return (
+    <button onClick={() => dispatch({ type: 'add', payload: { id: Date.now(), name: 'Mouse', price: 20 } })}>
+      Agregar mouse ({state.items.length} en el carrito)
+    </button>
+  );
+}
+
+function App() {
+  return (
+    <CartProvider>
+      <AddButton />
+    </CartProvider>
+  );
+}
+```
+
+Fíjate en que `AddButton` está **adentro** de `<CartProvider>`, y que `App` (que crea el Provider) no llama a `useCart()`.
 
 -----
+
+## Lógica asíncrona
+
+El reducer es puro: **no hace llamadas a APIs**. La petición se hace en un efecto o en un evento, y cuando termina, se hace `dispatch` con el resultado:
+
+```jsx
+useEffect(() => {
+  let cancelled = false;
+
+  fetchUser().then((user) => {
+    if (!cancelled) {
+      dispatch({ type: 'userLoaded', payload: user });
+    }
+  });
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+```
+
+Qué pasa: el efecto pide el dato; cuando llega, envía una acción con el usuario como `payload`, y el reducer solo lo guarda en el estado. La variable `cancelled` evita hacer `dispatch` si el componente ya se fue de la pantalla. Más sobre efectos en [useEffect](02-The%20Effect%20Hook.md).
+
+Si el manejo de datos remotos crece (reintentos, caché, invalidación), conviene mirar React Query o Zustand. Mira [Zustand, Redux y Context: cuándo usar cada uno](../../03-state-management-and-data/01-Zustand,%20Redux%20y%20Context%20-%20Cuando%20usar%20cada%20uno.md).
+
+-----
+
+## Errores comunes
+
+### 1. Mutar el estado dentro del reducer
+
+```jsx
+case 'add':
+  state.items.push(action.payload);   // Mal: modifica el estado recibido
+  return state;
+```
+
+**Por qué pasa:** parece más corto, pero devuelves el **mismo** objeto. React compara el estado nuevo con el anterior y, al ser el mismo, no ve cambios.
+**Cómo se arregla:** devuelve siempre un objeto nuevo.
+
+```jsx
+case 'add':
+  return { items: [...state.items, action.payload] };   // Bien
+```
+
+### 2. Olvidar el `default` o el `return`
+
+```jsx
+function reducer(state, action) {
+  switch (action.type) {
+    case 'increment':
+      return { count: state.count + 1 };
+    // Mal: sin default, una acción desconocida devuelve undefined
+  }
+}
+```
+
+**Por qué pasa:** si ningún `case` coincide, la función termina sin devolver nada, y tu estado pasa a ser `undefined`. Lo mismo ocurre si un `case` no tiene `return`.
+**Cómo se arregla:** cada `case` termina en `return`, y agrega un `default: return state;`.
+
+### 3. Reutilizar nombres en la desestructuración
+
+```jsx
+function reducer(state, action) { /* ... */ }   // afuera, a nivel del archivo
+const initialState = { count: 0 };
+
+function Counter() {
+  // Mal: colisión de nombres, dentro del componente
+  const [reducer, initialState] = useReducer(reducer, initialState);
+}
+```
+
+Da el error `Cannot access 'reducer' before initialization`.
+
+**Por qué pasa:** con `const`, el nombre queda **reservado en todo el bloque** (aquí, el cuerpo de `Counter`), aunque todavía no tenga valor. Entonces ese `const` crea un `reducer` nuevo y vacío dentro de `Counter`, que tapa al de afuera. El `reducer` de la derecha ya no apunta a tu función: apunta a esa variable nueva, que todavía no se inicializó.
+**Cómo se arregla:** lo que te devuelve `useReducer` se llama `state` y `dispatch`; deja `reducer` e `initialState` para lo que le pasas.
+
+```jsx
+const [state, dispatch] = useReducer(reducer, initialState);   // Bien
+```
+
+### 4. Desestructurar `useCart()` con corchetes
+
+```tsx
+const [state, dispatch] = useCart();   // Mal
+```
+
+**Por qué pasa:** `useCart()` devuelve un **objeto** (`{ state, dispatch }`), no un array. Los corchetes son para arrays, como los que devuelven `useState` y `useReducer`.
+**Cómo se arregla:** usa llaves.
+
+```tsx
+const { state, dispatch } = useCart();   // Bien
+```
+
+### 5. Llamar a `useCart()` fuera del Provider
+
+```tsx
+function App() {
+  const { state } = useCart();   // Mal: App crea el Provider, no está adentro
+  return (
+    <CartProvider>
+      <p>{state.items.length}</p>
+    </CartProvider>
+  );
+}
+```
+
+**Por qué pasa:** el componente que crea el Provider **no puede consumirlo**: un componente solo recibe el valor de un Provider que tenga **por encima**. Aquí `useCart()` corre antes de que exista un Provider y lanza el error de la guardia.
+**Cómo se arregla:** separa en dos componentes: uno que renderiza el Provider y otro, hijo, que llama a `useCart()`. Mira el paso 7 de la receta en [React Context](04-React%20Context.md).
+
+### 6. Despachar una acción sin el payload que necesita
+
+```tsx
+dispatch({ type: 'add' });   // Mal: falta el payload
+```
+
+**Por qué pasa:** el reducer va a intentar guardar `action.payload`, que es `undefined`.
+**Cómo se arregla:** envía el payload (`dispatch({ type: 'add', payload: item })`). Si tipaste `Action`, TypeScript te marca el error antes de ejecutar nada.
+
+-----
+
+## En TypeScript
+
+La forma correcta de tipar las acciones es una **unión discriminada**: varias opciones que comparten el campo `type`, que dice cuál es cuál.
+
+```tsx
+type Action =
+  | { type: 'add'; payload: CartItem }
+  | { type: 'remove'; payload: { id: number } }
+  | { type: 'clear' };
+```
+
+Dentro del `switch`, TypeScript **estrecha** el tipo de `action` en cada `case`: mira el valor de `type` y sabe qué opción quedó.
+
+```tsx
+switch (action.type) {
+  case 'add':
+    action.payload;   // TypeScript sabe que es un CartItem
+    break;
+  case 'clear':
+    action.payload;   // Error: la opción 'clear' no tiene payload
+    break;
+}
+```
+
+Esto atrapa, antes de ejecutar el código, dos errores comunes: escribir mal un `type` (`'ad'` en vez de `'add'`) y despachar una acción sin el payload que necesita.
+
+Para ver el tipado completo de `useReducer` con Context, mira [Tipado de useReducer y Context API](../11-typescript-y-react/03-Tipado%20de%20useReducer%20y%20Context%20API.md).
+
+-----
+
+## Cuándo sí y cuándo no
+
+`useState` sigue siendo la opción **por defecto**. Pasa a `useReducer` cuando veas alguna de estas señales:
+
+* **Formularios grandes con muchos campos relacionados.** En vez de un `useState` por campo (o manejadores casi idénticos), un reducer con acciones como `updateField`, `resetForm`, `submitStart`, `submitSuccess` o `submitError` deja todo en un lugar.
+* **Sub-valores que deben mantenerse coherentes.** Un ejemplo típico es una **máquina de estados**, es decir, una operación que solo puede estar en una de varias situaciones posibles (`idle`, `loading`, `success` o `error`), con los datos o el mensaje de error de cada una. Con varios `useState` sueltos podrías terminar con combinaciones imposibles (cargando y con error a la vez). Con un reducer, cada acción define el estado completo siguiente.
+* **Transiciones de estado no triviales.** Cuando el estado nuevo depende del anterior de una forma más elaborada que un incremento o una copia, conviene sacar esa lógica a una función pura y testeable.
+
+Dónde ponerlo:
+
+* **`useReducer` solo**, dentro de un componente, si el estado es **local** a ese componente (por ejemplo, un formulario grande que vive en una sola pantalla).
+* **`useReducer` con Context**, si otros componentes lejanos también necesitan leerlo o cambiarlo. Este patrón funciona muy bien para estado global de complejidad media (a veces se lo llama informalmente "Redux sin librería externa"). Si el estado y las acciones crecen mucho, suele convenir una librería dedicada como Redux Toolkit o Zustand.
+
+-----
+
+## Resumen en 5 líneas
+
+1. `const [state, dispatch] = useReducer(reducer, initialState)`: lo que le pasas (`reducer`, `initialState`) es distinto de lo que te devuelve (`[state, dispatch]`).
+2. El reducer es una función pura `(state, action) => nuevoEstado`: nunca muta el estado recibido, y su `default` devuelve el estado sin cambios.
+3. Para cambiar el estado envías una acción con `dispatch({ type, payload })`; el `payload` viaja de quien llama a `dispatch` hacia el reducer, y solo se usa cuando el reducer necesita un dato externo.
+4. Con Context, los consumidores solo necesitan `dispatch`; `useCart()` devuelve un objeto y se desestructura con llaves.
+5. `useState` es la opción por defecto; `useReducer` conviene con muchas acciones, estados coherentes entre sí o transiciones no triviales.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>La "zona muerta temporal" (temporal dead zone)</summary>
+
+Cuando declaras una variable con `const` o `let`, JavaScript la "reserva" para todo el bloque desde el principio, antes de ejecutar la línea donde se le asigna valor. Entre el comienzo del bloque y esa línea, la variable **existe pero no se puede leer**: ese tramo se llama zona muerta temporal. Si intentas leerla ahí, JavaScript lanza un error como `Cannot access 'x' before initialization`.
+
+```jsx
+// A nivel del archivo
+function reducer(state, action) { /* ... */ }
+const initialState = { count: 0 };
+
+function Counter() {
+  // Este const declara un "reducer" nuevo dentro de Counter.
+  // Ese nombre queda reservado en todo Counter desde el principio, pero sin valor (zona muerta)...
+  // ...y el lado derecho lee "reducer": ahora es el nuevo, todavía sin valor.
+  const [reducer, initialState] = useReducer(reducer, initialState);
+}
+```
+
+El error aparece porque el `const` nuevo está en un nivel **más interno** (dentro de `Counter`) que la función original (a nivel del archivo), así que la tapa. Si las dos declaraciones estuvieran en el mismo nivel, JavaScript daría otro error distinto, `Identifier 'reducer' has already been declared`.
+
+Es una regla general de `const` y `let`, que no tiene nada de especial con `useReducer`: pasa con cualquier variable que se lea en su propia declaración.
+
+</details>
+
+<details>
+<summary>Por qué un reducer puro es fácil de testear</summary>
+
+Como el reducer es una función pura, para probarlo no necesitas renderizar ningún componente: lo llamas directo con un estado y una acción, y comparas el resultado.
+
+```jsx
+test('increment suma 1', () => {
+  const result = reducer({ count: 0 }, { type: 'increment' });
+  expect(result).toEqual({ count: 1 });
+});
+```
+
+Con el mismo estado y la misma acción siempre obtienes el mismo resultado, así que no hace falta simular nada.
+
+</details>
+
+<details>
+<summary>Modelar estados como máquina de estados</summary>
+
+Una máquina de estados describe una operación con un conjunto **cerrado** de situaciones posibles y las transiciones permitidas entre ellas. Por ejemplo, una petición puede estar en `idle` (sin empezar), `loading`, `success` o `error`:
+
+```tsx
+type RequestState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: string[] }
+  | { status: 'error'; message: string };
+```
+
+Cada acción del reducer devuelve **uno** de esos estados completos. Así no puede existir una combinación imposible, como `loading` con un mensaje de error a la vez, algo que sí se podría armar con varios `useState` independientes.
+
+</details>
+
+-----
+
+## Siguiente lección
+
+Con esto cierras la carpeta de Hooks y Context. Lo que sigue son los patrones de diseño de React, formas comunes de organizar componentes: [React Programming Patterns](../05-patrones-estilos-lifecycle/01-React%20Programming%20Patterns.md). Si quieres ir más a fondo con el tipado de `useReducer` y Context, mira [Tipado de useReducer y Context API](../11-typescript-y-react/03-Tipado%20de%20useReducer%20y%20Context%20API.md).

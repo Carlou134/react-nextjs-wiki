@@ -1,507 +1,398 @@
-# The State Hook
+# useState: guardar datos que cambian
 
-## Why Use Hooks?
+## En una frase
 
-¿Qué deberíamos hacer si queremos añadir estado a nuestro componente de función? ¿Y si queremos que nuestra aplicación responda a los cambios en los datos?
-
-En esta lección, aprenderemos sobre los **React Hooks** y cómo pueden ayudarnos a aprovechar de forma poderosa los componentes de función.
-
-Los **React Hooks**, dicho de forma simple, son funciones que nos permiten gestionar el estado interno de los componentes y manejar efectos secundarios posteriores al renderizado directamente desde nuestros componentes de función. Al usar Hooks, podemos determinar qué queremos mostrar a los usuarios declarando cómo debe verse nuestra interfaz de usuario en función del estado.
-
-React ofrece varios Hooks integrados. Algunos de ellos incluyen
-**useState()**,
-**useEffect()**,
-**useContext()**,
-**useReducer()** y
-**useRef()**.
-Puedes ver la lista completa en la documentación de React.
-
-En esta lección, aprenderemos a:
-
-* Construir un componente de función con estado.
-* Usar el Hook de estado.
-* Inicializar un estado y actualizarlo.
-* Definir manejadores de eventos.
-* Usar funciones callback del actualizador de estado.
-* Usar el estado con arreglos y objetos.
+`useState` le da **memoria** a tu componente: guarda un dato y, cuando lo cambias, React vuelve a dibujar la pantalla con el dato nuevo.
 
 -----
 
-## ¿Cuándo usar useState?
+## Antes de empezar
 
-Usá `useState()` cuando un componente necesita "recordar" un valor entre renders, y ese valor tiene que provocar que React vuelva a dibujar la pantalla cuando cambia. Es la opción por defecto para datos **simples e independientes entre sí**: un booleano, un string, un número, un array u objeto chico que cambia como una sola unidad.
+Conviene que ya sepas:
 
-No es la herramienta correcta cuando la lógica de actualización se vuelve compleja — varias acciones posibles sobre el mismo estado, o varios sub-valores que tienen que mantenerse coherentes entre sí. En ese punto, conviene escalar a `useReducer()` (lo vemos en la lección de ese mismo nombre, más adelante en esta carpeta) en lugar de forzar todo dentro de `useState()`.
+* Qué es un componente de función y cómo devuelve JSX: [Tu primer componente](../02-componentes-y-props/01-Your%20First%20React%20Component.md).
+* Cómo un componente recibe datos desde afuera con props: [Props](../02-componentes-y-props/03-Props.md).
+
+Palabras nuevas (todas están explicadas también en el [glosario](Glosario.md)):
+
+* **Estado (state):** un dato que el componente recuerda y que, al cambiar, cambia lo que se ve en pantalla.
+* **Hook:** una función especial de React, con un nombre que empieza con `use`, que te deja usar herramientas de React (como la memoria) dentro de un componente.
+* **Renderizar:** que React ejecute tu componente y dibuje en pantalla lo que devuelve. "Volver a renderizar" es ejecutarlo de nuevo, con datos nuevos.
+* **Setter:** la función que usas para cambiar el estado.
 
 -----
 
-## Update Function Component State
+## El problema
 
-Comencemos con el **State Hook**, el Hook más comúnmente usado para construir componentes de React. El **State Hook** es una exportación nombrada de la biblioteca de React, por lo que lo importamos usando **desestructuración de objetos**, así:
+Imagina que quieres un botón que cuente cuántas veces lo tocaste. Lo primero que se te ocurre es una variable común:
 
-```javascript
-import { useState } from 'react';
-```
-
-Cuando llamamos a la función **useState()**, esta devuelve un arreglo con dos valores:
-
-1. **El estado actual**: el valor actual de este estado.
-2. **El actualizador de estado**: una función que podemos usar para actualizar el valor de este estado.
-
-Podemos usar estos dos valores para seguir el estado actual de un valor de datos o propiedad y cambiarlo cuando sea necesario. Para extraer estos dos valores del arreglo, los podemos asignar a variables locales usando **desestructuración de arreglos**. Por ejemplo:
-
-```javascript
-const [currentState, setCurrentState] = useState();
-```
-
-Veamos otro ejemplo de un componente de función que usa el **State Hook**:
-
-```javascript
-import { useState } from "react";
-
-function Toggle() {
-  const [toggle, setToggle] = useState();
+```jsx
+function Counter() {
+  let count = 0;
 
   return (
-    <div>
-      <p>El toggle está {toggle}</p>
-      <button onClick={() => setToggle("On")}>On</button>
-      <button onClick={() => setToggle("Off")}>Off</button>
-    </div>
+    <button onClick={() => { count = count + 1; }}>
+      Clics: {count}
+    </button>
   );
 }
 ```
 
-Fíjate cómo la función actualizadora de estado, **setToggle()**, es llamada por nuestros **event listeners** de `onClick`. Para actualizar el valor de `toggle` y **volver a renderizar** este componente con el nuevo valor, todo lo que necesitamos hacer es llamar a la función **setToggle()** pasando el siguiente valor del estado como argumento.
+Esto **no funciona**, por dos motivos:
 
-> **En TypeScript:** `useState()` sin argumento, como en `useState()`, deja a TypeScript sin ninguna pista sobre qué tipo de dato vas a guardar ahí — infiere `undefined`, lo cual te va a impedir asignarle luego un string como `"On"`. Cuando no tenés un valor inicial concreto para inferir el tipo, pasáselo explícitamente como **generic**: `useState<string>()`. El estado va a quedar tipado como `string | undefined` (todavía puede ser `undefined` hasta la primera actualización), lo cual es más preciso que dejar que TypeScript adivine.
+1. React no se entera de que `count` cambió, así que no vuelve a dibujar la pantalla. El botón sigue mostrando `0`.
+2. Aunque React redibujara, tu componente es una función y se ejecuta **de cero** cada vez. La línea `let count = 0` volvería a poner el contador en `0`.
 
-Con el **State Hook**, actualizar el estado es tan simple como llamar a una función actualizadora. Llamar a esta función le indica a React que el componente necesita **volver a renderizarse**, por lo que toda la función que define el componente se ejecuta de nuevo.
-La magia de **useState()** es que permite a React **mantener el seguimiento del valor actual del estado de un renderizado al siguiente**.
-
------
-
-## Initialize State
-
-Al igual que usamos el **State Hook** para manejar una variable con valores de tipo cadena, ¡podemos usar el **State Hook** para manejar el valor de cualquier tipo de dato primitivo e incluso colecciones de datos como arreglos y objetos!
-
-Observa el siguiente componente de función. ¿Qué tipo de dato contiene esta variable de estado?
-
-```javascript
-import { useState } from 'react';
-
-function ToggleLoading() {
-  const [isLoading, setIsLoading] = useState();
-
-  return (
-    <div>
-      <p>Los datos están {isLoading ? 'Cargando' : 'No Cargando'}</p>
-      <button onClick={() => setIsLoading(true)}>
-        Activar carga
-      </button>
-      <button onClick={() => setIsLoading(false)}>
-        Desactivar carga
-      </button>
-    </div>
-  );
-}
-```
-
-El componente de función **ToggleLoading()** anterior utiliza el tipo de dato más simple de todos: un **booleano**. Los booleanos se usan frecuentemente en aplicaciones de React para representar si los datos se han cargado o no. En el ejemplo anterior, vemos que los valores `true` y `false` se pasan a la función actualizadora de estado, **setIsLoading()**.
-
-Este código funciona perfectamente tal como está, pero ¿qué pasa si queremos que nuestro componente comience con **isLoading** establecido en `true`?
-
-Para inicializar nuestro estado con cualquier valor que queramos, simplemente pasamos el valor inicial como argumento a la función **useState()**:
-
-```javascript
-const [isLoading, setIsLoading] = useState(true);
-```
-
-Este código afecta a nuestro componente de tres maneras:
-
-1. Durante el primer renderizado, se usa el argumento del estado inicial.
-2. Cuando se llama a la función actualizadora de estado, React **ignora** el argumento del estado inicial y usa el nuevo valor.
-3. Cuando el componente se vuelve a renderizar por cualquier otra razón, React continúa usando el mismo valor del renderizado anterior.
-
-Si no pasamos un valor inicial al llamar a **useState()**, el valor actual del estado durante el primer renderizado será `undefined`. Esto suele estar bien para la computadora que ejecuta el código, pero puede ser confuso para las personas que leen nuestro código. Por eso, es preferible **inicializar explícitamente** nuestro estado. Si no tenemos el valor necesario durante el primer renderizado, podemos pasar `null` explícitamente en lugar de dejar el valor como `undefined`.
+Necesitas un lugar donde guardar el dato que **sobreviva** entre renders y que además **avise a React** cuando cambia. Ese lugar es `useState`.
 
 -----
 
-## Use State Setter Outside of JSX
+## Cómo funciona
 
-Veamos un ejemplo de cómo manejar el valor cambiante de una cadena mientras un usuario escribe en un campo de entrada de texto:
+### Paso 1: importarlo
 
-```javascript
+```jsx
 import { useState } from 'react';
-
-export default function EmailTextInput() {
-  const [email, setEmail] = useState('');
-  const handleChange = (event) => {
-    const updatedEmail = event.target.value;
-    setEmail(updatedEmail);
-  }
-
-  return (
-    <input value={email} onChange={handleChange} />
-  );
-}
 ```
 
-Aquí hay un desglose de cómo funciona el código anterior:
+### Paso 2: llamarlo y recibir dos cosas
 
-* Usamos **desestructuración de arreglos** para crear nuestra variable de estado local `email` y nuestra función local actualizadora `setEmail()`.
-* La variable local `email` recibe el valor actual del estado en el índice 0 del arreglo devuelto por **useState()**.
-* La variable local `setEmail()` recibe una referencia a la función actualizadora de estado en el índice 1 del arreglo devuelto por **useState()**.
-* Es una convención nombrar la variable del actualizador usando la variable de estado actual (en este ejemplo, `email`) con “set” al principio.
-* La etiqueta **input** de JSX tiene un **event listener** llamado `onChange`. Este listener llama a un manejador de eventos cada vez que el usuario escribe algo en este elemento. En el ejemplo anterior, nuestro manejador de eventos se define dentro de la definición de nuestro componente de función, pero fuera del JSX.
-
-  * Antes en esta lección, escribimos nuestros manejadores de eventos directamente en el JSX.
-  * Esos manejadores en línea funcionan perfectamente, pero cuando queremos hacer algo más complejo que simplemente llamar al actualizador de estado con un valor estático, es buena práctica separar esa lógica de nuestro JSX. Esta separación de responsabilidades hace que nuestro código sea más fácil de leer, probar y modificar.
-
-Es común en React simplificar este código:
-
-```javascript
-const handleChange = (event) => {
-  const newEmail = event.target.value;
-  setEmail(newEmail);
-}
+```jsx
+const [count, setCount] = useState(0);
 ```
 
-a esto:
+Vamos por partes:
 
-```javascript
-const handleChange = (event) => setEmail(event.target.value);
+* `useState(0)`: el `0` es el **valor inicial**, con el que arranca el dato.
+* `useState` te devuelve un **array de dos posiciones**: primero el **valor actual**, después la **función para cambiarlo** (el setter).
+* Los corchetes `[count, setCount]` son una forma corta de sacar esas dos cosas del array y ponerles nombre. Se llama *desestructuración de arrays*. Como se asigna **por posición**, los nombres los eliges tú; la costumbre es `algo` y `setAlgo`.
+
+### Paso 3: mostrar el valor
+
+Usas `count` como cualquier variable, dentro de llaves en el JSX:
+
+```jsx
+<p>Clics: {count}</p>
 ```
 
-o, usando **desestructuración de objetos**, así:
+### Paso 4: cambiarlo con el setter
 
-```javascript
-const handleChange = ({target}) => setEmail(target.value);
-```
-
-Los tres fragmentos de código anteriores se comportan igual, por lo que realmente no hay una forma correcta o incorrecta entre ellos. Usaremos la última versión, la más concisa, de aquí en adelante.
-
-----
-
-## Set From Previous State
-
-En el ejercicio anterior, aprendimos a actualizar el estado pasándole un nuevo valor de esta forma:
-
-```javascript
-setState(newStateValue);
-```
-
-Sin embargo, las actualizaciones de estado en React son **asíncronas**. Esto significa que hay algunos escenarios en los que partes de tu código se ejecutarán antes de que el estado termine de actualizarse.
-
-¡Esto es algo bueno y algo malo! Agrupar las actualizaciones de estado puede mejorar el rendimiento de tu aplicación, pero también puede provocar que se usen valores de estado desactualizados. Por ello, es una **buena práctica** actualizar el estado usando una **función callback**, lo que ayuda a prevenir valores obsoletos por accidente.
-
-Veamos el siguiente código para entender cómo se hace:
-
-```javascript
-import { useState } from 'react';
- 
-export default function Counter() {
+```jsx
+function Counter() {
   const [count, setCount] = useState(0);
- 
-  const increment = () => setCount(prevCount => prevCount + 1);
- 
+
   return (
-    <div>
-      <p>Wow, has hecho clic en ese botón: {count} veces</p>
-      <button onClick={increment}>¡Haz clic aquí!</button>
-    </div>
+    <button onClick={() => setCount(count + 1)}>
+      Clics: {count}
+    </button>
   );
 }
 ```
 
-Cuando se presiona el botón, se llama al manejador de eventos `increment()`. Dentro de esta función, usamos nuestro actualizador de estado `setCount()` con una **función callback**.
+Cuando haces clic, pasa esto, en orden:
 
-Debido a que el siguiente valor de `count` depende del valor anterior de `count`, pasamos una función callback como argumento a `setCount()` en lugar de pasar un valor directamente (como hicimos en ejercicios anteriores):
-
-```javascript
-setCount(prevCount => prevCount + 1)
+```
+1. Clic  ->  setCount(1)
+2. React se entera de que el estado cambió
+3. React vuelve a ejecutar la función Counter
+4. Esta vez useState devuelve 1 (no 0)
+5. La pantalla se actualiza y muestra "Clics: 1"
 ```
 
-Cuando el actualizador de estado llama a la función callback, esta recibe el valor anterior de `count` como argumento. El valor que retorna esta función callback se usa como el siguiente valor de `count` (en este caso, `prevCount + 1`).
+La clave está en el paso 4: en cada ejecución del componente, `useState` te devuelve **el valor más reciente**, y el valor inicial (`0`) solo se usa la primera vez.
 
-También podríamos simplemente llamar a `setCount(count + 1)` y funcionaría igual en este ejemplo, pero por razones que quedan fuera del alcance de esta lección, es más seguro usar el método con callback.
+### El valor inicial
+
+Puede ser de cualquier tipo: un número, un texto, un booleano, un array o un objeto.
+
+```jsx
+const [name, setName] = useState('');          // texto
+const [isOpen, setIsOpen] = useState(false);   // verdadero o falso
+const [tasks, setTasks] = useState([]);        // lista
+const [user, setUser] = useState(null);        // "todavía no hay nada"
+```
+
+Si no le pasas nada, el valor inicial es `undefined`. Funciona, pero es confuso para quien lee el código. Es mejor ser explícito: si todavía no tienes el dato, pon `null`.
 
 -----
 
-## Arrays in State
+## Cambiar el estado según su valor anterior
 
-Los **arreglos de JavaScript** son el mejor modelo de datos para gestionar y renderizar listas en **JSX**. Veamos el código de un sitio web para un restaurante de pizza.
+Mira este botón, que quiere sumar 2 en cada clic:
 
-```javascript
+```jsx
+function handleClick() {
+  setCount(count + 1);
+  setCount(count + 1);
+}
+```
+
+Uno esperaría que sume 2, pero **suma 1**. En esas dos líneas `count` vale lo mismo (por ejemplo `0`), así que las dos hacen `setCount(0 + 1)`.
+
+La solución es pasarle al setter **una función**, en lugar de un valor:
+
+```jsx
+function handleClick() {
+  setCount((prev) => prev + 1);
+  setCount((prev) => prev + 1);
+}
+```
+
+Ahora sí suma 2. React llama a la función y le entrega como `prev` el valor **más fresco**, sin importar cuántas actualizaciones haya en fila.
+
+La regla para acordarte:
+
+* Si el valor nuevo **depende del anterior** (contar, alternar un verdadero/falso, agregar a una lista): pasa una **función** (`setCount((prev) => prev + 1)`).
+* Si el valor nuevo **no depende del anterior** (guardar lo que escribió el usuario): pasa el valor directo (`setName('Ana')`).
+
+-----
+
+## Arrays y objetos: nunca los modifiques, haz una copia
+
+Este es el error más común al empezar, así que vale la pena entender el motivo.
+
+React decide si tiene que volver a dibujar preguntándose: *"¿el valor nuevo es un objeto distinto del anterior?"*. Si le pasas el **mismo** array, aunque le hayas agregado cosas por dentro, para React no cambió nada y no redibuja.
+
+```jsx
+const [tasks, setTasks] = useState(['Estudiar']);
+
+// Mal: modifica el array que ya existe, y React no se entera
+tasks.push('Practicar');
+setTasks(tasks);
+
+// Bien: crea un array nuevo
+setTasks((prev) => [...prev, 'Practicar']);
+```
+
+Los tres puntos `...` se llaman *spread* y significan "copia todo lo que había". Entonces `[...prev, 'Practicar']` se lee: "un array nuevo con todo lo que ya había, más 'Practicar' al final".
+
+Otras operaciones comunes con arrays, siempre devolviendo uno nuevo:
+
+```jsx
+// Quitar un elemento
+setTasks((prev) => prev.filter((task) => task !== 'Estudiar'));
+
+// Cambiar un elemento
+setTasks((prev) => prev.map((task) => (task === 'Estudiar' ? 'Estudiar React' : task)));
+```
+
+Con los objetos pasa lo mismo:
+
+```jsx
+const [user, setUser] = useState({ name: 'Ana', age: 30 });
+
+// Copia todo lo del usuario y cambia solo la edad
+setUser((prev) => ({ ...prev, age: 31 }));
+```
+
+Fíjate en los paréntesis alrededor de las llaves: `({ ... })`. Le dicen a JavaScript que esas llaves son **un objeto** que estás devolviendo, y no el cuerpo de la función.
+
+-----
+
+## ¿Un solo objeto grande o varios useState?
+
+Puedes guardar datos relacionados en un objeto, pero no siempre conviene. Una regla práctica:
+
+* Si los datos **cambian juntos** (por ejemplo, las coordenadas `x` e `y` de un punto): un objeto.
+* Si los datos **cambian por separado** (el nombre de un curso, la lista de alumnos, la nota de un examen): varios `useState`.
+
+```jsx
+// Cada dato cambia por su cuenta: mejor separados
+const [grade, setGrade] = useState('B');
+const [classmates, setClassmates] = useState(['Hasan', 'Sam']);
+const [exams, setExams] = useState([{ unit: 1, score: 91 }]);
+```
+
+Con un solo objeto grande, cada cambio te obliga a copiar todo lo demás con el spread, y es fácil olvidarte de algo. Con varios `useState`, cada uno se cambia sin tocar a los otros.
+
+-----
+
+## Ejemplo completo: una lista de tareas
+
+```jsx
 import { useState } from 'react';
 
-// Arreglo estático de opciones de pizza disponibles.
-const options = ['Bell Pepper', 'Sausage', 'Pepperoni', 'Pineapple'];
+export default function TodoList() {
+  const [text, setText] = useState('');
+  const [tasks, setTasks] = useState([]);
 
-export default function PersonalPizza() {
-  const [selected, setSelected] = useState([]);
-
-  const toggleTopping = ({target}) => {
-    const clickedTopping = target.value;
-    setSelected((prev) => {
-      // comprobar si el ingrediente seleccionado ya está elegido
-      if (prev.includes(clickedTopping)) {
-        // eliminar el ingrediente seleccionado del estado
-        return prev.filter(t => t !== clickedTopping);
-      } else {
-        // agregar el ingrediente seleccionado a nuestro estado
-        return [clickedTopping, ...prev];
-      }
-    });
-  };
+  function handleAdd() {
+    if (text.trim() === '') return;          // no agregar tareas vacías
+    setTasks((prev) => [...prev, text]);     // array nuevo con la tarea al final
+    setText('');                             // vaciar el campo
+  }
 
   return (
     <div>
-      {options.map(option => (
-        <button value={option} onClick={toggleTopping} key={option}>
-          {selected.includes(option) ? 'Quitar ' : 'Agregar '}
-          {option}
-        </button>
-      ))}
-      <p>Pide una pizza de {selected.join(', ')}</p>
+      <input value={text} onChange={(e) => setText(e.target.value)} />
+      <button onClick={handleAdd}>Agregar</button>
+
+      <ul>
+        {tasks.map((task, index) => (
+          <li key={index}>{task}</li>
+        ))}
+      </ul>
     </div>
   );
 }
 ```
 
-En el ejemplo anterior, estamos usando dos arreglos:
+Qué pasa, paso a paso:
 
-* El arreglo **options** contiene los nombres de todos los ingredientes de pizza disponibles.
-* El arreglo **selected** representa los ingredientes seleccionados para nuestra pizza personalizada.
+1. Hay **dos estados**: `text` (lo que se está escribiendo) y `tasks` (la lista). Cambian por separado, así que van en dos `useState`.
+2. Cada vez que escribes una letra, `onChange` llama a `setText` con el texto nuevo. React redibuja y el campo muestra lo escrito.
+3. Al tocar "Agregar", `handleAdd` crea un array **nuevo** con la tarea al final (`[...prev, text]`) y vacía el campo.
+4. React redibuja y la lista muestra la tarea nueva.
 
-El arreglo **options** contiene datos estáticos, lo que significa que no cambian. Es una buena práctica definir los modelos de datos estáticos fuera de los componentes de función, ya que no necesitan recrearse cada vez que el componente se vuelve a renderizar. En nuestro JSX, usamos el método `.map()` de JavaScript para renderizar un botón por cada ingrediente en el arreglo **options**.
-
-El arreglo **selected** contiene datos dinámicos, lo que significa que cambian, generalmente en función de las acciones del usuario. Inicializamos **selected** como un arreglo vacío. Cuando se hace clic en un botón, se llama al manejador de eventos `toggleTopping()`. Observa cómo este manejador usa información del objeto del evento para determinar qué ingrediente fue seleccionado.
-
-> **En TypeScript:** `useState([])` es otro caso donde no hay nada que inferir a partir del valor inicial — TypeScript le asigna el tipo `never[]`, un arreglo que **no admite agregar ningún elemento**, así que `setSelected((prev) => [clickedTopping, ...prev])` va a marcar error de tipos. La solución es la misma que con cualquier `useState()` sin datos suficientes para inferir: pasar el tipo explícito como generic, `useState<string[]>([])`.
-
-Al actualizar un arreglo en el estado, no simplemente agregamos nuevos datos al arreglo anterior. Reemplazamos el arreglo anterior con uno completamente nuevo. Esto significa que cualquier información que queramos conservar del arreglo anterior debe copiarse explícitamente al nuevo arreglo. Para eso usamos la **sintaxis spread**: `...prev`.
-
-Fíjate cómo usamos los métodos `.includes()`, `.filter()` y `.map()` de los arreglos. Si estos métodos son nuevos para ti o solo quieres refrescar conceptos, tómate un momento para revisarlos. No necesitamos ser expertos absolutos en JavaScript para construir aplicaciones con React, pero invertir tiempo en fortalecer nuestras habilidades en JavaScript siempre nos ayudará a hacer más cosas, más rápido (y a divertirnos mucho más) como desarrolladores de React.
+> El `key={index}` alcanza para una lista que solo crece. Si la lista se puede reordenar o se pueden borrar elementos del medio, conviene darle a cada tarea un `id` propio y usarlo como `key`.
 
 -----
 
-## Objects in State
+## Errores comunes
 
-También podemos usar el **estado con objetos**. Cuando trabajamos con un conjunto de variables relacionadas, puede ser muy útil agruparlas dentro de un objeto. Veamos un ejemplo de esto en acción.
+### 1. Cambiar el estado directamente
 
-```javascript
-export default function Login() {
-  const [formState, setFormState] = useState({});
-  const handleChange = ({ target }) => {
-    const { name, value } = target;
-    setFormState((prev) => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  return (
-    <form>
-      <input
-        value={formState.firstName}
-        onChange={handleChange}
-        name="firstName"
-        type="text"
-      />
-      <input
-        value={formState.password}
-        onChange={handleChange}
-        type="password"
-        name="password"
-      />
-    </form>
-  );
-}
+```jsx
+count = count + 1;     // no hace nada visible
+tasks.push('Nueva');   // React no se entera
 ```
 
-Algunas cosas a tener en cuenta:
+**Por qué pasa:** React solo se entera de un cambio cuando llamas al setter.
+**Cómo se arregla:** usa siempre el setter, y con arrays y objetos, pásale una copia nueva.
 
-* Usamos una **función callback** del actualizador de estado para modificar el estado basándonos en su valor anterior.
-* La **sintaxis spread** es la misma para objetos que para arreglos:
-  `{ ...objetoAnterior, nuevaClave: nuevoValor }`.
-* Reutilizamos nuestro manejador de eventos para múltiples inputs usando el atributo `name` de la etiqueta `input` para identificar de qué input provino el evento de cambio.
-* Una vez más, al actualizar el estado con `setFormState()` dentro de un componente de función, **no modificamos el mismo objeto**. Debemos copiar los valores del objeto anterior al establecer el nuevo valor del estado. Afortunadamente, la sintaxis spread hace que esto sea muy fácil de lograr.
+### 2. Llamar al setter en lugar de pasarlo
 
-Cada vez que se actualiza uno de los valores de los inputs, se llama a la función `handleChange()`. Dentro de este manejador de eventos, usamos **desestructuración de objetos** para extraer la propiedad `target` del objeto del evento y luego usamos nuevamente desestructuración de objetos para extraer las propiedades `name` y `value` del objeto `target`.
-
-Dentro de la función callback del actualizador de estado, envolvemos las llaves en paréntesis de esta forma:
-
-```javascript
-setFormState((prev) => ({ ...prev }))
+```jsx
+<button onClick={setCount(1)}>Reiniciar</button>   // error
 ```
 
-Esto le indica a JavaScript que las llaves representan un **nuevo objeto** que debe ser retornado. Usamos `...`, el operador spread, para copiar los campos correspondientes del estado anterior. Finalmente, sobrescribimos la clave adecuada con su valor actualizado.
+React muestra un error que dice `Too many re-renders`. **Por qué pasa:** `setCount(1)` con paréntesis **se ejecuta al dibujar**, no al hacer clic; eso cambia el estado, React vuelve a dibujar, se ejecuta otra vez... y así sin fin.
+**Cómo se arregla:** pásale una función que se ejecute recién en el clic.
 
-¿Notaste los **corchetes** alrededor de `name`? Este **nombre de propiedad computado (Computed Property Name)** nos permite usar el valor de cadena almacenado en la variable `name` como clave de la propiedad.
-
-> **En TypeScript:** al igual que con los arreglos, `useState({})` infiere el tipo `{}` — un objeto del que TypeScript no sabe qué propiedades tiene, así que `formState.firstName` va a marcar error. Acá lo correcto no es forzar un generic vacío, sino declarar primero la forma completa del objeto con un `type`, y usarlo para tipar el estado:
->
-> ```tsx
-> type FormState = {
->   firstName: string;
->   password: string;
-> };
->
-> const [formState, setFormState] = useState<FormState>({ firstName: '', password: '' });
-> ```
->
-> De paso, esto también obliga a inicializar el objeto con todas sus propiedades desde el principio, en vez de arrancar de un `{}` vacío e ir completándolo — una forma más segura de evitar accesos a propiedades que todavía no existen.
-
-----
-
-## Separate Hooks for Separate States
-
-Aunque hay ocasiones en las que puede ser útil almacenar datos relacionados en una colección de datos, como un arreglo u objeto, también puede ser útil crear **diferentes variables de estado** para los datos que cambian de forma independiente. Gestionar datos dinámicos es mucho más fácil cuando mantenemos nuestros modelos de datos lo más simples posible.
-
-Por ejemplo, si tuviéramos un solo objeto que almacenara el estado de una materia que estás estudiando en la escuela, podría verse algo así:
-
-```javascript
-function Subject() {
-  const [state, setState] = useState({
-    currentGrade: 'B',
-    classmates: ['Hasan', 'Sam', 'Emma'],
-    classDetails: {topic: 'Math', teacher: 'Ms. Barry', room: 201},
-    exams: [{unit: 1, score: 91}, {unit: 2, score: 88}]
-  })
-}
+```jsx
+<button onClick={() => setCount(1)}>Reiniciar</button>
 ```
 
-Esto funcionaría, pero piensa en lo complicado que podría volverse copiar todos los demás valores cada vez que necesitamos actualizar algo dentro de este gran objeto de estado. Por ejemplo, para actualizar la calificación de un examen, necesitaríamos un manejador de eventos que hiciera algo como esto:
+### 3. Leer el estado justo después de cambiarlo
 
-```javascript
-setState((prev) => ({
-  ...prev,
-  exams: prev.exams.map((exam) => {
-    if (exam.unit === updatedExam.unit) {
-      return { 
-        ...exam,
-        score: updatedExam.score
-      };
-    } else {
-      return exam;
-    }
-  }),
-}));
+```jsx
+setCount(5);
+console.log(count);   // muestra el valor VIEJO
 ```
 
-Código complejo como este es propenso a causar errores. Es mejor crear **múltiples variables de estado** basadas en qué valores tienden a cambiar juntos.
+**Por qué pasa:** el nuevo valor no está disponible en esa misma ejecución. Recién aparece en el **próximo** renderizado, cuando React vuelve a ejecutar el componente.
+**Cómo se arregla:** si necesitas el valor nuevo, guardalo en una variable antes (`const next = 5; setCount(next);`) y usa esa variable.
 
-Podemos reescribir el ejemplo anterior de la siguiente manera:
+### 4. Usar `useState` dentro de un `if` o un bucle
 
-```javascript
-function Subject() {
-  const [currentGrade, setGrade] = useState('B');
-  const [classmates, setClassmates] = useState(['Hasan', 'Sam', 'Emma']);
-  const [classDetails, setClassDetails] = useState({
-    topic: 'Math',
-    teacher: 'Ms. Barry',
-    room: 201
-  });
-  const [exams, setExams] = useState([
-    {unit: 1, score: 91},
-    {unit: 2, score: 88}
-  ]);
-  // ...
-}
-```
-
-Gestionar datos dinámicos con variables de estado separadas tiene muchas ventajas, como hacer que nuestro código sea más sencillo de escribir, leer, probar y reutilizar entre componentes.
-
-A menudo, nos encontramos empaquetando y organizando datos en colecciones para pasarlos entre componentes, y luego separando esos datos dentro de los componentes donde distintas partes cambian de manera independiente.
-¡Lo maravilloso de trabajar con **Hooks** es que tenemos la libertad de organizar nuestros datos de la forma que tenga más sentido para nosotros!
+**Por qué pasa:** los Hooks tienen reglas de dónde se pueden llamar (mira "Las reglas de los Hooks", abajo).
+**Cómo se arregla:** llamalos siempre al principio de tu componente, y pon la condición **adentro** de lo que hagas con el valor.
 
 -----
 
-## Review
+## En TypeScript
 
-¡Ahora podemos construir **componentes de función con estado** usando el Hook de React **useState**!
+TypeScript deduce el tipo del estado a partir del valor inicial. El problema aparece cuando ese valor no le da suficiente información:
 
-Repasemos lo que aprendimos y practicamos en esta lección:
+```tsx
+const [name, setName] = useState<string>();          // sin valor inicial: el tipo es string | undefined
+const [tasks, setTasks] = useState<string[]>([]);    // lista vacía: hay que decir de qué es la lista
 
-* Con React, alimentamos modelos de datos estáticos y dinámicos a **JSX** para renderizar una vista en la pantalla.
-* Los **Hooks** se utilizan para “conectarse” al estado interno del componente y así gestionar datos dinámicos en componentes de función.
-* Usamos el **State Hook** con el siguiente código. `currentState` hace referencia al valor actual del estado y `initialState` inicializa el valor del estado para el primer renderizado del componente:
-
-```javascript
-const [currentState, stateSetter] = useState(initialState);
+type FormState = { firstName: string; password: string };
+const [form, setForm] = useState<FormState>({ firstName: '', password: '' });   // objeto: define antes su forma
 ```
 
-* Los actualizadores de estado pueden llamarse dentro de manejadores de eventos.
-* Podemos definir manejadores de eventos simples directamente en nuestro JSX y manejadores más complejos fuera del JSX.
-* Usamos una **función callback** del actualizador de estado cuando el siguiente valor depende del valor anterior.
-* Usamos arreglos y objetos para organizar y gestionar datos relacionados que tienden a cambiar juntos.
-* Usamos la **sintaxis spread** en colecciones de datos dinámicos para copiar el estado anterior al nuevo estado, por ejemplo:
-  `setArrayState((prev) => [ ...prev ])` y
-  `setObjectState((prev) => ({ ...prev }))`.
-* Es una **buena práctica** tener múltiples estados más simples en lugar de un único objeto de estado complejo.
+Por qué cada uno:
+
+* **Sin valor inicial:** TypeScript no sabe qué vas a guardar. Con `<string>()` se lo dices.
+* **Lista vacía:** sin `<string[]>`, TypeScript entiende que es una lista que **no puede contener nada** (`never[]`), y te marca error apenas intentas agregar algo.
+* **Objeto:** empezar con `{}` vacío te impide después leer `form.firstName`. Definir el `type` primero y usarlo evita el problema.
 
 -----
 
-## Reglas de los Hooks
+## Cuándo sí y cuándo no
 
-Antes de seguir avanzando hacia otros Hooks de React, es importante interiorizar las reglas que rigen su funcionamiento. No son convenciones de estilo opcionales: si no se respetan, React pierde la capacidad de asociar correctamente cada Hook con el estado o el efecto que le corresponde, y la aplicación empieza a comportarse de forma impredecible.
+**Usa `useState` para** datos que cambian y que afectan lo que se ve: un contador, el texto de un campo, una lista, si un menú está abierto o cerrado.
 
-### Los Hooks solo funcionan en componentes de función
+**No lo uses para:**
 
-Los Hooks fueron diseñados exclusivamente para **componentes de función**. No pueden usarse dentro de componentes de clase, que en su lugar siguen dependiendo de `this.state` y de los métodos de ciclo de vida como `componentDidMount()`. Tampoco pueden llamarse desde funciones de JavaScript comunes que no sean componentes de React. En otras palabras, `useState()` solo tiene sentido cuando React sabe que está renderizando un componente y puede asociarle una instancia de estado.
+* **Datos que se pueden calcular a partir de otro estado o de props.** Si tienes `price` y `quantity`, el total (`price * quantity`) se calcula en cada renderizado; no hace falta guardarlo aparte. Guardar de más lleva a datos que se desincronizan.
+* **Datos que no cambian lo que se ve.** Si no afecta la pantalla, una variable común alcanza.
+* **Lógica de actualización muy complicada**, con muchas acciones distintas sobre el mismo estado. Para eso existe [useReducer](05-useReducer.md).
 
-### Los Hooks se llaman siempre en el nivel superior
+-----
 
-La segunda regla es igual de estricta: los Hooks deben llamarse siempre en el **nivel superior** de la función del componente, nunca dentro de una condición (`if`), un bucle (`for`, `while`) ni una función anidada.
+## Resumen en 5 líneas
 
-La razón tiene que ver con **cómo React realiza el seguimiento de los Hooks**. React no identifica cada Hook por su nombre, sino por el **orden** en que se llaman durante el renderizado. En el primer renderizado, React registra que la primera llamada a un Hook corresponde a un estado, la segunda a un efecto, y así sucesivamente. En cada renderizado posterior, React espera encontrar exactamente esa misma secuencia. Si un Hook se salta condicionalmente en algún renderizado, el orden se desalinea y React termina asociando el estado equivocado a la llamada equivocada.
+1. `useState(valorInicial)` te devuelve `[valor, setter]`: el dato actual y la función para cambiarlo.
+2. Cambiar el estado con el setter hace que React **vuelva a ejecutar** tu componente con el valor nuevo.
+3. Si el valor nuevo depende del anterior, pasa una **función** al setter: `setCount((prev) => prev + 1)`.
+4. Con arrays y objetos, **nunca los modifiques**: crea una copia nueva con el spread (`...`).
+5. Datos que cambian juntos van en un objeto; datos que cambian por separado, en varios `useState`.
 
-Veamos un ejemplo incorrecto:
+-----
 
-```javascript
+## Para profundizar
+
+<details>
+<summary>Las reglas de los Hooks</summary>
+
+Los Hooks (`useState` y todos los que vienen) tienen dos reglas. No son un estilo opcional: si las rompes, React se confunde y tu app se comporta raro.
+
+**Regla 1: solo en componentes de función (o en otros Hooks propios).** No funcionan en componentes de clase ni en funciones comunes de JavaScript.
+
+**Regla 2: siempre en el nivel de arriba del componente.** Nunca dentro de un `if`, un bucle (`for`, `while`) ni una función anidada.
+
+```jsx
 function Profile({ isLoggedIn }) {
+  // Mal: el Hook solo se ejecuta a veces
   if (isLoggedIn) {
-    const [user, setUser] = useState(null); // ❌ Hook dentro de una condición
+    const [user, setUser] = useState(null);
   }
-
-  // ...
 }
-```
 
-En este componente, `useState()` solo se ejecuta cuando `isLoggedIn` es `true`. Si el valor de `isLoggedIn` cambia entre renderizados, la cantidad y el orden de los Hooks llamados cambia con él, lo que provoca errores como “Se renderizaron menos Hooks de los esperados”.
-
-La forma correcta es llamar siempre al Hook en el nivel superior, y mover la lógica condicional **dentro** de la función que le pasamos:
-
-```javascript
 function Profile({ isLoggedIn }) {
-  const [user, setUser] = useState(null); // ✅ Siempre en el nivel superior
+  // Bien: el Hook siempre se ejecuta; la condición va adentro de lo que hagas con él
+  const [user, setUser] = useState(null);
 
-  useEffect(() => {
-    if (isLoggedIn) {
-      // la condición vive dentro del efecto, no alrededor del Hook
-      fetchUser().then(setUser);
-    }
-  }, [isLoggedIn]);
-
-  // ...
+  if (!isLoggedIn) return <p>Inicia sesión</p>;
+  return <p>Hola, {user?.name}</p>;
 }
 ```
 
-### Los Hooks son funciones, no componentes
+**Por qué existe la regla 2:** React no identifica cada Hook por su nombre, sino por el **orden** en que se llaman. En el primer renderizado registra "el primer Hook es un estado, el segundo es un efecto...", y en los siguientes espera exactamente la misma secuencia. Si un `if` hace que un Hook a veces se salte, el orden se desarma y React le entrega a cada llamada el dato equivocado. El error típico es "Rendered fewer hooks than expected".
 
-Por último, vale la pena aclarar una confusión común: un Hook **no es un componente**. Un componente de React es una función que recibe props y devuelve JSX para ser renderizado. Un Hook, en cambio, es una función común de JavaScript que llamamos **desde dentro** de un componente para conectarnos a capacidades internas de React, como el estado o los efectos secundarios. `useState()` no renderiza nada por sí mismo; simplemente le da a la función que define nuestro componente acceso a un valor que React recuerda entre renderizados.
+</details>
 
-Esta distinción se vuelve especialmente relevante cuando empecemos a construir nuestros propios **Hooks personalizados**: seguirán siendo funciones que empiezan con `use`, sujetas a las mismas dos reglas que acabamos de repasar, y solo podrán llamarse desde componentes de función o desde otros Hooks personalizados.
+<details>
+<summary>Los Hooks son funciones, no componentes</summary>
+
+Un componente es una función que recibe props y devuelve JSX para dibujar. Un Hook, en cambio, es una función común que llamas **desde adentro** de un componente para usar una herramienta de React. `useState` no dibuja nada: solo le da a tu componente acceso a un valor que React recuerda. Más adelante vas a crear tus propios Hooks (los vemos en la lección de Custom Hooks), y siguen siendo funciones cuyo nombre empieza con `use`.
+
+</details>
+
+<details>
+<summary>Valor inicial calculado (inicialización perezosa)</summary>
+
+Si el valor inicial es costoso de calcular, pásale a `useState` una **función** en lugar del valor:
+
+```jsx
+const [data, setData] = useState(() => calcularAlgoCostoso());
+```
+
+React ejecuta esa función **solo la primera vez**. Si escribieras `useState(calcularAlgoCostoso())`, el cálculo se repetiría en cada renderizado, aunque el resultado se ignore después del primero. Lo vas a ver, por ejemplo, para leer un valor de `localStorage` al arrancar.
+
+</details>
+
+<details>
+<summary>Por qué el estado no cambia "al instante"</summary>
+
+Cuando llamas a un setter, React no cambia el valor en ese mismo momento: **junta** los cambios pedidos dentro del mismo evento y actualiza todo junto al final, con un solo redibujo. Es una optimización (menos trabajo), y es la razón por la que `console.log(count)` justo después de `setCount(5)` todavía muestra el valor viejo, y por la que conviene usar la forma con función (`(prev) => ...`) cuando el cambio depende del valor anterior.
+
+</details>
 
 -----
 
-## ¿Cuándo usar cada práctica de esta lección?
+## Siguiente lección
 
-- **Actualizar con un valor directo** (`setCount(5)`) — cuando el siguiente valor no depende del valor anterior del estado.
-- **Actualizar con función callback** (`setCount(prev => prev + 1)`) — cuando el siguiente valor **sí** depende del valor anterior. Es la opción más segura por defecto para incrementos, toggles, o cualquier "cambiá esto en base a lo que ya tenía", porque evita el problema de trabajar con un valor de estado desactualizado si React agrupa varias actualizaciones.
-- **Arreglos en el estado** — cuando manejás una colección de elementos que se agregan, quitan o filtran como grupo (una lista de tareas, los ingredientes seleccionados de una pizza).
-- **Objetos en el estado** — cuando varias variables están relacionadas entre sí y tiende a tener sentido leerlas o pasarlas juntas (los campos de un formulario).
-- **Múltiples `useState` separados, en vez de un objeto grande** — cuando esas variables, aunque estén relacionadas conceptualmente, **cambian de forma independiente** entre sí. Es la señal contraria a la anterior: si actualizar un solo campo te obliga a hacer spread de un objeto grande con `...prev`, probablemente convenga separarlo en hooks individuales.
-
------
+Ahora que tu componente puede recordar datos, el paso que sigue es hacer que **reaccione** a cambios y se conecte con cosas de afuera (una API, un temporizador, el título de la página): [useEffect](02-The%20Effect%20Hook.md).

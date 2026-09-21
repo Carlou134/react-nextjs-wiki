@@ -1,342 +1,384 @@
-# The Effect Hook
+# useEffect: ejecutar código cuando algo pasa
 
-## Why Use useEffect?
+## En una frase
 
-Antes de los **Hooks**, los componentes funcionales solo se usaban para aceptar datos en forma de **props** y devolver **JSX** para ser renderizado. Sin embargo, como aprendimos en la lección anterior, el **Hook de Estado (State Hook)** nos permite gestionar datos dinámicos, en forma de estado del componente, dentro de nuestros componentes funcionales.
-
-En esta lección, usaremos el **Hook de Efecto (Effect Hook)** para ejecutar código JavaScript después de cada renderizado con el fin de:
-
-* obtener datos desde un servicio de back-end,
-* suscribirse a un flujo de datos,
-* gestionar temporizadores e intervalos,
-* leer y realizar cambios en el DOM.
-
-Los componentes se vuelven a renderizar varias veces a lo largo de su ciclo de vida. Estos momentos clave representan la oportunidad perfecta para ejecutar estos “efectos secundarios”.
-
-Existen tres momentos clave en los que se puede utilizar el Hook de Efecto:
-
-1. Cuando el componente se agrega por primera vez, o se monta, en el DOM y se renderiza.
-2. Cuando el estado o las props cambian, provocando que el componente se vuelva a renderizar.
-3. Cuando el componente se elimina, o se desmonta, del DOM.
-
-Más adelante en esta lección, aprenderemos cómo ajustar con mayor precisión exactamente cuándo se ejecuta el Hook de Efecto.
+`useEffect` te deja ejecutar código **después** de que React dibujó la pantalla, para conectar tu componente con algo de afuera: una API, el título de la pestaña, un temporizador o el teclado.
 
 -----
 
-## ¿Cuándo usar useEffect?
+## Antes de empezar
 
-La pregunta que te tenés que hacer es siempre la misma: **¿esto necesita pasar *después* de que React ya actualizó la pantalla, y sincronizar tu componente con algo que vive fuera de React?** Si la respuesta es sí, es un efecto. "Fuera de React" incluye el DOM directamente, una API externa, un timer o intervalo, una suscripción, `localStorage`.
+Conviene que ya sepas:
 
-Si en cambio lo que necesitás es simplemente calcular algo a partir de props o estado para usarlo en el mismo render (sin tocar nada externo), no hace falta un efecto — alcanza con una variable normal, o con `useMemo()` si ese cálculo es costoso (lo vemos en la lección de performance).
+* Qué es un componente y cómo devuelve JSX: [Tu primer componente](../02-componentes-y-props/01-Your%20First%20React%20Component.md).
+* Cómo guardar datos que cambian con estado: [useState](01-The%20State%20Hook.md).
 
-Para el caso especial de necesitar medir el DOM y ajustar algo **antes** de que el navegador pinte (evitar un parpadeo visual), existe `useLayoutEffect()`, que vemos más abajo en esta misma nota — pero es la excepción, no la regla: `useEffect()` sigue siendo la opción correcta por defecto.
+Palabras nuevas (todas están explicadas también en el [glosario](Glosario.md)):
+
+* **Efecto secundario (side effect):** algo que tu componente hace y que no es "dibujar la pantalla". Por ejemplo: pedir datos a una API, cambiar el título de la pestaña, arrancar un temporizador o escuchar el teclado.
+* **Efecto:** la función que le pasas a `useEffect`. Ahí adentro va el efecto secundario.
+* **Montar:** que el componente aparezca en pantalla por primera vez. **Desmontar** es lo contrario: que el componente se saque de la pantalla.
+* **Array de dependencias:** una lista de valores que le indica a React cuándo tiene que volver a ejecutar el efecto.
+* **Función de limpieza (cleanup):** una función que devuelve el efecto para deshacer lo que hizo (por ejemplo, dejar de escuchar el teclado).
 
 -----
 
-## Function Component Effects
+## El problema
 
-El **Hook de Efecto** le indica a nuestro componente que haga algo cada vez que se renderiza (o se vuelve a renderizar). Combinado con el estado, podemos usar el Hook de Efecto para crear cambios dinámicos interesantes en nuestras páginas web.
+Quieres que el título de la pestaña del navegador diga `Hola, Ana` mientras el usuario escribe su nombre. Lo primero que se te puede ocurrir es cambiarlo directo en el cuerpo del componente:
 
-Supongamos que queremos permitir que un usuario cambie el título de la pestaña del navegador cada vez que escribe. Podemos implementar esto con el Hook de Efecto (**useEffect()**) de la siguiente manera:
-
-```js
-import { useState, useEffect } from 'react';
- 
+```jsx
 function PageTitle() {
   const [name, setName] = useState('');
- 
-  useEffect(() => {
-    document.title = `Hi, ${name}`;
-  });
- 
-  return (
-    <div>
-      <p>Usa el campo de entrada de abajo para renombrar esta página</p>
-      <input onChange={({target}) => setName(target.value)} value={name} type='text' />
-    </div>
-  );
+
+  // Mal: se toca algo de afuera mientras React todavía está dibujando
+  document.title = `Hola, ${name}`;
+
+  return <input value={name} onChange={(e) => setName(e.target.value)} />;
 }
 ```
 
-Veamos el ejemplo anterior con más detalle. Primero, importamos el Hook de Efecto desde la librería **'react'**:
+El cuerpo del componente tiene un solo trabajo: **calcular qué se ve en pantalla**. Si además ahí adentro pides datos, arrancas temporizadores o tocas el DOM (la estructura de la página), mezclas dos cosas distintas. El componente se ejecuta muchas veces, y cada vez repetiría ese trabajo extra en un momento poco controlado.
 
-```js
-import { useEffect } from 'react';
-```
-
-La función **useEffect()** no tiene valor de retorno, ya que el Hook de Efecto se utiliza para llamar a otra función. Pasamos la función de callback, o efecto, que se ejecutará después de que un componente se renderice, como argumento de la función **useEffect()**. En nuestro ejemplo, el siguiente efecto se ejecuta después de cada renderizado del componente **PageTitle**:
-
-```js
-() => { document.title = `Hi, ${name}`; }
-```
-
-Aquí, asignamos **Hi, ${name}** como el valor de **document.title**.
-
-El evento **onChange** hace que el componente **PageTitle** se vuelva a renderizar cada vez que el usuario escribe en el campo de texto. En consecuencia, esto activa **useEffect()** y cambia el título del documento.
-
-> **En TypeScript:** un error muy común (y que a primera vista parece que "debería" funcionar) es escribir directamente `useEffect(async () => { ... })`. TypeScript lo rechaza, porque el tipo del efecto solo acepta que la función devuelva `void` o una función de limpieza — nunca una `Promise`, que es justamente lo que devuelve toda función `async`. La solución es definir la función asíncrona **adentro** del efecto y llamarla enseguida, dejando que el propio `useEffect()` no sea `async`:
->
-> ```tsx
-> useEffect(() => {
->   async function loadData() {
->     const data = await fetchData();
->     setData(data);
->   }
->
->   loadData();
-> }, []);
-> ```
-
-Observa cómo usamos el estado actual dentro de nuestro efecto. Aunque el efecto se ejecuta después de que el componente se renderiza, ¡seguimos teniendo acceso a las variables dentro del alcance de nuestro componente funcional! Cuando React renderiza nuestro componente, actualiza el DOM como de costumbre y luego ejecuta nuestro efecto después de que el DOM ha sido actualizado. Esto ocurre en cada renderizado, incluyendo el primero y el último.
+Necesitas un lugar para decir: "cuando la pantalla ya esté actualizada, haz esto". Ese lugar es `useEffect`.
 
 -----
 
-## Clean Up Effects
+## Cómo funciona
 
-Algunos efectos requieren **limpieza (cleanup)**. Por ejemplo, podríamos querer agregar *event listeners* a algún elemento del DOM, más allá del **JSX** de nuestro componente. Cuando añadimos *event listeners* al DOM, es importante eliminarlos cuando ya no los necesitamos para evitar **fugas de memoria**.
+### Paso 1: importarlo y darle una función
 
-Consideremos el siguiente efecto:
+```jsx
+import { useState, useEffect } from 'react';
 
-```js
-useEffect(() => {
-  document.addEventListener('keydown', handleKeyPress);
-  // Especificamos cómo limpiar después del efecto:
-  return () => {
-    document.removeEventListener('keydown', handleKeyPress);
-  };
-});
+function PageTitle() {
+  const [name, setName] = useState('');
+
+  useEffect(() => {
+    document.title = `Hola, ${name}`;
+  });
+
+  return <input value={name} onChange={(e) => setName(e.target.value)} />;
+}
 ```
 
-Si nuestro efecto no devolviera una función de limpieza, se agregaría un nuevo *event listener* al objeto `document` del DOM cada vez que el componente se vuelva a renderizar. Esto no solo causaría errores, sino que también podría hacer que el rendimiento de la aplicación disminuya e incluso que se bloquee.
+`useEffect` recibe una función (el efecto). React **no la ejecuta mientras dibuja**: espera a actualizar la pantalla y recién después la ejecuta.
 
-Debido a que los efectos se ejecutan después de **cada renderizado** y no solo una vez, React llama a nuestra función de limpieza **antes de cada nuevo renderizado** y **antes de desmontar el componente**, para limpiar cada llamada al efecto.
+Fíjate que el efecto puede usar `name` sin problema: tiene acceso a las variables de tu componente (estado, props, etc.).
 
-Si nuestro efecto devuelve una función, entonces el Hook **useEffect()** siempre la trata como la función de limpieza. React ejecutará esta función de limpieza antes de que el componente se vuelva a renderizar o se desmonte. Dado que esta función es opcional, es nuestra responsabilidad devolver una función de limpieza desde nuestro efecto cuando el código del efecto pueda crear fugas de memoria.
+### Paso 2: cuándo corre
 
-**Nota:** Si necesitamos un callback estable dentro de un efecto sin provocar que el efecto se vuelva a ejecutar, podemos usar el nuevo Hook **useEffectEvent**. Aprenderemos más sobre **useEffectEvent** en un ejercicio posterior.
+Por defecto, el efecto corre así:
 
------
-
-## Control When Effects Are Called
-
-La función **useEffect()** ejecuta su primer argumento (el efecto) después de cada vez que un componente se renderiza. Ya hemos aprendido cómo devolver una función de limpieza para no crear problemas de rendimiento u otros errores, pero a veces queremos **evitar que nuestro efecto se ejecute en los re-renderizados** por completo.
-
-Es común, al definir componentes funcionales, ejecutar un efecto **solo cuando el componente se monta** (se renderiza por primera vez), pero no cuando el componente se vuelve a renderizar. ¡El Hook de Efecto hace que esto sea muy fácil! Si queremos ejecutar nuestro efecto únicamente después del primer renderizado, pasamos un **arreglo vacío** como segundo argumento a **useEffect()**. Este segundo argumento se llama **arreglo de dependencias**.
-
-El arreglo de dependencias se utiliza para indicarle al método **useEffect()** cuándo debe ejecutar nuestro efecto y cuándo debe omitirlo. Nuestro efecto siempre se ejecuta después del primer renderizado, pero solo se volverá a ejecutar si algo dentro del arreglo de dependencias ha cambiado de valor entre renderizados.
-
-Seguiremos aprendiendo más sobre este segundo argumento en los próximos ejercicios, pero por ahora nos enfocaremos en usar un arreglo de dependencias vacío para ejecutar un efecto cuando un componente se monta por primera vez y, si nuestro efecto devuelve una función de limpieza, ejecutar esa función cuando el componente se desmonta.
-
-```js
-useEffect(() => {
-  alert("el componente se renderizó por primera vez");
-  return () => {
-    alert("el componente está siendo eliminado del DOM");
-  };
-}, []);
+```
+1. React ejecuta tu componente y dibuja la pantalla
+2. React ejecuta el efecto
+3. El usuario escribe una letra -> cambia el estado
+4. React vuelve a dibujar
+5. React vuelve a ejecutar el efecto
 ```
 
-Si no pasáramos un arreglo vacío como segundo argumento al **useEffect()** anterior, esas alertas se mostrarían antes y después de **cada renderizado** de nuestro componente, lo cual claramente no es el momento adecuado para mostrar esos mensajes. ¡Simplemente pasar `[]` a la función **useEffect()** es suficiente para configurar cuándo se ejecutan el efecto y la función de limpieza!
+Es decir: corre después del **primer** renderizado y después de **cada** renderizado siguiente. Al escribir, `name` cambia, React redibuja, y el efecto actualiza el título.
 
------
+### Paso 3: el array de dependencias
 
-## Fetch Data
+Muchas veces no quieres que el efecto corra en cada renderizado. Para eso existe el **segundo argumento**, el array de dependencias:
 
-Al desarrollar software, a menudo comenzamos con comportamientos predeterminados y luego los modificamos para mejorar el rendimiento.
-
-Hemos aprendido que el comportamiento predeterminado del **Hook de Efecto** es ejecutar la función del efecto **después de cada renderizado**.
-
-Luego, aprendimos que podemos pasar un **arreglo vacío** como segundo argumento a **useEffect()** si solo queremos que nuestro efecto se ejecute después del **primer renderizado** del componente.
-
-En este ejercicio, aprenderemos a usar el **arreglo de dependencias** para configurar con mayor precisión exactamente **cuándo** queremos que se ejecute nuestro efecto.
-
-Cuando nuestro efecto es responsable de **obtener datos desde un servidor**, prestamos especial atención a cuándo se ejecuta. Los viajes innecesarios de ida y vuelta entre nuestros componentes de React y el servidor pueden ser costosos en términos de:
-
-* Procesamiento
-* Rendimiento
-* Uso de datos para usuarios móviles
-* Costos de servicios de API
-
-Cuando los datos que nuestros componentes necesitan para renderizar **no cambian**, podemos pasar un arreglo de dependencias vacío para que los datos se obtengan después del primer renderizado. Cuando se recibe la respuesta del servidor, podemos usar un *setter* del **Hook de Estado** para almacenar los datos de la respuesta del servidor en el estado local del componente para renderizados futuros. Usar el Hook de Estado y el Hook de Efecto juntos de esta manera es un patrón poderoso que evita que nuestros componentes obtengan datos nuevos innecesariamente después de cada renderizado.
-
-Un arreglo de dependencias vacío le indica al Hook de Efecto que nuestro efecto **nunca necesita volver a ejecutarse**, es decir, que no depende de nada. Especificar cero dependencias significa que el resultado de ejecutar ese efecto no cambiará y que ejecutarlo una sola vez es suficiente.
-
-Un arreglo de dependencias **no vacío** le indica al Hook de Efecto que puede omitir la ejecución del efecto después de los re-renderizados **a menos que** el valor de alguna de las variables en el arreglo de dependencias haya cambiado. Si el valor de una dependencia cambia, entonces el Hook de Efecto ejecutará el efecto nuevamente.
-
-Aquí tienes un buen ejemplo tomado de la documentación oficial de React:
-
-```js
+```jsx
 useEffect(() => {
   document.title = `Hiciste clic ${count} veces`;
-}, [count]); // Solo vuelve a ejecutar el efecto si cambia el valor almacenado en count
+}, [count]);   // solo se vuelve a ejecutar si cambia count
 ```
+
+Hay tres casos:
+
+| Lo que pasas | Cuándo corre el efecto |
+| --- | --- |
+| Nada (sin array) | Después del primer renderizado y después de **cada** renderizado |
+| `[]` (array vacío) | Solo después del **primer** renderizado (al montar) |
+| `[x, y]` | Después del primer renderizado y **cada vez que cambie** `x` o `y` |
+
+React compara el valor de cada dependencia con el del renderizado anterior. Si ninguna cambió, se saltea el efecto.
+
+Un ejemplo típico es volver a pedir datos cuando cambia un valor:
+
+```jsx
+useEffect(() => {
+  fetch(`/api/usuarios/${userId}`)
+    .then((res) => res.json())
+    .then((data) => setUser(data));
+}, [userId]);   // cada vez que cambia userId, se pide el usuario nuevo
+```
+
+La regla: el array tiene que incluir **todas las variables del componente que el efecto usa** (aquí, `userId`).
+
+### Paso 4: la función de limpieza
+
+Algunos efectos crean algo que hay que deshacer. Si tu efecto **devuelve una función**, React la trata como la función de limpieza.
+
+```jsx
+useEffect(() => {
+  function handleKey(event) {
+    console.log('Tecla:', event.key);
+  }
+
+  document.addEventListener('keydown', handleKey);
+
+  // Limpieza: deshace lo que hizo el efecto
+  return () => {
+    document.removeEventListener('keydown', handleKey);
+  };
+}, []);
+```
+
+React ejecuta la limpieza en dos momentos:
+
+1. **Antes de volver a ejecutar el efecto** (si el efecto corre de nuevo, primero se limpia el anterior).
+2. **Cuando el componente se desmonta.**
+
+El orden completo, en las tres situaciones posibles:
+
+```
+El componente aparece (montar)
+  1. React dibuja la pantalla
+  2. Corre el efecto #1
+
+Cambia una dependencia (actualizar)
+  1. React dibuja la pantalla con los datos nuevos
+  2. Corre la LIMPIEZA del efecto #1
+  3. Corre el efecto #2
+
+El componente desaparece (desmontar)
+  1. Corre la LIMPIEZA del último efecto (#2)
+```
+
+La regla que se ve en el dibujo: cada efecto se limpia siempre **antes** de ser reemplazado por el siguiente, y una última vez cuando el componente se va.
+
+Si no limpiaras, cada ejecución del efecto sumaría **otro** listener (un "escuchador" de eventos), y los viejos seguirían activos. Eso genera errores, hace la app más lenta y consume memoria de más (una *fuga de memoria*).
+
+La limpieza es opcional: solo la necesitas cuando el efecto crea algo que puede duplicarse o quedar vivo (un listener, un `setInterval`, una suscripción). Si el efecto solo asigna `document.title`, no hace falta.
+
+### Paso 5: efecto solo al montar
+
+Con `[]`, el efecto corre una sola vez tras el primer renderizado, y su limpieza corre al desmontar:
+
+```jsx
+useEffect(() => {
+  console.log('El componente apareció en pantalla');
+
+  return () => {
+    console.log('El componente se sacó de la pantalla');
+  };
+}, []);
+```
+
+Sin el `[]`, esos dos mensajes saldrían antes y después de **cada** renderizado.
+
+> **Si en desarrollo ves los mensajes duplicados, no es un bug.** Muchos proyectos (los creados con Vite o con Next.js suelen traerlo activado) usan el modo estricto de React, `<StrictMode>`. En desarrollo, ese modo ejecuta el efecto, su limpieza y el efecto otra vez, a propósito, para ayudarte a descubrir limpiezas que faltan. En producción el efecto corre una sola vez.
 
 -----
 
-## Rules of Hooks
+## Separar en varios efectos
 
-Hay **dos reglas principales** que debemos tener en cuenta al usar Hooks:
+Si tu componente hace dos cosas que no tienen relación, usa **un `useEffect` por cada una**. Cada efecto tiene su propio array de dependencias y su propia limpieza.
 
-1. **Solo llamar a Hooks en el nivel superior.**
-2. **Solo llamar a Hooks desde funciones de React.**
+```jsx
+// Efecto 1: trae el menú (una sola vez)
+const [menuItems, setMenuItems] = useState(null);
+useEffect(() => {
+  fetch('/api/menu')
+    .then((res) => res.json())
+    .then((data) => setMenuItems(data));
+}, []);
 
-Como hemos estado practicando con el **Hook de Estado** y el **Hook de Efecto**, hemos seguido estas reglas con facilidad, pero es útil tenerlas siempre presentes a medida que llevas tu nuevo entendimiento de los Hooks al mundo real y comienzas a usar más Hooks en tus aplicaciones de React.
+// Efecto 2: sigue la posición del mouse (con limpieza)
+const [position, setPosition] = useState({ x: 0, y: 0 });
+useEffect(() => {
+  function handleMove(event) {
+    setPosition({ x: event.clientX, y: event.clientY });
+  }
+  window.addEventListener('mousemove', handleMove);
+  return () => window.removeEventListener('mousemove', handleMove);
+}, []);
+```
 
-Cuando React construye el **DOM Virtual**, la librería llama una y otra vez a las funciones que definen nuestros componentes a medida que el usuario interactúa con la interfaz. React realiza un seguimiento de los datos y funciones que gestionamos con Hooks basándose en **el orden en que aparecen dentro de la definición del componente funcional**. Por esta razón, siempre llamamos a nuestros Hooks en el nivel superior; **nunca** los llamamos dentro de bucles, condiciones o funciones anidadas.
+Juntarlos en un solo efecto obligaría a mezclar en el mismo lugar el pedido de datos y el listener, y a manejar todo en un único objeto de estado. Separados, cada efecto se entiende, se cambia y se prueba por su cuenta.
 
-En lugar de confundir a React con código como este:
+-----
 
-```js
-if (userName !== '') {
+## Ejemplo completo: buscar un usuario según un id
+
+```jsx
+import { useState, useEffect } from 'react';
+
+export default function UserCard({ userId }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    localStorage.setItem('savedUserName', userName);
-  });
+    // Función async definida ADENTRO del efecto
+    async function loadUser() {
+      setLoading(true);
+      const res = await fetch(`https://jsonplaceholder.typicode.com/users/${userId}`);
+      const data = await res.json();
+      setUser(data);
+      setLoading(false);
+    }
+
+    loadUser();
+  }, [userId]);   // se vuelve a pedir cuando cambia el id
+
+  if (loading) return <p>Cargando...</p>;
+  return <p>{user.name}</p>;
 }
 ```
 
-Podemos lograr el mismo objetivo asegurándonos de llamar al Hook de forma consistente en cada renderizado:
+Qué pasa, paso a paso:
 
-```js
-useEffect(() => {
-  if (userName !== '') {
-    localStorage.setItem('savedUserName', userName);
-  }
-});
-```
+1. Al aparecer, el componente dibuja "Cargando..." (porque `loading` empieza en `true`).
+2. Después de dibujar, corre el efecto y llama a `loadUser`.
+3. Cuando llega la respuesta, `setUser` y `setLoading(false)` cambian el estado y React redibuja con el nombre.
+4. Si el padre le pasa otro `userId`, el efecto vuelve a correr y trae el usuario nuevo.
 
-En segundo lugar, los Hooks solo pueden usarse en **funciones de React**. Hemos estado trabajando con **useState()** y **useEffect()** dentro de componentes funcionales, y este es el uso más común. El único otro lugar donde se pueden usar Hooks es dentro de **Hooks personalizados (custom hooks)**. Los Hooks personalizados son increíblemente útiles para organizar y reutilizar lógica con estado entre componentes funcionales.
+Fíjate que la función `async` está **adentro** del efecto y el efecto en sí no es `async`. Por qué, lo ves en "En TypeScript". Para ver este patrón con manejo de errores, mira [Fetch de datos con useEffect](../10-fetching-de-datos/01-Fetch%20de%20Datos%20con%20useEffect.md).
 
-----
+Este ejemplo es simple a propósito, y le faltan dos cosas que en una app real hacen falta:
 
-## Separate Hooks for Separate Effects
-
-Cuando varios valores están **estrechamente relacionados** y cambian al mismo tiempo, puede tener sentido agruparlos en una colección como un **objeto** o un **arreglo**. Sin embargo, empaquetar datos juntos también puede añadir **complejidad** al código encargado de gestionarlos. Por lo tanto, es una buena idea **separar responsabilidades** gestionando diferentes datos con distintos **Hooks**.
-
-Compara la complejidad de este ejemplo, donde los datos están agrupados en un solo objeto:
-
-```js
-// Maneja tanto position como menuItems con un solo hook useEffect.
-const [data, setData] = useState({ position: { x: 0, y: 0 } });
-useEffect(() => {
-  get('/menu').then((response) => {
-    setData((prev) => ({ ...prev, menuItems: response.data }));
-  });
-  const handleMove = (event) =>
-    setData((prev) => ({
-      ...prev,
-      position: { x: event.clientX, y: event.clientY }
-    }));
-  window.addEventListener('mousemove', handleMove);
-  return () => window.removeEventListener('mousemove', handleMove);
-}, []);
-```
-
-Con la simplicidad de este otro enfoque, donde hemos separado las responsabilidades:
-
-```js
-// Maneja menuItems con un hook useEffect.
-const [menuItems, setMenuItems] = useState(null);
-useEffect(() => {
-  get('/menu').then((response) => setMenuItems(response.data));
-}, []);
-
-// Maneja position con un hook useEffect separado.
-const [position, setPosition] = useState({ x: 0, y: 0 });
-useEffect(() => {
-  const handleMove = (event) =>
-    setPosition({ x: event.clientX, y: event.clientY });
-  window.addEventListener('mousemove', handleMove);
-  return () => window.removeEventListener('mousemove', handleMove);
-}, []);
-```
-
-No siempre es obvio si conviene **agrupar los datos** o **separarlos**, pero con la práctica nos volvemos mejores organizando nuestro código para que sea más fácil de **entender**, **extender**, **reutilizar** y **probar**.
+* **Manejo de errores:** si el pedido falla, `user` queda en `null` y `user.name` rompería la pantalla. Lo vemos en [Manejo de errores y estados de carga](../10-fetching-de-datos/02-Manejo%20de%20Errores%20y%20Estados%20de%20Carga.md).
+* **Condición de carrera:** si `userId` cambia antes de que llegue la respuesta anterior, una respuesta vieja podría llegar después y pisar a la nueva. Se resuelve cancelando o ignorando la respuesta vieja, y está en [Optimización de fetch con dependencias](../10-fetching-de-datos/03-Optimizaci%C3%B3n%20de%20Fetch%20con%20Dependencias.md).
 
 -----
 
-## Using useEffectEvent
+## Errores comunes
 
-A veces, un efecto necesita el **valor más reciente de una variable de estado**, pero no queremos incluir esa variable en el **arreglo de dependencias**. Agregarla obligaría al efecto a volver a ejecutarse y a recrear *listeners* o temporizadores que deberían mantenerse estables.
+### 1. Bucle infinito
 
-React proporciona **useEffectEvent** para resolver este problema. Este Hook nos permite crear un **callback especial** que siempre tiene acceso al estado o a las **props** más recientes, sin provocar que el propio efecto se vuelva a ejecutar.
-
-Primero, lo importamos:
-
-```js
-import { useState, useEffect, useEffectEvent } from "react";
-```
-
-Creamos algo de estado:
-
-```js
+```jsx
 const [count, setCount] = useState(0);
-```
 
-Ahora envolvemos la lógica que siempre debe usar el valor más reciente de `count`:
-
-```js
-const logCount = useEffectEvent(() => {
-  console.log("Latest:", count);
-});
-```
-
-`logCount` no es una función normal. Es un **callback estable** que React actualiza internamente para que, cuando se ejecute, siempre reciba el valor más reciente de `count`. Esto evita valores obsoletos (*stale values*) mientras mantiene el efecto estable.
-
-Luego, instalamos un *listener* que solo debe configurarse una vez:
-
-```js
 useEffect(() => {
-  function handleClick() {
-    logCount();
-  }
-  window.addEventListener("click", handleClick);
-  return () => window.removeEventListener("click", handleClick);
+  setCount(count + 1);   // cambia el estado en cada ejecución
+});                      // sin array: corre en cada renderizado
+```
+
+**Por qué pasa:** el efecto cambia el estado, el estado cambia el renderizado, el renderizado vuelve a disparar el efecto (no hay array que lo frene), que vuelve a cambiar el estado... y así sin fin.
+**Cómo se arregla:** pregúntate si de verdad necesitas ese efecto. Si sí, pon un array de dependencias que frene el ciclo (por ejemplo `[]`, o solo los valores que deberían dispararlo). Nunca pongas como dependencia un estado que el propio efecto cambia sin una condición que lo corte.
+
+### 2. Olvidar la limpieza
+
+```jsx
+useEffect(() => {
+  const id = setInterval(() => console.log('tick'), 1000);
+  // Mal: nadie lo detiene
 }, []);
 ```
 
-El efecto se ejecuta una sola vez gracias al `[]`, pero `logCount` siempre tiene el estado actualizado. Este patrón es útil para efectos de larga duración, como *event listeners*, intervalos y suscripciones, que deben permanecer consistentes mientras siguen reaccionando a valores que cambian.
+**Por qué pasa:** el intervalo sigue corriendo aunque el componente ya no esté en pantalla, y si el efecto vuelve a correr, se crea otro más.
+**Cómo se arregla:** devuelve una función que lo detenga.
 
-----
-
-## Review
-
-En esta lección, aprendimos cómo escribir **efectos** que gestionan temporizadores, manipulan el DOM y obtienen datos desde un servidor. Con el **Hook de Efecto**, podemos realizar este tipo de acciones en componentes funcionales con mucha facilidad.
-
-Repasemos los conceptos principales de esta lección:
-
-* Podemos importar la función **useEffect()** desde la librería **'react'** y llamarla dentro de nuestros componentes funcionales.
-* **Efecto** se refiere a la función que pasamos como primer argumento de **useEffect()**. Por defecto, el Hook de Efecto ejecuta este efecto **después de cada renderizado**.
-* La **función de limpieza (cleanup)** es devuelta de forma opcional por el efecto. Si el efecto hace algo que necesita limpiarse para evitar fugas de memoria, entonces el efecto devuelve una función de limpieza, y el Hook de Efecto llamará a esta función **antes de volver a ejecutar el efecto** y **cuando el componente se desmonte**.
-* El **arreglo de dependencias** es el segundo argumento opcional que se puede pasar a **useEffect()** para evitar ejecutar el efecto repetidamente cuando no es necesario. Este arreglo debe incluir **todas las variables de las que depende el efecto**.
-* El Hook de Efecto se centra en **programar cuándo se ejecuta el código del efecto**. Podemos usar el arreglo de dependencias para configurar cuándo se ejecuta nuestro efecto de las siguientes maneras:
-
-| Arreglo de dependencias | El efecto se ejecuta después del primer renderizado y… |
-| ----------------------- | ------------------------------------------------------ |
-| `undefined`             | en cada re-renderizado                                 |
-| Arreglo vacío           | no se vuelve a ejecutar                                |
-| Arreglo no vacío        | cuando cambia cualquier valor del arreglo              |
-
-Los Hooks nos brindan la flexibilidad para organizar nuestro código de distintas maneras, **agrupando datos relacionados** y **separando responsabilidades**, para mantener el código **simple**, **libre de errores**, **reutilizable** y **fácil de probar**.
-
-----
-
-## useLayoutEffect
-
-React expone otro Hook de la misma familia que **useEffect()**, con una firma idéntica —recibe una función de efecto y, opcionalmente, un arreglo de dependencias— pero con una diferencia crucial en **cuándo** se ejecuta: **useLayoutEffect()**.
-
-```js
-import { useLayoutEffect } from 'react';
+```jsx
+useEffect(() => {
+  const id = setInterval(() => console.log('tick'), 1000);
+  return () => clearInterval(id);   // Bien
+}, []);
 ```
 
-Como aprendimos antes, **useEffect()** ejecuta su función de efecto de forma **asíncrona**, después de que React actualiza el DOM y **después de que el navegador ha pintado la pantalla**. Esto es deliberado: React difiere el efecto para no bloquear el pintado, manteniendo la interfaz fluida.
+### 3. Poner `async` directo en el efecto
 
-**useLayoutEffect()**, en cambio, ejecuta su función de efecto de forma **síncrona**, inmediatamente después de que React realiza las mutaciones del DOM, pero **antes de que el navegador pinte** esos cambios en pantalla. En la práctica, esto significa que el código dentro de un **useLayoutEffect()** puede leer y modificar el DOM, y el usuario nunca llegará a ver un estado intermedio: solo verá el resultado final, ya corregido.
+```jsx
+useEffect(async () => {        // error
+  const data = await fetchData();
+  setData(data);
+}, []);
+```
 
-### Cuándo usarlo
+**Por qué pasa:** una función `async` siempre devuelve una `Promise`. Pero lo único que React espera que devuelva el efecto es nada o una función de limpieza.
+**Cómo se arregla:** define la función `async` adentro y llamala:
 
-El caso de uso típico de **useLayoutEffect()** es cuando necesitamos **medir algo del DOM** —por ejemplo, el tamaño o la posición de un elemento con `getBoundingClientRect()`— y, a partir de esa medición, **ajustar sincrónicamente** algún valor antes de que el usuario vea el resultado. Un ejemplo clásico es posicionar un *tooltip* para que no se salga de la pantalla: si esa lógica se hiciera con **useEffect()**, el navegador podría pintar el tooltip en una posición incorrecta durante una fracción de segundo y luego "saltar" a la posición correcta, generando un parpadeo visual (*flicker*) perceptible por el usuario.
+```jsx
+useEffect(() => {
+  async function load() {
+    const data = await fetchData();
+    setData(data);
+  }
+  load();
+}, []);
+```
 
-```js
+### 4. Dependencias incompletas
+
+```jsx
+useEffect(() => {
+  console.log(`Buscando: ${query}`);
+}, []);   // Mal: usa query pero no está en la lista
+```
+
+**Por qué pasa:** con `[]` el efecto corre una sola vez y se queda con el valor de `query` de ese momento. Aunque `query` cambie después, el efecto sigue viendo el valor viejo (un valor "desactualizado").
+**Cómo se arregla:** incluye todo lo que el efecto usa: `[query]`.
+
+-----
+
+## En TypeScript
+
+Si escribes `useEffect(async () => { ... })`, TypeScript te marca error. El tipo del efecto solo acepta que la función devuelva `void` (nada) o una función de limpieza. Una función `async` devuelve una `Promise`, y eso no encaja.
+
+La solución es la misma que vimos: una función `async` adentro, y el efecto sin `async`.
+
+```tsx
+useEffect(() => {
+  async function loadData() {
+    const data = await fetchData();
+    setData(data);
+  }
+
+  loadData();
+}, []);
+```
+
+-----
+
+## Cuándo sí y cuándo no
+
+**Usa `useEffect` para** sincronizar tu componente con algo que vive **fuera de React**: pedir datos a una API, cambiar el título de la pestaña o tocar el DOM directamente, temporizadores e intervalos, suscripciones, `localStorage`.
+
+**No lo uses para:**
+
+* **Calcular algo a partir de props o estado para mostrarlo.** Alcanza con una variable común dentro del componente (o con `useMemo` si el cálculo es costoso). Un efecto ahí sobra y agrega un renderizado extra.
+* **Reaccionar a un clic o a un envío de formulario.** Eso va en el manejador del evento.
+
+**Qué array usar:**
+
+* Sin array: casi nunca es lo que quieres; el efecto corre en **cada** renderizado. Si no pasas el segundo argumento, revisa si en realidad necesitabas `[]` o dependencias concretas.
+* `[]`: cuando debe correr una sola vez al montar (una suscripción, un pedido inicial que no depende de nada).
+* `[x]`: cuando debe volver a correr solo si cambia `x` (el caso típico del nuevo pedido cuando cambia un id o un texto de búsqueda).
+
+**Usa limpieza** cuando el efecto crea un listener, un intervalo o una suscripción.
+
+-----
+
+## Resumen en 5 líneas
+
+1. `useEffect(efecto, dependencias)` ejecuta código **después** de que React actualiza la pantalla, para sincronizar con algo de afuera.
+2. Sin array corre en cada renderizado; con `[]` solo tras el primer renderizado; con `[x]` cuando cambia `x`.
+3. Si el efecto devuelve una función, es la **limpieza**: corre antes de cada nueva ejecución del efecto y al desmontar.
+4. El array debe incluir todas las variables del componente que el efecto usa; el efecto no puede ser `async`, pero sí puede definir y llamar una función `async` adentro.
+5. Si solo necesitas calcular algo para mostrarlo, no uses un efecto.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>useLayoutEffect: cuando necesitas medir antes de pintar</summary>
+
+`useLayoutEffect` se escribe igual que `useEffect` (una función y, opcionalmente, un array de dependencias) pero corre en otro momento:
+
+* `useEffect` corre **después** de que el navegador pintó la pantalla.
+* `useLayoutEffect` corre justo después de que React actualiza el DOM, pero **antes de que el navegador pinte**. Así, el usuario nunca ve un estado intermedio.
+
+Sirve para **medir algo del DOM** (el tamaño o la posición de un elemento) y ajustar algo enseguida, para evitar un parpadeo. Por ejemplo, posicionar un *tooltip* para que no se salga de la pantalla:
+
+```jsx
 import { useState, useRef, useLayoutEffect } from 'react';
 
 function Tooltip() {
@@ -344,26 +386,74 @@ function Tooltip() {
   const [height, setHeight] = useState(0);
 
   useLayoutEffect(() => {
-    const { height } = ref.current.getBoundingClientRect();
-    setHeight(height);
+    const rect = ref.current.getBoundingClientRect();
+    setHeight(rect.height);
   }, []);
 
   return <div ref={ref}>Contenido del tooltip</div>;
 }
 ```
 
-Fuera de este tipo de escenarios —mediciones de layout, animaciones que dependen de una medición previa, o evitar parpadeos visuales al sincronizar el DOM con datos externos— **useEffect()** sigue siendo la opción correcta por defecto. Como **useLayoutEffect()** bloquea el pintado del navegador hasta que termina de ejecutarse, abusar de él puede degradar el rendimiento percibido de la aplicación. Las reglas de dependencias y la función de limpieza funcionan exactamente igual que en **useEffect()**; lo único que cambia es el momento en el que React decide ejecutar el efecto.
+Con `useEffect`, el navegador podría pintar el tooltip en una posición incorrecta por un instante y después "saltar" a la correcta.
+
+Para todo lo demás, usa `useEffect`: `useLayoutEffect` frena el pintado del navegador hasta que termina, y abusar de él puede hacer que la app se sienta más lenta. Las reglas de dependencias y de limpieza son las mismas.
+
+</details>
+
+<details>
+<summary>useEffectEvent: leer el valor más reciente sin que sea dependencia</summary>
+
+A veces un efecto necesita el valor **más reciente** de una variable de estado, pero no quieres ponerla en el array de dependencias: hacerlo obligaría al efecto a volver a correr y a recrear listeners o temporizadores que deberían quedarse estables.
+
+`useEffectEvent` resuelve eso. Crea un callback especial que siempre tiene acceso al estado o a las props más recientes, sin que el efecto tenga que volver a ejecutarse.
+
+```jsx
+import { useState, useEffect, useEffectEvent } from 'react';
+
+function Demo() {
+  const [count, setCount] = useState(0);
+
+  // Siempre lee el count más reciente
+  const logCount = useEffectEvent(() => {
+    console.log('Último valor:', count);
+  });
+
+  useEffect(() => {
+    function handleClick() {
+      logCount();
+    }
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);   // el listener se instala una sola vez
+
+  return <button onClick={() => setCount(count + 1)}>Sumar</button>;
+}
+```
+
+El efecto corre una sola vez gracias al `[]`, pero `logCount` siempre ve el `count` actual. Es útil para efectos de larga duración (listeners, intervalos, suscripciones) que deben mantenerse estables mientras reaccionan a valores que cambian. Es un Hook nuevo de React; si tu proyecto usa una versión anterior, puede no estar disponible.
+
+</details>
+
+<details>
+<summary>Las reglas de los Hooks (recordatorio)</summary>
+
+`useEffect` es un Hook, así que sigue las mismas dos reglas que `useState`: se llama solo desde componentes de función (o Hooks propios) y siempre en el nivel de arriba del componente, nunca dentro de un `if`, un bucle o una función anidada. Si necesitas una condición, ponela **adentro** del efecto:
+
+```jsx
+// Bien: el Hook siempre se ejecuta; la condición va adentro
+useEffect(() => {
+  if (userName !== '') {
+    localStorage.setItem('savedUserName', userName);
+  }
+}, [userName]);
+```
+
+La explicación completa está en la sección "Las reglas de los Hooks" de la lección [useState](01-The%20State%20Hook.md).
+
+</details>
 
 -----
 
-## ¿Cuándo usar cada práctica de esta lección?
+## Siguiente lección
 
-- **Sin array de dependencias** (`useEffect(fn)`) — casi nunca es lo que realmente querés: el efecto se ejecuta después de **cada** render, sin excepción. Se usa muy poco en código real; si te encontrás sin pasar el segundo argumento, valen la pena revisar si en realidad necesitás `[]` o un array con dependencias específicas.
-- **Array vacío `[]`** — cuando el efecto solo debe ejecutarse una vez, al montar el componente: una suscripción, un fetch inicial que no depende de ninguna prop ni estado.
-- **Array con dependencias específicas** (`[count]`, `[searchQuery]`) — cuando el efecto debe volver a ejecutarse únicamente si cambia alguno de esos valores puntuales — el caso típico de re-fetch cuando cambia un id o un término de búsqueda.
-- **Función de limpieza (cleanup)** — cuando el efecto crea algo que podría duplicarse o generar una fuga de memoria si no se deshace: un *event listener*, un `setInterval`, una suscripción. Si el efecto solo lee un valor y lo asigna a `document.title`, por ejemplo, no necesita cleanup.
-- **`useEffectEvent`** — cuando el efecto necesita leer el valor **más reciente** de una variable, pero esa variable no debería formar parte del array de dependencias porque no querés que el efecto se vuelva a ejecutar (y recrear listeners o timers) solo porque ese valor cambió.
-- **`useLayoutEffect`** — únicamente cuando necesitás medir el DOM y ajustar algo de forma sincrónica antes de que el navegador pinte, para evitar un parpadeo visual. Para todo lo demás, `useEffect` es la opción por defecto.
-- **Separar en varios `useEffect`** — cuando dos piezas de lógica no están relacionadas entre sí (una obtiene datos de una API, otra escucha el movimiento del mouse). Agruparlas en un solo efecto mezcla responsabilidades que no tienen nada que ver.
-
-----
+Cuando la misma lógica con `useState` y `useEffect` se repite en varios componentes, puedes guardarla en una función propia y reutilizarla: [Custom Hooks](03-Custom%20Hooks.md).

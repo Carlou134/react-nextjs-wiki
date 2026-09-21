@@ -1,60 +1,125 @@
-# React Context
+# Context: compartir datos sin pasarlos por props
 
-## Introduction
+## En una frase
 
-Supongamos que tienes la tarea de enviar un mensaje desde el piso 15 de un edificio hasta el primer piso. En lugar de enviarlo directamente, tienes que pasarlo a través de una persona en cada uno de los pisos intermedios. Parece ineficiente, ¿verdad? Esto es similar a lo que sucede en algunas aplicaciones de React.
-
-Es posible que estés construyendo una aplicación React donde los datos se almacenan en un componente "Abuelo" (GrandParent) de alto nivel. Luego, necesitas pasar esos datos a través de un componente "Padre" (Parent) y, finalmente, a un componente "Hijo" (Child) para mostrarlos.
-
-Este es un patrón común y bastante poderoso en las aplicaciones de React llamado **"prop drilling" (perforación de props)**. En el prop drilling, un fragmento de datos se transmite en cascada a través de múltiples componentes en la jerarquía, como en nuestra analogía del edificio. La prop se "perfora" desde un componente de alto nivel a través de componentes de nivel medio hasta llegar a un componente de bajo nivel.
-
-Cuando las **props** solo tienen que perforarse a través de 1 o 2 componentes, el prop drilling puede ser manejable y preferible para aplicaciones pequeñas. Sin embargo, con más capas, introduce desafíos como:
-
-*   Infla tu código y dificulta la comprensión o reutilización de los componentes intermedios.
-*   Provoca que los componentes intermedios se vuelvan a renderizar debido a cambios en las props perforadas, incluso si ellos mismos no usan esas props.
-
-En esta lección, veremos el **Context API (API de Contexto)** de React, un enfoque común para evitar el prop drilling innecesario. El **Contexto (Context)** es una característica de React que nos permite crear una pieza de **estado centralizado** a la que cualquier componente dentro de un área de tu aplicación puede suscribirse.
-
-Al final de la lección, aprenderás:
-
-*   Cómo un contexto de React proporciona estado compartido a los componentes de React.
-*   A crear un contexto para proporcionar un valor a componentes descendientes de React.
-*   A consumir ese valor en componentes descendientes de React.
-*   A actualizar el valor del contexto en componentes descendientes de React.
-*   A estructurar proveedores anidados para el mismo tipo de contexto.
-
-¡Comencemos!
+**Context** te deja poner un dato en un lugar compartido, para que cualquier componente de esa zona lo lea directamente, sin que se lo pasen por props uno a uno.
 
 -----
 
-## ¿Cuándo usar Context?
+## Antes de empezar
 
-Usá Context cuando **varios componentes, en distintos niveles de profundidad**, necesitan leer (y a veces actualizar) el mismo dato, y pasarlo por props te obligaría a atravesar componentes intermedios que ni siquiera lo usan — el problema del edificio de quince pisos de arriba. Ejemplos típicos: el tema visual, el usuario autenticado, el idioma de la interfaz.
+Conviene que ya sepas:
 
-No es la herramienta correcta para **todo** el estado de una aplicación: como vamos a ver en "Buenas prácticas y antipatrones" más abajo, un valor de Context que cambia con mucha frecuencia puede generar re-renders innecesarios en todos sus consumidores. Para estado que cambia seguido o que involucra lógica de actualización compleja, conviene mirar `useReducer()` combinado con Context (lo vemos en la sección "Context con useReducer"), o directamente una librería como Zustand — cubierta en `03-state-management-and-data`.
+* Cómo un componente recibe datos con props: [Props](../02-componentes-y-props/03-Props.md).
+* Cómo guardar un dato que cambia con `useState`: [useState](01-The%20State%20Hook.md).
+* Qué es un Hook propio (`useAlgo`): [Custom Hooks](03-Custom%20Hooks.md).
+
+Palabras nuevas (todas están explicadas también en el [glosario](Glosario.md)):
+
+* **Prop drilling (perforación de props):** pasar una prop por muchos componentes intermedios que no la usan, solo para que llegue a uno que está más abajo.
+* **Context (contexto):** un lugar compartido donde guardas un dato para que los componentes de una zona del árbol lo lean sin usar props.
+* **Provider (proveedor):** el componente que "pone" el dato en el contexto y lo deja disponible para todo lo que tiene adentro.
+* **Consumidor:** un componente que lee el dato del contexto.
+* **Árbol de componentes:** la jerarquía de componentes, donde unos están dentro de otros (padres, hijos, nietos...).
+* **Memoizar:** guardar un resultado para reutilizarlo y no volver a calcularlo si nada cambió.
+* **Referencia:** la "dirección" de un objeto en la memoria. Dos objetos con el mismo contenido son referencias distintas; React compara así para saber si un valor cambió.
+* **Wrapper (envoltorio):** un componente cuyo trabajo es envolver a otros para darles algo (en este caso, el Provider).
 
 -----
 
-## Paso a paso recomendado para armar un Context
+## El problema
 
-El resto de esta lección explica cada pieza por separado, en el orden en que aparecieron históricamente en el curso. Pero a la hora de **construir** un Context de cero, conviene hacerlo en este orden — es el mismo que fuiste destrabando en la práctica con el ejercicio del tema claro/oscuro:
+Imagina que tienes que mandar un mensaje desde el piso 15 de un edificio hasta la planta baja, pero solo puedes dárselo a la persona de cada piso, una por una. Todos los del medio lo cargan sin usarlo. Es lento y molesto.
 
-**1. Definí el tipo del valor, y creá el contexto.** Antes de escribir ninguna lógica, preguntate: ¿qué necesitan leer (y actualizar) los componentes que van a consumir esto? Eso es tu `type`. Creá el contexto con ese tipo y `undefined` como valor por defecto:
+En React pasa lo mismo cuando un dato vive arriba de todo (el tema de la app, el usuario) y lo necesita un componente muy abajo:
+
+```jsx
+function App() {
+  const theme = 'dark';
+  return <Page theme={theme} />;
+}
+
+// Page no usa theme, solo lo pasa
+function Page({ theme }) {
+  return <Card theme={theme} />;
+}
+
+// Card tampoco lo usa, solo lo pasa
+function Card({ theme }) {
+  return <Title theme={theme} />;
+}
+
+// Recién aquí se usa
+function Title({ theme }) {
+  return <h1>Tema: {theme}</h1>;
+}
+```
+
+Esto se llama **prop drilling**. Con 1 o 2 niveles es manejable, y en una app chica está bien. Con más niveles trae problemas:
+
+* Los componentes intermedios (`Page`, `Card`) se llenan de props que no usan, y cuesta entenderlos o reutilizarlos.
+* Si la prop cambia, los intermedios se vuelven a renderizar aunque ellos no la usen.
+
+Necesitas una forma de que `Title` lea el dato directamente. Esa forma es Context.
+
+-----
+
+## Cómo funciona
+
+La idea tiene dos roles:
+
+* El **Provider** (proveedor) es un componente que pone un dato a disposición de todos los componentes que tiene adentro.
+* Cada componente de adentro que lee ese dato es un **consumidor**.
+
+Sin props en el medio. Mira la diferencia en el árbol de componentes:
+
+```
+SIN Context: theme viaja por todos los componentes
+
+App                 tiene theme
+ └── Page           recibe theme y lo reenvía (no lo usa)
+      └── Card      recibe theme y lo reenvía (no lo usa)
+           └── Title    recibe theme y por fin lo usa
+
+
+CON Context: Title lo lee directamente
+
+ThemeProvider       pone el dato (theme)
+ └── Page           no recibe ni reenvía nada
+      └── Card      tampoco
+           └── Title    llama a useTheme() y lee el dato directo
+```
+
+Se arma con una receta de pasos.
+
+### Paso 1: definir el tipo y crear el contexto
+
+Antes de escribir lógica, pregúntate: ¿qué necesitan leer (y cambiar) los componentes que van a usar esto? Eso es tu tipo. Después creas el contexto con `createContext`:
 
 ```tsx
+import { createContext } from 'react';
+
+type Theme = 'light' | 'dark';
+
 type ThemeContextType = {
-  theme: string;
-  setTheme: (theme: string) => void;
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 ```
 
-**2. Creá el componente Provider (el "wrapper").** Este es el único lugar de todo tu código que va a tocar `ThemeContext.Provider` directamente. Acá vive el estado real (`useState` o `useReducer`), y el `value` memoizado con `useMemo`:
+`createContext` necesita un valor por defecto. Casi nunca tienes uno "real" con sentido, así que se pasa `undefined` y se avisa en el tipo (`ThemeContextType | undefined`). Más abajo, en "En TypeScript", vemos por qué esto es una ventaja.
+
+### Paso 2: crear el componente Provider (el "wrapper")
+
+Un **wrapper** (envoltorio) es un componente que envuelve a otros. Este es el único lugar de tu código que va a usar `ThemeContext.Provider` directamente. Aquí vive el estado real y el `value` que se comparte:
 
 ```tsx
+import { useMemo, useState } from 'react';
+
 function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState<Theme>('light');
   const value = useMemo(() => ({ theme, setTheme }), [theme]);
 
   return (
@@ -65,51 +130,114 @@ function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 ```
 
-**3. Creá el custom hook de inmediato — no es opcional ni depende de "cuántos componentes lo van a usar".** Acá vale la pena corregir una intuición razonable pero equivocada: no es que el hook se justifique recién "cuando vamos a usar muchos componentes". Se crea **siempre**, incluso si por ahora solo lo consume un componente, porque:
+Por partes:
 
-  * te ahorra repetir el chequeo de `undefined` en cada lugar que consuma el contexto,
-  * oculta `ThemeContext` como detalle de implementación — nadie fuera de este archivo necesita saber que existe,
-  * si el día de mañana cambiás cómo se implementa el contexto por dentro, ningún componente consumidor tiene que cambiar una sola línea.
+* `children` es todo lo que pones **entre** las etiquetas `<ThemeProvider>...</ThemeProvider>`. Es lo que va a tener acceso al dato.
+* `useState` guarda el tema, como ya sabes.
+* `value` es lo que el Provider comparte: un objeto con el tema **y** la función para cambiarlo. Los consumidores pueden usar las dos cosas, o solo una.
+* `useMemo` evita re-renders de más. Lo explicamos en la sección "Cómo se actualiza".
 
-  ```tsx
-  function useTheme() {
-    const context = useContext(ThemeContext);
-    if (context === undefined) {
-      throw new Error('useTheme debe usarse dentro de un ThemeProvider');
-    }
-    return context;
-  }
-  ```
-
-  Lo que sí es cierto es que el **beneficio** de tener el hook crece cuantos más componentes lo consuman — pero el costo de escribirlo es tan bajo (cuatro líneas) que conviene hacerlo desde el primer consumidor, no esperar a que haga falta.
-
-**4. Envolvé con el Provider la parte del árbol que necesita el contexto — ni más arriba, ni más abajo de lo necesario.** Acá está la otra parte de tu pregunta: ¿dónde va el `<ThemeProvider>` en el árbol de componentes? La regla es ubicarlo **lo más cerca posible de los componentes que realmente lo necesitan**, sin envolver de más. Si todo tu sitio necesita el tema, envolvé en la raíz (`<App>`). Si solo una sección específica lo necesita (por ejemplo, un panel de configuración), envolvé solo esa sección — no hace falta que el `<ThemeProvider>` viva en la raíz de la aplicación "por las dudas".
-
-**5. Consumí con el hook en cualquier componente descendiente.** A partir de acá, cualquier componente adentro del `<ThemeProvider>` llama a `useTheme()` — sin importar cuán anidado esté, y sin volver a tocar `ThemeContext` directamente.
-
-**6. ¿En qué archivo va todo esto?** Los pasos 1, 2 y 3 (el `type`, `createContext`, el `Provider` y el hook) conviene agruparlos juntos en su **propio archivo** desde el día uno — por ejemplo `ThemeContext.tsx` — aunque todavía tengas un solo consumidor. No es una decisión que se posterga hasta que el contexto "crezca": es una unidad autocontenida (contexto + provider + hook de acceso) que tiene sentido mantener junta desde que nace, para que cualquiera que la use sepa exactamente de dónde importarla y no tenga que buscarla dispersa entre los componentes que la consumen.
-
-**7. El error más común al conectar todo esto: consumir el contexto en el mismo componente que crea el Provider.** Es tentador escribir algo así, sobre todo en un componente de ejemplo o de demo:
+### Paso 3: crear el Hook propio (`useTheme`)
 
 ```tsx
-// ❌ Esto tira "useTheme debe usarse dentro de un ThemeProvider"
+import { useContext } from 'react';
+
+function useTheme() {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error('useTheme debe usarse dentro de un ThemeProvider');
+  }
+  return context;
+}
+```
+
+`useContext(ThemeContext)` es el Hook de React que lee el valor del contexto. Si no hay ningún Provider arriba, devuelve el **valor por defecto** que le diste a `createContext` (en nuestro caso, `undefined`). Por eso el Hook propio revisa eso y lanza un error claro.
+
+Este Hook se crea **siempre**, aunque por ahora lo use un solo componente. No es cierto que "solo vale la pena cuando hay muchos consumidores". Te da tres cosas:
+
+* No repites el chequeo de `undefined` en cada componente que consume el contexto.
+* Escondes `ThemeContext` como detalle interno: nadie fuera de este archivo necesita saber que existe.
+* Si mañana cambias cómo funciona el contexto por dentro, ningún consumidor tiene que cambiar.
+
+Cuesta cuatro líneas escribirlo. No lo postergues.
+
+### Paso 4: envolver con el Provider
+
+Pones el `<ThemeProvider>` alrededor de la parte del árbol que necesita el dato, **lo más cerca posible** de esos componentes:
+
+* Si todo tu sitio necesita el tema, envuelve en la raíz (`<App>`).
+* Si solo lo necesita una sección (por ejemplo, un panel de configuración), envuelve solo esa sección.
+
+No hace falta que el Provider viva en la raíz "por las dudas".
+
+```tsx
+<ThemeProvider>
+  <Page />
+</ThemeProvider>
+```
+
+### Paso 5: consumir con el Hook
+
+Cualquier componente que esté adentro del Provider, sin importar cuán profundo, llama a `useTheme()`:
+
+```tsx
+function Title() {
+  const { theme } = useTheme();
+  return <h1>Tema: {theme}</h1>;
+}
+```
+
+`Page` y `Card` ya no reciben ni pasan nada. `Title` lee el dato directo.
+
+### Paso 6: todo junto en su propio archivo
+
+El tipo, `createContext`, el Provider y el Hook (los pasos 1, 2 y 3) van juntos en **un archivo propio** desde el primer día, por ejemplo `ThemeContext.tsx`, aunque tengas un solo consumidor. Es una unidad completa: contexto + Provider + Hook. Así cualquiera sabe de dónde importarla, y no queda desparramada entre los componentes que la usan.
+
+Desde ese archivo exportas solo `ThemeProvider` y `useTheme`.
+
+### Paso 7: el error clásico, consumir en el mismo componente que crea el Provider
+
+Es tentador escribir esto, sobre todo en una demo:
+
+```tsx
+// Mal: tira "useTheme debe usarse dentro de un ThemeProvider"
 function DemoDelTema() {
-  const { theme } = useTheme(); // se ejecuta ACÁ...
+  const { theme } = useTheme(); // se ejecuta AQUÍ...
 
   return (
-    <ThemeProvider>          {/* ...pero el Provider recién existe ACÁ, más abajo */}
+    <ThemeProvider>            {/* ...pero el Provider recién existe AQUÍ */}
       <h1>Tema: {theme}</h1>
     </ThemeProvider>
   );
 }
 ```
 
-Esto no es un problema de **orden** en el código (no se arregla moviendo la línea de `useTheme()` más abajo) — es un problema de **jerarquía en el árbol**. `DemoDelTema` es quien *crea* el `ThemeProvider`; nunca puede ser, a la vez, hijo de ese mismo Provider. Un componente no puede estar simultáneamente arriba y abajo de sí mismo en el árbol que él mismo renderiza.
+No es un tema del orden de las líneas: mover `useTheme()` más abajo no lo arregla. Es un tema de **jerarquía del árbol**. `DemoDelTema` es quien *crea* el Provider, así que nunca puede ser hijo de ese mismo Provider. Un componente no puede estar arriba y abajo de sí mismo.
 
-La solución es siempre la misma: separar en dos componentes — uno de afuera, que solo pone el Provider, y otro de adentro, que consume el hook:
+En el árbol se ve así. `useTheme()` busca un Provider **por encima** del componente que lo llama:
+
+```
+Mal: el mismo componente crea el Provider y usa el Hook
+
+DemoDelTema                <- llama a useTheme(): busca un Provider ARRIBA suyo
+ └── ThemeProvider         <- el Provider recién existe aquí, DEBAJO
+      └── h1
+
+Arriba de DemoDelTema no hay ningún Provider, así que useTheme() falla.
+
+
+Bien: el que usa el Hook queda DEBAJO del Provider
+
+DemoDelTema
+ └── ThemeProvider                 <- el Provider
+      └── ContenidoDelTema         <- llama a useTheme(): encuentra el Provider arriba
+           └── h1
+```
+
+La solución es separar en dos componentes: uno de afuera que solo pone el Provider, y uno de adentro que usa el Hook:
 
 ```tsx
-// ✅ Correcto: dos componentes, el de adentro sí es descendiente del Provider
+// Bien: el de adentro sí es descendiente del Provider
 function DemoDelTema() {
   return (
     <ThemeProvider>
@@ -124,442 +252,397 @@ function ContenidoDelTema() {
 }
 ```
 
-Esto **no** significa que siempre haya que dividir todo en dos componentes — la mayoría de las veces el `<ThemeProvider>` va a envolver a un componente `<App>` que ya existía de antes, y no hace falta crear nada nuevo. La regla solo se activa en el caso puntual donde una misma pieza necesita hacer dos cosas mutuamente excluyentes: proveer el contexto y consumirlo.
+Esto no significa que siempre tengas que dividir todo. La mayoría de las veces el `<ThemeProvider>` envuelve a un `<App>` que ya existía. La regla solo aplica cuando un mismo componente quiere hacer las dos cosas: proveer y consumir.
 
 -----
 
-## Creating and Consuming Context
+## Cómo se actualiza
 
-Es hora de explorar cómo podemos compartir datos de manera eficiente en nuestra aplicación y eliminar el "prop drilling" utilizando la **API de Contexto (Context API)**.
+El setter viaja **dentro del `value`**. Cuando un consumidor lo llama, pasa esto, en orden:
 
-A través de un patrón de **Proveedor (Provider)** y **Consumidor (Consumer)** , la API de Contexto proporciona un mecanismo para compartir datos entre componentes sin complicaciones. El **proveedor** es un componente de React que pone los datos a disposición de sus componentes descendientes. Cuando uno de esos descendientes accede a los datos compartidos, se convierte en un **consumidor**.
-
-Para usar la API de Contexto de React, comenzamos creando un **objeto de contexto de React**, un objeto con nombre creado por la función `React.createContext()`.
-
-```jsx
-const MyContext = React.createContext();
+```
+1. Un consumidor llama a setTheme('dark')
+2. Cambia el estado del Provider
+3. El Provider se vuelve a renderizar y crea un value nuevo
+4. React vuelve a renderizar a TODOS los consumidores de ese contexto
+5. Cada uno muestra el tema nuevo
 ```
 
-Los objetos de contexto incluyen una propiedad **.Provider** que es un componente de React. Este componente recibe una prop `value` que se almacena en el contexto.
+### Para qué sirve useMemo
 
-```jsx
-<MyContext.Provider value="Hello world!">
-   <ChildComponent />
-</MyContext.Provider>
+React decide si el `value` cambió comparándolo **por referencia**: pregunta "¿es el mismo objeto de antes?", no "¿tiene el mismo contenido?".
+
+Si escribes el objeto directamente en el Provider:
+
+```tsx
+// Mal: objeto nuevo en cada render
+<ThemeContext.Provider value={{ theme, setTheme }}>
 ```
 
-Ese valor —en este caso, el string `"Hello world!"`— está disponible para todos los componentes descendientes. Los componentes descendientes —en este caso, `ChildComponent`— pueden entonces recuperar el valor del contexto con el hook **useContext()** de React.
+cada vez que el Provider se renderiza se crea un objeto distinto. Para React es "un valor nuevo", y vuelve a renderizar a todos los consumidores.
 
-```jsx
-import { useContext } from 'react';
-import { MyContext } from './MyContext.js';
+Ojo con cuándo importa esto. En nuestro ejemplo, el Provider se renderiza cuando cambia `theme`, y ahí el `value` cambia de todas formas, así que `useMemo` no ahorra nada. Donde sí ayuda es cuando el Provider se vuelve a renderizar **por otro motivo** (porque tiene otro estado propio, o porque se renderizó su componente padre) y `theme` sigue siendo el mismo: sin `useMemo`, todos los consumidores se re-renderizarían igual, aunque nada del tema haya cambiado.
 
-const ChildComponent = () => {
-  const value = useContext(MyContext);
-  return <p>{value}</p>;
-};
-// Renderiza <p>Hello, world!</p>
+`useMemo` guarda el objeto y solo crea uno nuevo cuando cambian las dependencias que le indicas (en el ejemplo, `[theme]`):
+
+```tsx
+// Bien: mismo objeto mientras theme no cambie
+const value = useMemo(() => ({ theme, setTheme }), [theme]);
 ```
 
-El hook `useContext()` acepta el objeto de contexto como argumento y devuelve el valor actual del contexto. ¡Regocíjate, ya no es necesario perforar (prop drilling) ese valor!
+`setTheme` no hace falta ponerlo en las dependencias: la función que devuelve `useState` es siempre la misma.
 
-> **En TypeScript:** `createContext()` necesita un valor por defecto, y ese valor determina el tipo del contexto. El problema es que casi nunca tenés un valor por defecto "real" con sentido — la práctica más común es pasar `undefined` explícitamente y tipar el contexto como `MyContextType | undefined`:
->
-> ```tsx
-> type ThemeContextType = {
->   theme: string;
->   setTheme: (theme: string) => void;
-> };
->
-> const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-> ```
->
-> Esto es justamente lo que hace seguro el patrón del hook personalizado que vamos a ver más abajo, en "Buenas prácticas y antipatrones": como el tipo incluye `| undefined`, TypeScript te **obliga** a manejar ese caso (con el chequeo `if (context === undefined) throw ...`) antes de dejarte usar `context.theme` — así el error de "usar el contexto fuera de su Provider" se atrapa en tiempo de compilación, no en producción.
+-----
 
-**Nota:** Si un componente intenta usar un contexto que no es proporcionado por uno de sus ancestros, `useContext()` devolverá `undefined`.
+## Ejemplo completo: tema claro y oscuro
 
-**Nota:** En algunas aplicaciones React antiguas, es posible que en su lugar veas `SomeContext.Consumer` utilizado para suscribirse a un Contexto. Esa alternativa generalmente se considera una mala práctica y se evita por ser demasiado verbosa y difícil de trabajar.
+Un solo Provider, tres consumidores (`Card`, `CardTitle` y `ThemeButton`) y un componente intermedio (`Page`) que no sabe nada del tema. Fíjate que `CardTitle` está **adentro** de `Card`: la profundidad no importa.
 
-----
+```tsx
+// ThemeContext.tsx
+import { createContext, useContext, useMemo, useState } from 'react';
 
-## Multiple Providers
+type Theme = 'light' | 'dark';
 
-En el ejercicio anterior, aprendiste cómo crear un objeto de **contexto** de React. También aprendiste cómo asignar al componente **.Provider** del contexto una prop `value` para que los descendientes puedan acceder a ese valor. Ahora, avancemos en nuestra comprensión. ¿Qué pasa si nuestra aplicación requiere el mismo contexto en múltiples áreas, cada una con un valor distinto? Piensa en temas (themes) variables en diferentes secciones de la aplicación.
-
-Un componente **.Provider** puede ser reutilizado con el mismo contexto múltiples veces en una aplicación con diferentes valores. Esto es útil si el contexto es renderizado por un componente que se utiliza varias veces en toda la aplicación. Cada instancia del componente podría querer dar un valor diferente al contexto. Por ejemplo, un componente podría renderizar dos componentes **.Provider** que reciban cada uno un valor diferente:
-
-```jsx
-const GreetingContext = React.createContext();
-
-const ChildComponent = () => {
-  const greeting = useContext(GreetingContext);
-  return <h2>{greeting}</h2>;
+type ThemeContextType = {
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 };
 
-const MyComponent = () => {
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Theme>('light');
+  const value = useMemo(() => ({ theme, setTheme }), [theme]);
+
   return (
-    <>
-      <GreetingContext.Provider value="bonjour le monde!">
-        <ChildComponent />
-      </GreetingContext.Provider>
-      <GreetingContext.Provider value="hallo welt!">
-        <ChildComponent />
-      </GreetingContext.Provider>
-    </>
-  );
-};
-```
-
-Para practicar este concepto, refactoricemos nuestra aplicación. Configuraremos `ThemeContext` para que cada vez que se use su componente **.Provider** para diferentes secciones de contacto, se le dé una prop `value` distinta.
-
-----
-
-## Provider Wrappers
-
-En los últimos tres ejercicios viste cómo los Contextos pueden compartir datos en un área de una aplicación React. Ahora vamos a mostrar los patrones de codificación comunes que muchos desarrolladores de React utilizan con los Contextos y sus componentes **.Provider**.
-
-Para empezar, es común que las aplicaciones React creen un **componente "envoltorio" (wrapper)** alrededor de un componente **.Provider**. El componente envoltorio puede proporcionar un valor de su elección, a menudo una de sus **props** o un literal de cadena, al componente **.Provider**.
-
-Por ejemplo, aquí hay un componente `ThemedMessage` que devuelve el componente `ThemeContext.Provider` envuelto alrededor de cualquier componente `children` que reciba. `ThemedMessage` también asigna un valor usando una prop `theme`:
-
-```jsx
-const ThemeContext = React.createContext();
-
-const ThemedMessage = ({ children, theme }) => {
-  return (
-    <ThemeContext.Provider value={theme}>
-      This content is in {theme} mode!
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
-};
-```
+}
 
-> **En TypeScript:** todo componente envoltorio recibe `children`, y esa prop se tipa con `React.ReactNode` — el mismo tipo que ya vimos en la lección de Props para cubrir cualquier cosa renderizable (string, número, elemento JSX, arreglo de elementos, o nada):
->
-> ```tsx
-> type ThemedMessageProps = {
->   children: React.ReactNode;
->   theme: string;
-> };
->
-> const ThemedMessage = ({ children, theme }: ThemedMessageProps) => {
->   return (
->     <ThemeContext.Provider value={theme}>
->       This content is in {theme} mode!
->       {children}
->     </ThemeContext.Provider>
->   );
-> };
-> ```
->
-> Este mismo patrón se repite en todos los componentes envoltorio que vas a ver más abajo en esta lección (`CounterArea`, `ThemeProvider`, `CartProvider`): todos reciben `children: React.ReactNode` como prop, así que no lo vamos a repetir cada vez — a partir de acá, dalo por tipado así en cada uno.
-
-Los componentes envoltorio como `ThemedMessage` pueden entonces usarse en lugar de un componente **.Provider** para envolver componentes hijos:
-
-```jsx
-// Renderiza:
-// This content is in dark mode! Hooray!
-const MyComponent = () => {
-  return (
-    <ThemedMessage theme="dark">
-      Hooray!
-    </ThemedMessage>
-  )
-};
-```
-
-En este ejercicio, prepararás la aplicación para futuros cambios configurando un componente envoltorio dedicado para el **Contexto** `ThemeContext`. Refactorizaremos `ThemeContext` para que más adelante pueda proporcionar más que solo el string del tema a sus consumidores.
-
------
-
-## Updating Context
-
-El ejercicio anterior te hizo configurar un componente envoltorio alrededor de un componente **.Provider** de un **Contexto**. Ahora vamos a hacer uso de ese componente envoltorio trabajando con el estado de React.
-
-Muchas aplicaciones React utilizan "prop drilling" para pasar dos valores: un **fragmento de estado (piece of state)** y la **función actualizadora de estado (state updater function)** para actualizar ese estado. Los componentes hijos pueden entonces usar la función actualizadora de estado para cambiar el estado de sus ancestros. Por ejemplo:
-
-```jsx
-const CounterApp = () => {
-  const [count, setCount] = useState(0);
-
-  return (
-    <Counter count={count} setCount={setCount} />
-  );
-};
-```
-
-En este ejemplo, `Counter` puede usar la función `setCount()` para actualizar el valor `count` de `CounterApp`.
-
-Los Contextos de React también se pueden usar para proporcionar estado y funciones actualizadoras de estado. Un patrón común es que el contexto proporcione un **objeto** que contenga ambos valores. Los componentes hijos que consumen el contexto pueden entonces usar ambos (o cualquiera de ellos): el estado y la función actualizadora.
-
-En este ejemplo, `CounterArea` proporciona el valor `count` y la función `setCount()` a sus descendientes usando contexto. El componente `Counter` extrae ambos valores del contexto proporcionado.
-
-```jsx
-const CounterContext = React.createContext();
-
-const CounterArea = ({ children }) => {
-  const [count, setCount] = useState(0);
-
-  return (
-    <CounterContext.Provider value={{ count, setCount }}>
-      {children}
-    </CounterContext.Provider>
-  );
-};
-
-const Counter = () => {
-  const { count, setCount } = useContext(CounterContext);
-
-  return (
-    <button onClick={() => setCount(count => count + 1)}>
-      {count}
-    </button>
-  );
-};
-
-const CounterApp = () => {
-  return (
-    <CounterArea>
-      <Counter />
-    </CounterArea>
-  );
-};
-```
-
-En este ejercicio, añadirás lógica al componente `ThemeArea` que configure un fragmento de estado y una función actualizadora de estado para su contexto. Al hacerlo, permitirás que `ThemeContext` tenga su tema actualizado por componentes hijos.
-
-----
-
-## Nested Providers
-
-Has visto cómo los **Proveedores (Providers)** de **Contexto** de React pueden usarse en múltiples lugares en una aplicación React. Aquí hay un breve ejemplo de un `GreeterContext` utilizado para configurar diferentes saludos para componentes hijos:
-
-```jsx
-<GreeterContext.Provider value="Salut!">
-  <ChildComponent />
-</GreeterContext.Provider>
-<GreeterContext.Provider value="Hallo!">
-  <ChildComponent />
-</GreeterContext.Provider>
-```
-
-Un Proveedor de Contexto puede ser un hijo en el árbol de la aplicación, ubicado debajo de un Proveedor de Contexto anterior. Los componentes que se suscriben al Proveedor de un Contexto recibirán el valor del componente **.Provider** que esté **más cerca de ellos** en el árbol de la aplicación. Este patrón a veces se conoce como **anidamiento (nesting)** .
-
-```jsx
-<GreeterContext.Provider value="Salut!">
-  <HighLevelComponent> {/* El valor de GreeterContext es "Salut!" aquí */}
-
-    <GreeterContext.Provider value="Hallo!">  
-      <LowLevelComponent /> {/* El valor de GreeterContext es "Hallo!" aquí */}
-    </GreeterContext.Provider>
-
-  </RootComponent>
-</GreeterContext.Provider>
-```
-
-En este ejemplo, tenemos dos componentes que se utilizan dentro de `GreeterContext.Provider`: `HighLevelComponent` y `LowLevelComponent`. Cada componente usará el valor del `GreeterContext.Provider` más cercano. En este caso, `HighLevelComponent` tendrá el valor `"Salut!"` al usar `GreeterContext`, mientras que `LowLevelComponent` tendrá el valor `"Hallo!"`.
-
-Vamos a usar el anidamiento de Contexto para configurar temas anidados en nuestra aplicación de gestión de contactos:
-
-*   Un contexto raíz alrededor de toda la aplicación configurará un **tema raíz (root theme)** para toda la aplicación.
-*   Un contexto anidado en cada sección de contactos **anulará (override)** el tema raíz para los elementos de contacto de su sección.
-
-----------
-
-## Review
-
-¡Felicitaciones, has terminado la lección de **Context** de React! Recapitulemos lo que aprendiste:
-
-*   **Prop drilling** es el término para el patrón común de React en el que los datos se pasan como prop a través de una gran cantidad de componentes en una aplicación.
-*   Los **Contexts** nos permiten evitar el prop drilling de piezas de estado de la aplicación compartidas por muchos componentes. Los Contexts vienen con un componente **.Provider** que también puede tomar un `value` para ponerlo a disposición de los componentes hijos, sin tener que pasar el valor mediante prop drilling.
-*   Los componentes hijos, que actúan como **Consumidores (Consumers)** , pueden suscribirse al valor de un Context desde su Provider padre más cercano con el hook **useContext()** de React. Los componentes que se suscriben a un Context recibirán el valor del Provider más cercano a ellos en el árbol de la aplicación.
-*   A los Providers se les puede dar un **objeto** que contenga el estado de React y su correspondiente **función actualizadora de estado**. Los componentes hijos suscriptores pueden entonces usar la función actualizadora de estado para actualizar el estado del Context.
-
-**Context** es una de las muchas formas en que las aplicaciones React pueden compartir estado entre muchos componentes sin prop drilling manual. Ten en cuenta, sin embargo, que es mejor usarlo con moderación y solo para valores que se pasan por prop drilling y que **no cambian con mucha frecuencia**. Más adelante, en la lección de Rendimiento (Performance) de este curso, verás cómo el uso excesivo de Context puede causar problemas de rendimiento.
-
-Ten en cuenta también que **Context no siempre es la mejor solución** para la arquitectura de tu aplicación. Hay otras formas de manejar el estado, como Redux, `useReducer`, o simplemente `useState` y prop drilling (que no siempre es un problema).
-
------
-
-## Buenas prácticas y antipatrones
-
-A medida que una aplicación crece, es fácil caer en algunos usos de **Context** que funcionan, pero que terminan generando problemas de rendimiento o de mantenibilidad. A continuación repasamos los antipatrones más comunes y su solución.
-
-### Evitar un contexto gigante que centraliza todo
-
-Un error frecuente es crear un único contexto que agrupa datos de dominios completamente distintos:
-
-```tsx
-<AppContext.Provider value={{ user, theme, cart, settings }}>
-```
-
-El problema es que **cualquier** cambio en cualquiera de esas propiedades —el usuario, el tema, el carrito o las preferencias— provoca que **todos** los componentes que consumen `AppContext` se vuelvan a renderizar, incluso aquellos que solo necesitan una de esas piezas de información. La solución es dividir el contexto por dominio, creando un `UserContext`, un `ThemeContext` y un `CartContext` independientes entre sí. De esta forma, un cambio en el carrito solo afecta a los componentes que realmente consumen `CartContext`.
-
-### Memoizar el valor que recibe el Provider
-
-Otro problema sutil aparece incluso con contextos bien separados. Cada vez que el componente que renderiza un `.Provider` se vuelve a ejecutar, una expresión como esta:
-
-```tsx
-<UserContext.Provider value={{ user }}>
-```
-
-crea un **objeto literal nuevo** en cada renderizado. Como React compara el valor del contexto por referencia y no por contenido, este nuevo objeto se considera "distinto" al anterior aunque `user` no haya cambiado, y todos los componentes suscritos se vuelven a renderizar innecesariamente.
-
-La solución es envolver ese valor con **useMemo()**, para que solo se cree un nuevo objeto cuando sus dependencias realmente cambien:
-
-```tsx
-const value = useMemo(() => ({ user, login, logout }), [user]);
-
-return (
-  <UserContext.Provider value={value}>
-    {children}
-  </UserContext.Provider>
-);
-```
-
-Si el Provider también expone funciones, conviene envolverlas con **useCallback()** por la misma razón: una función definida directamente en el cuerpo del componente se recrea en cada renderizado, invalidando la memoización del objeto `value` que la contiene.
-
-### Envolver useContext() en un Hook personalizado
-
-En lugar de que cada componente consumidor llame directamente a `useContext(UserContext)`, es una buena práctica exponer un **Hook personalizado** dedicado, como `useUser()` o `useTheme()`, que encapsule esa llamada:
-
-```tsx
-function useTheme() {
+export function useTheme() {
   const context = useContext(ThemeContext);
-
   if (context === undefined) {
     throw new Error('useTheme debe usarse dentro de un ThemeProvider');
   }
-
   return context;
 }
 ```
 
-Este patrón tiene varias ventajas: oculta el objeto de contexto como detalle de implementación, permite lanzar un error claro si el Hook se usa fuera de su Provider correspondiente (en lugar de fallar silenciosamente con `undefined`), y hace que el código consumidor sea más legible, ya que `useTheme()` comunica mejor la intención que `useContext(ThemeContext)`.
+```tsx
+// App.tsx
+import { ThemeProvider, useTheme } from './ThemeContext';
 
-### Medir antes de optimizar
+// Consumidor 1: lee el tema para elegir colores
+function Card({ children }: { children: React.ReactNode }) {
+  const { theme } = useTheme();
+  const style = theme === 'dark'
+    ? { background: '#222', color: '#fff' }
+    : { background: '#fff', color: '#222' };
 
-Es tentador aplicar `useMemo()` y `useCallback()` de forma reflexiva en todo el código de Context "por si acaso". Sin embargo, la memoización tiene un costo propio —React debe comparar dependencias en cada renderizado— y añade una capa extra de complejidad al código. Antes de optimizar, conviene usar el **Profiler de React** para confirmar que existe un problema real de renderizados innecesarios. Como regla general, si una optimización mejora el tiempo de renderizado en menos de un 5%, probablemente no vale la pena la complejidad adicional que introduce. La secuencia correcta es siempre: **medir, luego optimizar, y volver a medir** para confirmar la mejora.
+  return <div style={style}>{children}</div>;
+}
+
+// Consumidor 2: está adentro de Card, y también lee el tema
+function CardTitle() {
+  const { theme } = useTheme();
+  return <h2>Tema actual: {theme}</h2>;
+}
+
+// Consumidor 3: lee el tema y también lo cambia
+function ThemeButton() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+      Cambiar tema
+    </button>
+  );
+}
+
+// No usa el tema: solo organiza la pantalla
+function Page() {
+  return (
+    <>
+      <Card>
+        <CardTitle />
+      </Card>
+      <ThemeButton />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <Page />
+    </ThemeProvider>
+  );
+}
+```
+
+Qué pasa, paso a paso:
+
+1. `App` envuelve todo con `<ThemeProvider>`. Ahí vive el estado `theme`, que arranca en `'light'`.
+2. `Page` no recibe ni pasa props de tema. Es un intermedio que no se entera de nada.
+3. `Card` y `CardTitle` llaman a `useTheme()` y leen el tema. `CardTitle` está más profundo, y le da igual.
+4. `ThemeButton` llama a `setTheme`. Cambia el estado del Provider, se crea un `value` nuevo y React vuelve a renderizar a los tres consumidores.
+5. El botón **también** es un componente adentro del Provider. Si el botón estuviera en `App`, junto al `<ThemeProvider>`, sería el error del paso 7.
+
+> Cuando tu estado tiene muchas acciones distintas (agregar, quitar, editar), se combina Context con `useReducer`. Eso se explica en la lección [useReducer](05-useReducer.md).
 
 -----
 
-## Persistencia de estado con localStorage
+## Errores comunes
 
-En muchos casos, el estado que vive en un contexto debería sobrevivir a una recarga de página: el tema elegido por el usuario, el idioma de la interfaz, o un token de sesión son buenos ejemplos. Para lograrlo, sincronizamos el estado del contexto con `localStorage`.
+### 1. Usar el Hook fuera del Provider
+
+```tsx
+function App() {
+  return <Title />;   // no hay ningún ThemeProvider arriba
+}
+```
+
+**Por qué pasa:** `Title` llama a `useTheme()`, pero no tiene un `ThemeProvider` por encima. `useContext` devuelve el valor por defecto (`undefined`) y la guardia lanza el error `useTheme debe usarse dentro de un ThemeProvider`.
+**Cómo se arregla:** envuelve el componente (o algún ancestro suyo) con `<ThemeProvider>`. El error de la guardia es tu amigo: te dice exactamente qué falta, en lugar de fallar más tarde con algo confuso.
+
+### 2. Consumir en el mismo componente que crea el Provider
+
+```tsx
+function App() {
+  const { theme } = useTheme();   // error: aquí todavía no hay Provider
+  return <ThemeProvider>...</ThemeProvider>;
+}
+```
+
+**Por qué pasa:** el componente que crea el Provider no es hijo de ese Provider. No es un problema del orden de las líneas, es de la jerarquía del árbol.
+**Cómo se arregla:** separalo en un componente de afuera que pone el Provider y uno de adentro que llama al Hook (paso 7 de la receta).
+
+### 3. Poner varios Providers pensando que "cada componente necesita el suyo"
+
+```tsx
+// Mal: tres temas independientes, no uno compartido
+<>
+  <ThemeProvider><Header /></ThemeProvider>
+  <ThemeProvider><Content /></ThemeProvider>
+  <ThemeProvider><Footer /></ThemeProvider>
+</>
+```
+
+**Por qué pasa:** cada `<ThemeProvider>` crea **su propio** `useState`. Son tres estados aislados. Si el botón de `Header` cambia el tema, `Content` y `Footer` no se enteran.
+**Cómo se arregla:** un solo Provider que envuelva a todos los que tienen que compartir el dato.
+
+```tsx
+// Bien: un solo estado compartido
+<ThemeProvider>
+  <Header />
+  <Content />
+  <Footer />
+</ThemeProvider>
+```
+
+### 4. Olvidar useMemo en el value (una optimización, no un bug)
+
+```tsx
+// Menos eficiente: objeto nuevo en cada render del Provider
+<ThemeContext.Provider value={{ theme, setTheme }}>
+```
+
+**Por qué pasa:** React compara el `value` por referencia. Si el Provider se re-renderiza por otro motivo (otro estado suyo, o su componente padre), se crea un objeto nuevo y todos los consumidores se vuelven a renderizar, aunque el tema sea el mismo. La app sigue funcionando bien: solo hace trabajo de más.
+**Cómo se arregla:** `const value = useMemo(() => ({ theme, setTheme }), [theme]);`
+
+-----
+
+## En TypeScript
+
+```tsx
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+function ThemeProvider({ children }: { children: React.ReactNode }) { /* ... */ }
+```
+
+* **`createContext<T | undefined>(undefined)`:** el valor por defecto determina el tipo del contexto. Como casi nunca tienes un valor por defecto real, se pasa `undefined` y se agrega `| undefined` al tipo.
+* **Por qué ayuda la guardia:** como el tipo incluye `| undefined`, TypeScript te **obliga** a manejar ese caso (con el `if (context === undefined) throw ...`) antes de dejarte usar `context.theme`. La guardia en sí se ejecuta en tiempo real: en cuanto un componente usa `useTheme()` sin Provider, lanza un error claro en ese mismo momento, en lugar de fallar más tarde con algo confuso. Y dentro de `useTheme`, después de la guardia, TypeScript ya sabe que el valor existe, así que los consumidores reciben el tipo limpio, sin `undefined`.
+* **`children: React.ReactNode`:** todo componente wrapper recibe `children`, y se tipa así. `ReactNode` cubre todo lo que React puede dibujar: texto, número, elemento JSX, lista de elementos o nada. Aplica a **todos** los wrappers de esta lección.
+
+Para ver más sobre tipado de Context: [Tipado de useReducer y Context API](../11-typescript-y-react/03-Tipado%20de%20useReducer%20y%20Context%20API.md).
+
+-----
+
+## Cuándo sí y cuándo no
+
+**Usa Context cuando** varios componentes, en distintos niveles del árbol, necesitan el mismo dato y pasarlo por props te obligaría a atravesar componentes que ni lo usan. Ejemplos típicos: el tema visual, el usuario autenticado, el idioma de la interfaz.
+
+**No lo uses para:**
+
+* **Todo el estado de tu app.** Cuando el `value` cambia, se vuelven a renderizar **todos** los consumidores. Un valor que cambia muy seguido (lo que escribe el usuario en un campo, la posición del mouse) vuelve lenta la app.
+* **Un dato que solo necesitan uno o dos niveles más abajo.** Ahí el prop drilling es más simple y más claro.
+* **Estado complejo y muy dinámico.** Para eso mira [Zustand, Redux y Context: cuándo usar cada uno](../../03-state-management-and-data/01-Zustand,%20Redux%20y%20Context%20-%20Cuando%20usar%20cada%20uno.md).
+
+-----
+
+## Resumen en 5 líneas
+
+1. Context comparte un dato con todos los componentes de una zona del árbol, sin pasar props por los intermedios.
+2. La receta: `createContext<T | undefined>(undefined)`, un componente Provider con `useState` y `useMemo`, y un Hook propio (`useTheme`) con la guardia de `undefined`.
+3. Envuelve con el Provider solo la parte del árbol que lo necesita, y **nunca** consumas en el mismo componente que lo crea.
+4. Cuando alguien cambia el estado, React vuelve a renderizar a **todos** los consumidores; `useMemo` en el `value` evita re-renders de más.
+5. Un solo Provider comparte un estado; cada `<Provider>` extra crea un estado nuevo y aislado.
+
+-----
+
+## Para profundizar
+
+<details>
+<summary>Varios Providers del mismo contexto con valores distintos</summary>
+
+Un mismo contexto se puede usar con varios Providers, cada uno con un valor distinto. Sirve cuando quieres el mismo tipo de dato pero diferente por sección de la app (por ejemplo, temas distintos en distintas áreas de un dashboard). Es lo opuesto al error común 3: aquí lo haces a propósito.
 
 ```jsx
-function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem('theme') || 'light'
+const GreetingContext = createContext();
+
+function Greeting() {
+  const greeting = useContext(GreetingContext);
+  return <h2>{greeting}</h2>;
+}
+
+function MyComponent() {
+  return (
+    <>
+      <GreetingContext.Provider value="bonjour le monde!">
+        <Greeting />
+      </GreetingContext.Provider>
+      <GreetingContext.Provider value="hallo welt!">
+        <Greeting />
+      </GreetingContext.Provider>
+    </>
+  );
+}
+```
+
+El mismo `Greeting` muestra un texto distinto según el Provider en el que esté. Esto es útil cuando un componente que renderiza un Provider se usa varias veces en la app, y cada copia quiere darle su propio valor.
+
+Con un wrapper puedes pasarle el valor por una prop. Aquí usamos un contexto más simple, `MessageContext`, que guarda solo un texto (no es el `ThemeContext` de la receta, que guarda un objeto con `theme` y `setTheme`):
+
+```tsx
+const MessageContext = createContext<string>('light');
+
+function ThemedMessage({ children, theme }: { children: React.ReactNode; theme: string }) {
+  return (
+    <MessageContext.Provider value={theme}>
+      Este contenido está en modo {theme}.
+      {children}
+    </MessageContext.Provider>
+  );
+}
+
+// Uso:
+<ThemedMessage theme="dark">Hola</ThemedMessage>
+```
+
+</details>
+
+<details>
+<summary>Providers anidados</summary>
+
+Un Provider puede estar adentro de otro Provider del mismo contexto. Los componentes reciben el valor del Provider **más cercano** hacia arriba en el árbol. Esto se llama *anidar* Providers.
+
+```jsx
+<GreeterContext.Provider value="Salut!">
+  <HighLevelComponent>
+    {/* El valor de GreeterContext es "Salut!" aquí */}
+
+    <GreeterContext.Provider value="Hallo!">
+      <LowLevelComponent />
+      {/* El valor de GreeterContext es "Hallo!" aquí */}
+    </GreeterContext.Provider>
+
+  </HighLevelComponent>
+</GreeterContext.Provider>
+```
+
+`HighLevelComponent` recibe `"Salut!"`. `LowLevelComponent` recibe `"Hallo!"`, porque su Provider más cercano es el de adentro. Es útil, por ejemplo, para tener un tema general de toda la app y sobrescribirlo en una sección concreta.
+
+</details>
+
+<details>
+<summary>Buenas prácticas y antipatrones</summary>
+
+**No armes un contexto gigante que centralice todo.**
+
+```tsx
+// Mal: datos de dominios distintos mezclados
+<AppContext.Provider value={{ user, theme, cart, settings }}>
+```
+
+Cualquier cambio en cualquiera de esas propiedades vuelve a renderizar a **todos** los que consumen `AppContext`, incluso a los que solo necesitan una. Mejor dividir por dominio: un `UserContext`, un `ThemeContext` y un `CartContext` independientes. Así, un cambio en el carrito solo afecta a quienes consumen `CartContext`.
+
+**Memoiza el `value` y las funciones.** Ya viste `useMemo` para el `value`. Si el Provider además expone funciones, envolvelas con `useCallback`: una función definida en el cuerpo del componente se crea de nuevo en cada render, y eso rompe la memoización del objeto `value` que la contiene.
+
+```tsx
+const login = useCallback((u: User) => setUser(u), []);
+const logout = useCallback(() => setUser(null), []);
+const value = useMemo(() => ({ user, login, logout }), [user, login, logout]);
+```
+
+**Envuelve `useContext` en un Hook propio.** Es el paso 3 de la receta. Oculta el objeto de contexto, lanza un error claro si se usa fuera del Provider (en vez de fallar en silencio con `undefined`), y `useTheme()` comunica mejor la intención que `useContext(ThemeContext)`.
+
+**Mide antes de optimizar.** Es tentador poner `useMemo` y `useCallback` en todos lados "por las dudas". Pero memoizar tiene su propio costo: React compara las dependencias en cada render, y el código se complica. Antes de optimizar, usa el **Profiler de React** para confirmar que hay un problema real de renders de más, que se note en la práctica. Si después de optimizar la mejora que mides es mínima, probablemente no vale la complejidad que agrega. La secuencia es: medir, optimizar, y volver a medir.
+
+**Nota histórica.** En apps React antiguas puedes ver `MyContext.Consumer` en lugar de `useContext`. Ese estilo se considera una mala práctica hoy: es más verboso y difícil de leer.
+
+</details>
+
+<details>
+<summary>Persistencia con localStorage</summary>
+
+A veces el dato del contexto tiene que sobrevivir a una recarga de página: el tema elegido, el idioma, un token de sesión. Para eso sincronizas el estado con `localStorage`:
+
+```tsx
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem('theme') as Theme | null) ?? 'light'
   );
 
   useEffect(() => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  const value = useMemo(() => ({ theme, setTheme }), [theme]);
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );
 }
 ```
 
-Hay dos detalles importantes en este ejemplo. Primero, el valor inicial de `useState()` se pasa como una **función inicializadora** (`() => localStorage.getItem('theme') || 'light'`) en lugar de como un valor directo. Esto es una **inicialización perezosa (lazy initialization)**: React solo ejecuta esa función una vez, durante el primer renderizado, en lugar de leer `localStorage` en cada renderizado del componente. Segundo, usamos un **useEffect()** con `theme` en su arreglo de dependencias para escribir en `localStorage` cada vez que el tema cambia, en lugar de escribir directamente durante el renderizado, ya que acceder a APIs del navegador es un efecto secundario y debe manejarse como tal.
+Dos detalles:
 
------
+* El valor inicial de `useState` es una **función** (`() => ... ?? 'light'`). Se llama *inicialización perezosa*: React ejecuta esa función solo en el primer render, en lugar de leer `localStorage` en cada render. El `as Theme | null` le dice a TypeScript que confíe en que lo guardado es un tema válido; en una app real, conviene validarlo antes de usarlo.
+* Se guarda con `useEffect` y `theme` en las dependencias, así se escribe en `localStorage` cada vez que el tema cambia. Escribir en `localStorage` es un efecto secundario (algo que toca el mundo de afuera de React), y por eso no va directo en el cuerpo del componente. Repasa [useEffect](02-The%20Effect%20Hook.md).
 
-## Context con useReducer
+No tiene sentido persistir datos que deberían reiniciarse en cada carga.
 
-Cuando el valor compartido por un contexto necesita soportar varias operaciones relacionadas entre sí —agregar, quitar o editar elementos, por ejemplo—, exponer un actualizador de estado distinto para cada operación a través del Provider se vuelve difícil de mantener. En estos casos, es común combinar **Context** con **useReducer()**: el contexto expone el estado actual junto con una única función `dispatch()`, y toda la lógica de las transiciones de estado queda centralizada en el reducer.
+</details>
+
+<details>
+<summary>Operaciones asíncronas</summary>
+
+Si el valor del contexto viene de una petición (por ejemplo, un usuario que se carga desde una API), los consumidores se renderizan **antes** de que llegue la respuesta. Mientras tanto, el contexto tiene un valor inicial (normalmente `null` o `undefined`). Los consumidores tienen que manejar ese **estado de carga** explícitamente y no asumir que el dato ya está:
 
 ```tsx
-type CartItem = { id: number; name: string; price: number };
-type CartState = { items: CartItem[] };
-
-type CartAction =
-  | { type: 'add'; payload: CartItem }
-  | { type: 'remove'; payload: { id: number } };
-
-type CartContextType = {
-  state: CartState;
-  dispatch: React.Dispatch<CartAction>;
-};
-
-const CartContext = createContext<CartContextType | undefined>(undefined);
-
-const initialState: CartState = { items: [] };
-
-function cartReducer(state: CartState, action: CartAction): CartState {
-  switch (action.type) {
-    case 'add':
-      return { items: [...state.items, action.payload] };
-    case 'remove':
-      return { items: state.items.filter((item) => item.id !== action.payload.id) };
-    default:
-      return state;
-  }
-}
-
-function CartProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(cartReducer, initialState);
-  const value = useMemo(() => ({ state, dispatch }), [state]);
-
-  return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
-  );
+function Profile() {
+  const { user } = useUser();
+  if (user === null) return <p>Cargando...</p>;
+  return <p>Hola, {user.name}</p>;
 }
 ```
 
-Notá que `CartAction` es la misma unión discriminada que vimos en la lección de `useReducer`, y que el `payload` de `remove` es `{ id: number }` — no el `CartItem` entero — porque para sacar un producto del carrito alcanza con saber cuál es su `id`; pasarle el objeto completo sería exigirle a quien despacha la acción un dato que ni siquiera necesita.
-
-Los componentes consumidores ya no necesitan recibir múltiples funciones actualizadoras a través del contexto; les basta con `dispatch()`. Igual que con cualquier otro contexto, conviene envolver `useContext(CartContext)` en su propio hook (`useCart()`), con el mismo chequeo de `undefined` que ya venimos usando:
-
-```tsx
-function useCart() {
-  const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart debe usarse dentro de un CartProvider');
-  }
-  return context;
-}
-```
-
-```tsx
-const { state, dispatch } = useCart();
-
-dispatch({ type: 'add', payload: newItem });
-```
-
-Este patrón —a veces descrito informalmente como "Redux sin librería externa"— funciona muy bien para estado global de complejidad media. Para aplicaciones con una cantidad de acciones y de estado mucho mayor, suele ser preferible migrar a una librería dedicada de manejo de estado, como Redux Toolkit o Zustand, que veremos en profundidad en la lección de `useReducer`.
-
-Vale la pena marcar un error de tipeo muy común al escribir la línea del `CartProvider`, porque mezcla dos cosas que suenan parecido pero son completamente distintas:
-
-```jsx
-const [state, dispatch] = useReducer(cartReducer, initialState);
-```
-
-**Lo que le pasás a `useReducer()` como argumentos** (`cartReducer`, `initialState`) **no tiene nada que ver con lo que te devuelve** (`state`, `dispatch`). Son dos pares de nombres que casualmente aparecen en la misma línea, no la misma cosa vista dos veces. Un error típico es escribir algo como esto:
-
-```jsx
-// ❌ estado y dispatch mal nombrados, y colisión de nombres
-const [cartReducer, initialState] = useReducer(cartReducer, initialState);
-```
-
-Acá `cartReducer` e `initialState` (los que declara el `const`) están pisando los nombres de la función reducer y el estado inicial que se supone que le estás pasando **en la misma línea** — y como `const` reserva ese nombre para toda la función desde el principio (incluso antes de inicializarse), el `cartReducer` del lado derecho ya no apunta a tu función reducer de arriba, sino a esta nueva variable todavía sin valor. El resultado es un error en tiempo de ejecución (`Cannot access 'cartReducer' before initialization`), no un simple typo cosmético.
-
-La forma de no confundirse: `useReducer()` siempre devuelve `[state, dispatch]`, en ese orden, sin excepción — es la misma convención que `useState()` con `[valor, setValor]`. Los nombres que le pasás como argumentos (la función reducer, el estado inicial) podés llamarlos como quieras, pero conviene que sean claramente distintos de `state` y `dispatch`, precisamente para no arriesgarte a esta colisión.
-
------
-
-## Advertencias con operaciones asíncronas
-
-Cuando el valor de un contexto depende de datos obtenidos de forma asíncrona —por ejemplo, un usuario que se carga desde una API—, hay que tener en cuenta que los componentes consumidores se renderizan **antes** de que esa petición se resuelva. Durante ese intervalo, el contexto expone un valor inicial (normalmente `null` o `undefined`), por lo que los componentes consumidores deben manejar explícitamente ese estado de carga en lugar de asumir que el dato ya está disponible.
-
-Por otro lado, la lógica asíncrona **no debe vivir dentro del reducer**. Un reducer debe ser una función **pura**: dado el mismo estado y la misma acción, siempre debe devolver el mismo resultado, sin efectos secundarios como llamadas a una API. El patrón correcto es disparar la petición asíncrona desde un efecto o desde un manejador de eventos, y despachar una acción con el resultado una vez que la promesa se resuelve:
+Por otro lado, la lógica asíncrona **no va dentro de un reducer**. Un reducer tiene que ser una función *pura*: con el mismo estado y la misma acción siempre devuelve el mismo resultado, sin efectos como llamar a una API. Lo correcto es hacer la petición desde un efecto o desde un manejador de eventos, y hacer `dispatch` de una acción con el resultado cuando la promesa se resuelve:
 
 ```jsx
 useEffect(() => {
@@ -572,26 +655,26 @@ useEffect(() => {
   });
 
   return () => {
-    cancelled = true;
+    cancelled = true;   // si el componente se desmonta, ignoramos la respuesta
   };
 }, []);
 ```
 
-Combinar Context con lógica asíncrona compleja —reintentos, caché, invalidación de datos— tiende a volverse difícil de escalar con las herramientas básicas de React. Cuando el manejo de datos asíncronos empieza a dominar la lógica de un contexto, suele ser una señal de que conviene migrar a una librería especializada en manejo de datos remotos, como React Query, o a un gestor de estado global como Redux Toolkit.
+Más sobre reducers y `dispatch` en [useReducer](05-useReducer.md). Más sobre pedir datos en [Fetch de datos con useEffect](../10-fetching-de-datos/01-Fetch%20de%20Datos%20con%20useEffect.md).
+
+Si la lógica asíncrona empieza a dominar el contexto (reintentos, caché, invalidación de datos), es señal de que conviene una librería pensada para eso, como React Query para datos remotos, o un gestor de estado global como Redux Toolkit.
+
+</details>
+
+<details>
+<summary>Context con useReducer</summary>
+
+Cuando el estado compartido necesita muchas operaciones relacionadas (agregar, quitar, editar), exponer un setter distinto por cada una se vuelve pesado. En esos casos es común combinar Context con `useReducer`: el contexto expone el estado y una sola función `dispatch`. Todo eso se explica en la lección [useReducer](05-useReducer.md).
+
+</details>
 
 -----
 
-## ¿Cuándo usar cada práctica de esta lección?
+## Siguiente lección
 
-- **Un solo Provider** — el caso por defecto: un dato, compartido tal cual, con toda la aplicación (o toda la sección) que lo envuelve.
-- **Multiple Providers** (mismo contexto, valores distintos) — cuando necesitás el mismo *tipo* de contexto pero con un valor diferente por sección de la app (por ejemplo, temas distintos para distintas áreas de un dashboard).
-- **Nested Providers** — cuando una sección específica del árbol necesita *sobreescribir* el valor que ya viene de un Provider más arriba, solo para sus propios descendientes.
-- **Provider Wrapper** (el componente `ThemeProvider`) — siempre. No es una técnica opcional para casos avanzados: es la forma recomendada de usar Context desde el principio, en lugar de escribir `<ThemeContext.Provider value={...}>` a mano en cada lugar donde lo necesites.
-- **Exponer `dispatch` o el setter junto con el valor** ("Updating Context") — cuando los componentes consumidores necesitan poder *cambiar* el dato, no solo leerlo. Si el contexto es de solo lectura (por ejemplo, datos de configuración que nunca cambian en runtime), no hace falta exponer ningún setter.
-- **Dividir en varios contextos** ("Buenas prácticas") — cuando agrupaste, en un mismo contexto, datos que cambian con frecuencias distintas o que pertenecen a dominios sin relación entre sí (usuario, tema, carrito). La señal de alarma es un componente que se re-renderiza por un cambio en una parte del contexto que ni siquiera usa.
-- **`useMemo` en el `value` del Provider** — siempre que el Provider pueda re-renderizarse por una razón ajena al valor del contexto (por ejemplo, si el Provider mismo recibe otras props). Es barato de escribir y evita una clase entera de re-renders innecesarios en los consumidores.
-- **Persistencia con `localStorage`** — cuando el valor tiene que sobrevivir a un recargado de página: tema, idioma, sesión. No tiene sentido para datos que deberían reiniciarse en cada carga.
-- **Context con `useReducer`** — cuando el valor compartido necesita soportar varias operaciones relacionadas entre sí (agregar/quitar/editar), en vez de un único setter simple. Si solo necesitás cambiar un valor de una manera, `useState` alcanza.
-- **Manejo explícito de estados de carga con datos async** — en cuanto el valor del contexto dependa de una petición a una API. Si el contexto es 100% síncrono (tema, idioma elegido localmente), no aplica.
-
------
+Cuando el estado se complica (muchas acciones distintas sobre el mismo dato), conviene ordenarlo con un reducer, y combinarlo con Context: [useReducer](05-useReducer.md).
