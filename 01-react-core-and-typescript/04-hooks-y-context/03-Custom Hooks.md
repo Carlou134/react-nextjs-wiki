@@ -2,7 +2,7 @@
 
 ## En una frase
 
-Un **custom hook** es una función tuya, con nombre que empieza con `use`, que junta en un solo lugar lógica hecha con otros Hooks (como `useState` y `useEffect`) para que la reutilices en varios componentes.
+Un **custom hook** es una función propia, con nombre que empieza con `use`, que llama a otros Hooks (como `useState` o `useEffect`) para encapsular lógica y reutilizarla en varios componentes.
 
 -----
 
@@ -15,16 +15,16 @@ Conviene que ya sepas:
 
 Palabras nuevas (todas están explicadas también en el [glosario](Glosario.md)):
 
-* **Custom hook (hook personalizado):** una función común que empieza con `use` y que llama a otros Hooks adentro.
-* **Lógica con estado:** código que usa `useState` (y a veces `useEffect`) para recordar datos y reaccionar a cambios.
-* **Convención:** un acuerdo entre programadores. No lo exige React como una función nueva: lo seguimos porque ayuda a que todos entiendan el código.
+* **Custom hook (hook personalizado):** una función de JavaScript cuyo nombre empieza con `use` y que llama a otros Hooks.
+* **Lógica con estado:** código que usa `useState` (y a veces `useEffect`) para conservar datos entre renders y reaccionar a cambios.
+* **Convención:** acuerdo de nomenclatura que React no impone en tiempo de ejecución, pero que el linter y el equipo usan para reconocer los Hooks.
 * **Tupla:** un arreglo con una cantidad fija de posiciones, donde cada posición tiene su propio tipo (por ejemplo, "primero un booleano, segundo una función").
 
 -----
 
 ## El problema
 
-Imagina que en tu app varios componentes necesitan un valor de "encendido / apagado": un botón de modo oscuro, un menú que se abre y se cierra, un panel que se muestra u oculta. En cada uno escribes lo mismo:
+Varios componentes suelen necesitar un valor de "encendido / apagado": modo oscuro, un menú, un panel. Sin abstracción, cada uno repite la misma lógica:
 
 ```jsx
 function DarkModeButton() {
@@ -43,9 +43,9 @@ function MenuButton() {
 }
 ```
 
-Con dos componentes no parece grave. Pero si la lógica crece (por ejemplo, con un `useEffect` adentro), tendrías que copiar y pegar todo cada vez, y si encuentras un error, corregirlo en cada copia.
+Con dos componentes es tolerable. Si la lógica crece (por ejemplo, con un `useEffect`), la duplicación multiplica el costo de mantenimiento: cada corrección debe replicarse en todas las copias.
 
-Lo que quieres es escribir esa lógica **una sola vez** y usarla donde haga falta.
+La solución es definir la lógica **una sola vez** y reutilizarla.
 
 -----
 
@@ -53,20 +53,20 @@ Lo que quieres es escribir esa lógica **una sola vez** y usarla donde haga falt
 
 ### Qué es un custom hook
 
-Es una función común de JavaScript. Lo único "especial" es que:
+Es una función de JavaScript con dos rasgos:
 
 1. Su nombre **empieza con `use`** (`useToggle`, `useLocalStorage`...).
-2. **Llama a otros Hooks** adentro.
+2. **Llama a otros Hooks** (`useState`, `useEffect`, `useContext`, u otros custom hooks).
 
-Es una **convención**, no una función nueva de React. No hay nada que importar ni registrar: escribes la función y ya está.
+No es una API de React: no se importa ni se registra nada. El prefijo `use` es una convención que el linter aprovecha para aplicar las reglas de los Hooks.
 
-Además tiene que **cumplir las reglas de los Hooks**, igual que `useState` o `useEffect`: llamarse solo desde componentes de función (o desde otros Hooks) y siempre en el nivel de arriba, nunca dentro de un `if` o un bucle. Las explicamos en "Las reglas de los Hooks", dentro de "Para profundizar" de [useState](01-The%20State%20Hook.md).
+Como cualquier Hook, **debe cumplir las reglas de los Hooks**: llamarse solo desde componentes de función u otros Hooks, y siempre en el nivel superior, nunca dentro de un `if`, un bucle o una función anidada. Las explicamos en "Las reglas de los Hooks", dentro de "Para profundizar" de [useState](01-The%20State%20Hook.md).
 
-Fuera de eso, no tiene un formato obligatorio: tú decides qué argumentos recibe y qué devuelve.
+Fuera de eso, la firma es libre: tú decides qué argumentos recibe y qué devuelve.
 
-### Paso 1: escribir el hook
+### Definir el hook
 
-Sacamos la lógica repetida a una función. Se acostumbra ponerla en su propio archivo:
+La lógica repetida se extrae a una función, normalmente en su propio archivo:
 
 ```jsx
 // useToggle.js
@@ -84,14 +84,12 @@ export const useToggle = (initialState = false) => {
 };
 ```
 
-Vamos por partes:
+* `initialState = false` es un **valor por defecto**: sin argumento, el estado arranca en `false`.
+* `useState` funciona igual que dentro de un componente.
+* `toggle` usa la forma funcional (`(prev) => !prev`) porque el valor nuevo depende del anterior (ver [useState](01-The%20State%20Hook.md)).
+* Devuelve un arreglo `[state, toggle]`, con la misma forma que `[valor, setter]` de `useState`.
 
-* `initialState = false` es un **valor por defecto**: si quien usa el hook no pasa nada, arranca en `false`.
-* Adentro usamos `useState` como en cualquier componente.
-* `toggle` invierte el valor. Usa la forma con función (`(prev) => !prev`) porque el valor nuevo depende del anterior, como vimos en la lección de `useState`.
-* Devuelve un arreglo `[state, toggle]`, igual que `useState` devuelve `[valor, setter]`.
-
-### Paso 2: usarlo en un componente
+### Usarlo en un componente
 
 ```jsx
 import { useToggle } from './useToggle';
@@ -108,15 +106,13 @@ function DarkMode() {
 }
 ```
 
-Como el hook devuelve un arreglo y se desestructura **por posición**, los nombres los eliges tú: aquí usamos `isDark` y `toggleDark`, no `state` y `toggle`.
+Al desestructurar un arreglo **por posición**, los nombres los eliges tú: aquí `isDark` y `toggleDark`, no `state` y `toggle`.
 
-Ahora el menú, el panel y el resto de los componentes pueden hacer `useToggle()` y listo. La lógica vive en un solo lugar.
+Cualquier otro componente puede llamar a `useToggle()`. La lógica vive en un solo lugar.
 
 ### Cada componente tiene su propio estado
 
-Este punto confunde mucho al principio, así que fíjate bien:
-
-**Usar el mismo hook en dos componentes NO comparte datos entre ellos.** Cada componente que llama a `useToggle()` recibe su **propio estado, aislado**.
+**Usar el mismo hook en dos componentes NO comparte datos entre ellos.** Cada llamada a `useToggle()` crea su **propio estado, aislado**, asociado a la instancia del componente que la ejecuta.
 
 ```jsx
 function Page() {
@@ -129,7 +125,7 @@ function Page() {
 }
 ```
 
-Si tocas el botón de `DarkMode`, `MenuButton` no se entera. Un custom hook reutiliza la **lógica**, no los **datos**. Cada llamada crea su copia de la memoria.
+Cambiar el estado en `DarkMode` no afecta a `MenuButton`. Un custom hook reutiliza la **lógica**, no los **datos**.
 
 ```
 DarkMode                          MenuButton
@@ -141,21 +137,16 @@ DarkMode                          MenuButton
 Mismo código (la lógica), pero cada componente tiene su propia copia de los datos.
 ```
 
-Esto es una ventaja: los datos de un componente no se "filtran" a otro. Si lo que quieres es justo lo contrario, que varios componentes vean el mismo dato, necesitas [Context](04-React%20Context.md), que viene en la próxima lección.
+Este aislamiento es deseable: evita acoplar componentes. Para que varios componentes lean el mismo dato se usa [Context](04-React%20Context.md) (próxima lección) o se sube el estado a un ancestro común.
 
 ### Cuándo crear uno
 
-Crea un custom hook cuando tienes lógica con estado que:
+Crea un custom hook cuando tienes lógica con Hooks que:
 
 * **Se repite en más de un componente.** Extraerla evita copiar y pegar.
 * **Ensucia el componente**, aunque lo uses en un solo lugar. Si un componente tiene mucho `useState` y `useEffect` mezclados con el JSX, sacarlos a un hook lo deja más fácil de leer.
 
-Para saber si algo es un custom hook, fíjate en estas dos cosas:
-
-* Su nombre empieza con `use`.
-* Llama a otros Hooks adentro.
-
-Si una función **no llama a ningún Hook**, es una función común. No lleva `use` en el nombre (ni corresponde ponérselo).
+Una función es un custom hook si su nombre empieza con `use` y llama a otros Hooks. Si **no llama a ningún Hook**, es una función común y no debe llevar `use`.
 
 ```jsx
 // Es una función común: no llama a ningún Hook, así que NO lleva "use"
@@ -174,8 +165,8 @@ function useCounter() {
 
 No hay una única forma correcta. Depende de cuántos valores devuelves:
 
-* **Arreglo** (`return [state, toggle]`): cuando son **dos valores relacionados**, como un valor y su función para cambiarlo. Sigue la misma forma que `useState`, y quien lo usa puede ponerles el nombre que quiera.
-* **Objeto** (`return { location, error }`): cuando son **tres o más valores**, o cuando el nombre dice más que la posición. Quien lo usa saca solo lo que necesita, por nombre, sin depender del orden.
+* **Arreglo** (`return [state, toggle]`): para **dos valores relacionados**, como un valor y su función para cambiarlo. Imita a `useState` y permite renombrar libremente.
+* **Objeto** (`return { location, error }`): para **tres o más valores**, o cuando el nombre aporta más que la posición. El consumidor elige por nombre, sin depender del orden, y añadir campos no rompe a quienes ya lo usan.
 
 ```jsx
 // Arreglo: renombras libremente
@@ -185,15 +176,15 @@ const [modoOscuro, alternarModoOscuro] = useToggle();
 const { location, error } = useGeolocation();
 ```
 
-Regla práctica: dos valores estrechamente relacionados, arreglo. Tres o más, o valores donde el nombre aporta más claridad que la posición, objeto.
+Regla práctica: dos valores estrechamente relacionados, arreglo; en los demás casos, objeto.
 
 -----
 
 ## Ejemplo completo: useLocalStorage
 
-Vamos con un hook más útil: uno que funciona **como `useState`, pero recordando el valor** aunque cierres y vuelvas a abrir la página. Para eso guarda el dato en `localStorage`, un pequeño almacenamiento que tiene el navegador y que no se borra al recargar.
+Un hook que funciona **como `useState`, pero persistiendo el valor** entre visitas. Usa `localStorage`, un almacenamiento síncrono del navegador (clave-valor, solo texto) que sobrevive a las recargas.
 
-Este hook combina `useState` y `useEffect`, que es justo el caso típico de un custom hook.
+Combina `useState` y `useEffect`, el caso típico de un custom hook.
 
 ```jsx
 // useLocalStorage.js
@@ -231,15 +222,15 @@ function Settings() {
 }
 ```
 
-Qué pasa, paso a paso:
+Funcionamiento:
 
-1. Le pasas dos cosas: la **clave** con la que se guarda (`'name'`) y el **valor inicial** (`''`).
-2. `useState(() => { ... })` recibe una **función** en lugar de un valor. React la ejecuta **solo la primera vez**. Ahí leemos `localStorage`: si hay un dato guardado lo usamos; si no, usamos `initialValue`. (Se llama *inicialización perezosa*; está explicada en "Para profundizar" de [useState](01-The%20State%20Hook.md).)
-3. `localStorage` solo guarda texto, por eso usamos `JSON.stringify` para guardar y `JSON.parse` para leer.
-4. El `useEffect` se ejecuta después de cada cambio de `value` (o de `key`) y guarda el valor nuevo.
-5. Devolvemos `[value, setValue]`: el setter de `useState`, tal cual. Por eso `setName((prev) => ...)` también funciona.
+1. Recibe la **clave** de almacenamiento (`'name'`) y el **valor inicial** (`''`).
+2. `useState(() => { ... })` recibe una **función** en lugar de un valor: la *inicialización perezosa*. React la ejecuta solo en el primer render (ver "Para profundizar" de [useState](01-The%20State%20Hook.md)). Ahí se lee `localStorage`; si no hay dato, se usa `initialValue`.
+3. `localStorage` solo guarda texto: `JSON.stringify` para escribir y `JSON.parse` para leer.
+4. El `useEffect` se ejecuta tras el render en que cambió `value` o `key`, y guarda el valor.
+5. Devuelve `[value, setValue]`: el setter de `useState` sin envolver, por eso `setName((prev) => ...)` también funciona.
 
-> Este ejemplo asume que la `key` **no cambia** mientras el componente está en pantalla: si cambiara, el efecto guardaría el valor viejo bajo la clave nueva, sin volver a leer. Además, `setItem` también puede fallar (por ejemplo, si el almacenamiento está lleno), así que en una app real conviene envolverlo en `try/catch`, igual que la lectura.
+> Este ejemplo asume que la `key` **no cambia** mientras el componente está en pantalla: si cambiara, el efecto guardaría el valor viejo bajo la clave nueva, sin volver a leer. Además, `setItem` también puede fallar (por ejemplo, si el almacenamiento está lleno), así que en una app real conviene envolverlo en `try/catch`, igual que la lectura. Con renderizado en servidor (por ejemplo Next.js), `localStorage` no existe en el servidor: leerlo en el inicializador de `useState` falla o provoca diferencias de hidratación, y requiere un enfoque distinto.
 
 -----
 
@@ -254,8 +245,8 @@ function toggle(initial) {     // Mal: no empieza con "use"
 }
 ```
 
-**Por qué pasa:** React en sí no mira el nombre de tu función. El prefijo `use` le avisa a las herramientas que revisan tu código (los *linters*, como el plugin de ESLint para Hooks) y a otros programadores que esa función llama a Hooks y debe seguir sus reglas. Sin él, esas herramientas no pueden vigilarla y nadie sabrá que es un Hook.
-**Cómo se arregla:** renombrala a `useToggle`.
+**Por qué pasa:** React no inspecciona el nombre en tiempo de ejecución. El prefijo `use` señala al linter (`eslint-plugin-react-hooks`) y a otros desarrolladores que la función llama a Hooks y debe cumplir sus reglas. Sin él, el linter no la vigila.
+**Cómo se arregla:** renómbrala a `useToggle`.
 
 ### 2. Llamarlo dentro de un `if`
 
@@ -267,8 +258,8 @@ function Panel({ canToggle }) {
 }
 ```
 
-**Por qué pasa:** un custom hook llama a `useState` adentro, así que le aplican las mismas reglas que a los Hooks normales: tiene que llamarse siempre, en el mismo orden. Con un `if`, a veces se ejecuta y a veces no, y React se confunde ("Rendered fewer hooks than expected").
-**Cómo se arregla:** llamalo siempre al principio del componente y pon la condición **después**, al decidir qué mostrar.
+**Por qué pasa:** React asocia cada estado con el **orden** de las llamadas a Hooks en cada render. Un custom hook llama a `useState` adentro, así que aplican las mismas reglas: si un render ejecuta la llamada y otro no, el orden se desalinea y React lanza errores como "Rendered fewer hooks than expected".
+**Cómo se arregla:** llámalo siempre en el nivel superior del componente y aplica la condición **después**.
 
 ```jsx
 function Panel({ canToggle }) {
@@ -288,7 +279,7 @@ const [isOpen, toggleOpen] = useToggle();   // Mal: esperas que sea "el mismo" i
 ```
 
 **Por qué pasa:** cada llamada al hook crea su propio estado. Son dos memorias separadas, aunque el código sea idéntico.
-**Cómo se arregla:** si dos componentes necesitan ver el mismo dato, usa [Context](04-React%20Context.md), o sube el estado a un componente padre y pasalo por props.
+**Cómo se arregla:** si dos componentes necesitan ver el mismo dato, usa [Context](04-React%20Context.md), o sube el estado a un componente padre y pásalo por props.
 
 ### 4. Tipar mal el setter
 
@@ -300,7 +291,7 @@ Lo vemos en la sección siguiente.
 
 Hay dos detalles importantes al tipar un custom hook.
 
-### 1. Si devuelves un arreglo, tipalo como tupla
+### 1. Si devuelves un arreglo, típalo como tupla
 
 ```tsx
 export const useToggle = (initialState = false): [boolean, () => void] => {
@@ -310,7 +301,7 @@ export const useToggle = (initialState = false): [boolean, () => void] => {
 };
 ```
 
-Sin la anotación `: [boolean, () => void]`, TypeScript deduce que el hook devuelve un arreglo común de "booleano **o** función". Pierde la información de que **la posición 0 es siempre el booleano y la posición 1 es siempre la función**. Con la tupla, al desestructurar `const [isOn, toggle] = useToggle()`, cada variable recibe su tipo correcto.
+Sin la anotación `: [boolean, () => void]`, TypeScript infiere `(boolean | (() => void))[]`, un arreglo cuyos elementos son "booleano **o** función". Se pierde que **la posición 0 es siempre el booleano y la posición 1 la función**. Con la tupla, al desestructurar `const [isOn, toggle] = useToggle()`, cada variable recibe su tipo correcto.
 
 ### 2. Si devuelves el setter de `useState` tal cual, usa `Dispatch<SetStateAction<T>>`
 
@@ -345,7 +336,7 @@ function useLocalStorage<T>(
 
 `Dispatch<SetStateAction<T>>` es justamente el tipo del setter de `useState`. Regla práctica:
 
-* Si devuelves **tu propia función** con una firma acotada (como `toggle: () => void`, que no recibe nada), tipala tal cual.
+* Si devuelves **tu propia función** con una firma acotada (como `toggle: () => void`, que no recibe nada), típala tal cual.
 * Si devuelves **el setter de `useState` sin envolver**, usa `Dispatch<SetStateAction<T>>`.
 
 La idea de fondo: si tu hook se comporta como `useState`, su tipo tiene que prometer lo mismo que `useState`, ni más ni menos.
@@ -361,9 +352,9 @@ La idea de fondo: si tu hook se comporta como `useState`, su tipo tiene que prom
 
 **No lo hagas cuando:**
 
-* **La función no llama a ningún Hook.** Es una función común: dejala sin `use`.
+* **La función no llama a ningún Hook.** Es una función común: déjala sin `use`.
 * **Solo quieres compartir datos entre componentes.** Un hook no comparte estado, comparte lógica. Para compartir datos, mira [Context](04-React%20Context.md).
-* **La lógica se usa una sola vez y es cortita.** Crear un hook para tres líneas suma un archivo más sin ganar claridad.
+* **La lógica se usa una sola vez y es corta.** Es una abstracción prematura: añade indirección sin ganar claridad. Extrae cuando la duplicación o la complejidad lo justifiquen.
 
 -----
 
@@ -399,7 +390,7 @@ export const useToggle = (initialState = false) => {
 };
 ```
 
-Todo el que use `useToggle()` recibe también la animación, sin escribirla otra vez. Esa es la ventaja de esconder lógica compleja dentro del hook: el componente solo ve `[state, toggle]`.
+Cada componente que use `useToggle()` obtiene también la animación (con su propio estado). El hook encapsula la complejidad: el componente solo ve `[state, toggle]`.
 
 </details>
 
@@ -428,9 +419,9 @@ function useGeolocation() {
 }
 ```
 
-Devuelve un **objeto** porque son varios valores y el nombre aclara más que la posición. Cualquier componente que necesite la ubicación hace `const { location, error } = useGeolocation();`.
+Devuelve un **objeto** porque el nombre aclara más que la posición. Cualquier componente que necesite la ubicación hace `const { location, error } = useGeolocation();`.
 
-Para probarlo, el navegador tiene que tener los permisos de ubicación habilitados.
+Para probarlo, el navegador debe tener habilitado el permiso de ubicación (requiere contexto seguro: HTTPS o `localhost`). Este ejemplo no vigila la posición; con `watchPosition` haría falta `clearWatch` en la limpieza del efecto.
 
 **En TypeScript:** los tipos `GeolocationPosition` y `GeolocationPositionError` (y `GeolocationCoordinates`) ya vienen incluidos con TypeScript, dentro de su librería de tipos del navegador (la librería `dom`, que los proyectos web incluyen por defecto). No hace falta instalar ningún paquete extra. Si quieres tipar el callback a mano, alcanza con `(pos: GeolocationPosition) => { ... }` y tienes autocompletado de `pos.coords.latitude`, `pos.coords.longitude`, etc.
 
@@ -438,6 +429,48 @@ Para probarlo, el navegador tiene que tener los permisos de ubicación habilitad
 
 -----
 
+## En entrevista
+
+### Respuesta corta (junior)
+
+Un custom hook es una función cuyo nombre empieza con `use` y que llama a otros Hooks, como `useState` o `useEffect`. Se crea para extraer lógica repetida o compleja de los componentes y reutilizarla sin copiar y pegar. Comparte la lógica, no el estado: cada componente que lo llama obtiene su propio estado.
+
+### Respuesta ampliada (semi-senior)
+
+* **Qué se comparte:** la lógica, no el estado. Cada llamada al hook crea estado independiente en el componente que lo ejecuta.
+* **Frente a un componente:** un componente devuelve JSX y se renderiza; un hook devuelve cualquier valor y no produce UI. **Frente a una función utilitaria:** el hook puede usar Hooks de React (estado, efectos, contexto); una función común no puede y no debe llevar `use`.
+* **Prefijo `use` y reglas:** React no lo verifica en ejecución, pero `eslint-plugin-react-hooks` lo usa para exigir las reglas: llamar solo en el nivel superior y solo desde componentes u otros Hooks.
+* **Diseño de la API:** tupla para dos valores relacionados (imita `useState`, renombrable); objeto para tres o más, porque es extensible sin romper a los consumidores.
+* **TypeScript:** anotar la tupla explícitamente (`[boolean, () => void]`); usar genéricos (`<T>`) para valores arbitrarios; devolver `Dispatch<SetStateAction<T>>` si se expone el setter de `useState` tal cual.
+* **Cuándo no extraer:** si la lógica se usa una vez y es corta, o si no llama a ningún Hook. Extraer pronto es abstracción prematura: añade indirección y una API que luego hay que mantener.
+* **Testing:** se prueba con `renderHook` de React Testing Library (envolviendo los cambios de estado en `act`) o a través de un componente de prueba. La lógica pura sin Hooks se prueba como función normal.
+
+### Preguntas frecuentes de seguimiento
+
+**¿Dos componentes que usan el mismo hook comparten estado?**
+No. Cada llamada crea su propio estado. Para compartirlo se usa Context o se sube el estado a un ancestro común.
+
+**¿Custom hook, componente o función normal?**
+Si devuelve UI, es un componente. Si encapsula lógica que usa Hooks, es un custom hook. Si no usa Hooks, es una función normal.
+
+**¿Por qué debe empezar con `use`?**
+Es una convención que React no valida en ejecución. El linter la usa para identificar Hooks y verificar sus reglas; sin el prefijo, esas comprobaciones no se aplican.
+
+**¿Cómo tipas el retorno?**
+Si devuelves un arreglo, anótalo como tupla; si devuelves un objeto, TypeScript infiere sus propiedades. Si expones el setter de `useState`, usa `Dispatch<SetStateAction<T>>`.
+
+```tsx
+function useToggle(initial = false): [boolean, () => void] { /* ... */ }
+```
+
+**¿Cómo lo pruebas?**
+Con `renderHook` de React Testing Library: renderizas el hook, lees `result.current` y ejecutas las acciones dentro de `act`. Alternativamente, a través de un componente que lo use.
+
+**¿Cuándo no crearías uno?**
+Cuando la lógica no usa Hooks, se usa en un solo lugar y es corta, o cuando el objetivo es compartir datos (eso es Context). Extraer sin necesidad es abstracción prematura.
+
+-----
+
 ## Siguiente lección
 
-Viste que un custom hook comparte **lógica**, pero no **datos**: cada componente tiene su propia copia. Para el caso contrario, cuando varios componentes necesitan ver el mismo dato, sigue [Context](04-React%20Context.md), que te deja compartir datos entre componentes sin pasarlos por props.
+Un custom hook comparte **lógica**, no **datos**: cada llamada tiene su propio estado. Para que varios componentes vean el mismo dato, sigue [Context](04-React%20Context.md), que permite compartir datos sin pasarlos por props.

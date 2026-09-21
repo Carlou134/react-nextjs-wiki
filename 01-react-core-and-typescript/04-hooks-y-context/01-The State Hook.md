@@ -2,7 +2,7 @@
 
 ## En una frase
 
-`useState` le da **memoria** a tu componente: guarda un dato y, cuando lo cambias, React vuelve a dibujar la pantalla con el dato nuevo.
+`useState` le da **memoria** a un componente: React conserva un valor entre renders y, cuando lo actualizas con el setter, programa un nuevo render con el valor nuevo.
 
 -----
 
@@ -15,16 +15,16 @@ Conviene que ya sepas:
 
 Palabras nuevas (todas están explicadas también en el [glosario](Glosario.md)):
 
-* **Estado (state):** un dato que el componente recuerda y que, al cambiar, cambia lo que se ve en pantalla.
-* **Hook:** una función especial de React, con un nombre que empieza con `use`, que te deja usar herramientas de React (como la memoria) dentro de un componente.
-* **Renderizar:** que React ejecute tu componente y dibuje en pantalla lo que devuelve. "Volver a renderizar" es ejecutarlo de nuevo, con datos nuevos.
-* **Setter:** la función que usas para cambiar el estado.
+* **Estado (state):** dato que React conserva entre renders y cuyo cambio provoca un nuevo render.
+* **Hook:** función de React, con nombre que empieza por `use`, que se llama dentro de un componente de función (o de otro Hook) para acceder a capacidades de React, como el estado.
+* **Renderizar:** que React ejecute el componente para calcular qué UI debe mostrar. Un re-render es una nueva ejecución con datos actualizados.
+* **Setter:** la función que devuelve `useState` para actualizar el estado.
 
 -----
 
 ## El problema
 
-Imagina que quieres un botón que cuente cuántas veces lo tocaste. Lo primero que se te ocurre es una variable común:
+Un contador implementado con una variable local no funciona:
 
 ```jsx
 function Counter() {
@@ -38,44 +38,30 @@ function Counter() {
 }
 ```
 
-Esto **no funciona**, por dos motivos:
+Hay dos motivos:
 
-1. React no se entera de que `count` cambió, así que no vuelve a dibujar la pantalla. El botón sigue mostrando `0`.
-2. Aunque React redibujara, tu componente es una función y se ejecuta **de cero** cada vez. La línea `let count = 0` volvería a poner el contador en `0`.
+1. Mutar una variable local no notifica a React, así que no hay nuevo render. El botón sigue mostrando `0`.
+2. Aunque hubiera un nuevo render, el componente es una función que se ejecuta **de cero** en cada render. `let count = 0` reiniciaría el valor.
 
-Necesitas un lugar donde guardar el dato que **sobreviva** entre renders y que además **avise a React** cuando cambia. Ese lugar es `useState`.
+Se necesita un almacenamiento que **persista** entre renders y que **notifique a React** cuando cambia. Eso resuelve `useState`.
 
 -----
 
 ## Cómo funciona
 
-### Paso 1: importarlo
+### Importación y firma
 
 ```jsx
 import { useState } from 'react';
-```
 
-### Paso 2: llamarlo y recibir dos cosas
-
-```jsx
 const [count, setCount] = useState(0);
 ```
 
-Vamos por partes:
+* `useState(0)`: el argumento es el **valor inicial**. Solo se usa en el primer render.
+* Devuelve un **array de dos posiciones**: el **valor actual** y el **setter**.
+* `[count, setCount]` es *desestructuración de arrays*. Se asigna **por posición**, así que los nombres son libres; la convención es `algo` y `setAlgo`.
 
-* `useState(0)`: el `0` es el **valor inicial**, con el que arranca el dato.
-* `useState` te devuelve un **array de dos posiciones**: primero el **valor actual**, después la **función para cambiarlo** (el setter).
-* Los corchetes `[count, setCount]` son una forma corta de sacar esas dos cosas del array y ponerles nombre. Se llama *desestructuración de arrays*. Como se asigna **por posición**, los nombres los eliges tú; la costumbre es `algo` y `setAlgo`.
-
-### Paso 3: mostrar el valor
-
-Usas `count` como cualquier variable, dentro de llaves en el JSX:
-
-```jsx
-<p>Clics: {count}</p>
-```
-
-### Paso 4: cambiarlo con el setter
+El valor se usa como cualquier variable, entre llaves en el JSX (`<p>Clics: {count}</p>`), y se actualiza con el setter:
 
 ```jsx
 function Counter() {
@@ -89,21 +75,21 @@ function Counter() {
 }
 ```
 
-Cuando haces clic, pasa esto, en orden:
+Secuencia al hacer clic:
 
 ```
 1. Clic  ->  setCount(1)
-2. React se entera de que el estado cambió
+2. React encola la actualización y programa un render
 3. React vuelve a ejecutar la función Counter
-4. Esta vez useState devuelve 1 (no 0)
-5. La pantalla se actualiza y muestra "Clics: 1"
+4. useState devuelve 1 (no 0)
+5. React actualiza el DOM y muestra "Clics: 1"
 ```
 
-La clave está en el paso 4: en cada ejecución del componente, `useState` te devuelve **el valor más reciente**, y el valor inicial (`0`) solo se usa la primera vez.
+En cada render, `useState` devuelve el valor más reciente del estado. El valor inicial solo se usa en el primer render.
 
 ### El valor inicial
 
-Puede ser de cualquier tipo: un número, un texto, un booleano, un array o un objeto.
+Puede ser de cualquier tipo: número, texto, booleano, array u objeto.
 
 ```jsx
 const [name, setName] = useState('');          // texto
@@ -112,13 +98,13 @@ const [tasks, setTasks] = useState([]);        // lista
 const [user, setUser] = useState(null);        // "todavía no hay nada"
 ```
 
-Si no le pasas nada, el valor inicial es `undefined`. Funciona, pero es confuso para quien lee el código. Es mejor ser explícito: si todavía no tienes el dato, pon `null`.
+Sin argumento, el valor inicial es `undefined`. Es válido, pero ambiguo al leerlo. Si el dato aún no existe, es más claro usar `null`.
 
 -----
 
 ## Cambiar el estado según su valor anterior
 
-Mira este botón, que quiere sumar 2 en cada clic:
+Este handler pretende sumar 2, pero **suma 1**:
 
 ```jsx
 function handleClick() {
@@ -127,9 +113,9 @@ function handleClick() {
 }
 ```
 
-Uno esperaría que sume 2, pero **suma 1**. En esas dos líneas `count` vale lo mismo (por ejemplo `0`), así que las dos hacen `setCount(0 + 1)`.
+El estado es una *instantánea* por render: dentro del handler, `count` tiene un valor fijo (por ejemplo `0`). Ambas líneas ejecutan `setCount(0 + 1)`.
 
-La solución es pasarle al setter **una función**, en lugar de un valor:
+La solución es pasar al setter una **función actualizadora** (*updater*) en lugar de un valor:
 
 ```jsx
 function handleClick() {
@@ -138,20 +124,20 @@ function handleClick() {
 }
 ```
 
-Ahora sí suma 2. React llama a la función y le entrega como `prev` el valor **más fresco**, sin importar cuántas actualizaciones haya en fila.
+Ahora suma 2. React encola los updaters y los aplica en orden en el siguiente render: cada uno recibe como `prev` el resultado del anterior. Los updaters deben ser funciones puras.
 
-La regla para acordarte:
+Regla:
 
-* Si el valor nuevo **depende del anterior** (contar, alternar un verdadero/falso, agregar a una lista): pasa una **función** (`setCount((prev) => prev + 1)`).
-* Si el valor nuevo **no depende del anterior** (guardar lo que escribió el usuario): pasa el valor directo (`setName('Ana')`).
+* Si el valor nuevo **depende del anterior** (contador, alternar un booleano, agregar a una lista): usa un updater (`setCount((prev) => prev + 1)`).
+* Si **no depende** del anterior (guardar lo que escribió el usuario): pasa el valor directo (`setName('Ana')`).
 
 -----
 
 ## Arrays y objetos: nunca los modifiques, haz una copia
 
-Este es el error más común al empezar, así que vale la pena entender el motivo.
+Es uno de los errores más frecuentes.
 
-React decide si tiene que volver a dibujar preguntándose: *"¿el valor nuevo es un objeto distinto del anterior?"*. Si le pasas el **mismo** array, aunque le hayas agregado cosas por dentro, para React no cambió nada y no redibuja.
+React compara el valor nuevo con el anterior usando `Object.is`, es decir, **por referencia** en objetos y arrays. Si pasas la **misma** referencia, aunque hayas mutado su contenido, React considera que no hubo cambio y omite el re-render.
 
 ```jsx
 const [tasks, setTasks] = useState(['Estudiar']);
@@ -164,7 +150,7 @@ setTasks(tasks);
 setTasks((prev) => [...prev, 'Practicar']);
 ```
 
-Los tres puntos `...` se llaman *spread* y significan "copia todo lo que había". Entonces `[...prev, 'Practicar']` se lee: "un array nuevo con todo lo que ya había, más 'Practicar' al final".
+El operador *spread* (`...`) copia los elementos de un array (o las propiedades de un objeto) en uno nuevo. `[...prev, 'Practicar']` crea un array nuevo con los elementos previos más `'Practicar'`. La copia es **superficial**: los objetos anidados siguen compartiendo referencia.
 
 Otras operaciones comunes con arrays, siempre devolviendo uno nuevo:
 
@@ -185,16 +171,16 @@ const [user, setUser] = useState({ name: 'Ana', age: 30 });
 setUser((prev) => ({ ...prev, age: 31 }));
 ```
 
-Fíjate en los paréntesis alrededor de las llaves: `({ ... })`. Le dicen a JavaScript que esas llaves son **un objeto** que estás devolviendo, y no el cuerpo de la función.
+Los paréntesis en `({ ... })` indican que las llaves son un literal de objeto devuelto, no el cuerpo de la función.
 
 -----
 
 ## ¿Un solo objeto grande o varios useState?
 
-Puedes guardar datos relacionados en un objeto, pero no siempre conviene. Una regla práctica:
+Criterio práctico:
 
-* Si los datos **cambian juntos** (por ejemplo, las coordenadas `x` e `y` de un punto): un objeto.
-* Si los datos **cambian por separado** (el nombre de un curso, la lista de alumnos, la nota de un examen): varios `useState`.
+* Datos que **cambian juntos** (coordenadas `x` e `y`): un objeto.
+* Datos que **cambian por separado** (nombre de un curso, lista de alumnos, nota de un examen): varios `useState`.
 
 ```jsx
 // Cada dato cambia por su cuenta: mejor separados
@@ -203,7 +189,7 @@ const [classmates, setClassmates] = useState(['Hasan', 'Sam']);
 const [exams, setExams] = useState([{ unit: 1, score: 91 }]);
 ```
 
-Con un solo objeto grande, cada cambio te obliga a copiar todo lo demás con el spread, y es fácil olvidarte de algo. Con varios `useState`, cada uno se cambia sin tocar a los otros.
+Con un objeto grande, cada actualización exige copiar el resto con spread, y omitirlo pierde datos: el setter **reemplaza** el estado, no lo fusiona (a diferencia de `setState` en clases). Con varios `useState`, cada valor se actualiza de forma independiente.
 
 -----
 
@@ -237,12 +223,11 @@ export default function TodoList() {
 }
 ```
 
-Qué pasa, paso a paso:
+Puntos clave:
 
-1. Hay **dos estados**: `text` (lo que se está escribiendo) y `tasks` (la lista). Cambian por separado, así que van en dos `useState`.
-2. Cada vez que escribes una letra, `onChange` llama a `setText` con el texto nuevo. React redibuja y el campo muestra lo escrito.
-3. Al tocar "Agregar", `handleAdd` crea un array **nuevo** con la tarea al final (`[...prev, text]`) y vacía el campo.
-4. React redibuja y la lista muestra la tarea nueva.
+1. Hay **dos estados** independientes: `text` (el campo) y `tasks` (la lista).
+2. El input es *controlado*: su `value` viene del estado y `onChange` lo actualiza con `setText`.
+3. `handleAdd` crea un array **nuevo** (`[...prev, text]`) y vacía el campo. Ambas actualizaciones se procesan en un solo re-render.
 
 > El `key={index}` alcanza para una lista que solo crece. Si la lista se puede reordenar o se pueden borrar elementos del medio, conviene darle a cada tarea un `id` propio y usarlo como `key`.
 
@@ -257,8 +242,8 @@ count = count + 1;     // no hace nada visible
 tasks.push('Nueva');   // React no se entera
 ```
 
-**Por qué pasa:** React solo se entera de un cambio cuando llamas al setter.
-**Cómo se arregla:** usa siempre el setter, y con arrays y objetos, pásale una copia nueva.
+**Por qué pasa:** React solo detecta cambios cuando se llama al setter con un valor distinto (`Object.is`).
+**Solución:** usa siempre el setter y, con arrays y objetos, pásale una copia nueva.
 
 ### 2. Llamar al setter en lugar de pasarlo
 
@@ -266,8 +251,8 @@ tasks.push('Nueva');   // React no se entera
 <button onClick={setCount(1)}>Reiniciar</button>   // error
 ```
 
-React muestra un error que dice `Too many re-renders`. **Por qué pasa:** `setCount(1)` con paréntesis **se ejecuta al dibujar**, no al hacer clic; eso cambia el estado, React vuelve a dibujar, se ejecuta otra vez... y así sin fin.
-**Cómo se arregla:** pásale una función que se ejecute recién en el clic.
+React lanza `Too many re-renders`. **Por qué pasa:** `setCount(1)` con paréntesis **se ejecuta durante el render**, no en el clic; actualiza el estado, provoca otro render, y se repite en bucle.
+**Solución:** pasa una función que se ejecute en el clic.
 
 ```jsx
 <button onClick={() => setCount(1)}>Reiniciar</button>
@@ -280,19 +265,19 @@ setCount(5);
 console.log(count);   // muestra el valor VIEJO
 ```
 
-**Por qué pasa:** el nuevo valor no está disponible en esa misma ejecución. Recién aparece en el **próximo** renderizado, cuando React vuelve a ejecutar el componente.
-**Cómo se arregla:** si necesitas el valor nuevo, guardalo en una variable antes (`const next = 5; setCount(next);`) y usa esa variable.
+**Por qué pasa:** el estado es una instantánea del render actual. `count` no cambia dentro de esa ejecución; el valor nuevo llega en el **siguiente** render.
+**Solución:** si necesitas el valor nuevo en ese mismo handler, calcúlalo en una variable (`const next = 5; setCount(next);`) y usa `next`. Para reaccionar a un cambio de estado, usa el valor en el render o en un efecto.
 
 ### 4. Usar `useState` dentro de un `if` o un bucle
 
-**Por qué pasa:** los Hooks tienen reglas de dónde se pueden llamar (mira "Las reglas de los Hooks", abajo).
-**Cómo se arregla:** llamalos siempre al principio de tu componente, y pon la condición **adentro** de lo que hagas con el valor.
+**Por qué pasa:** React identifica los Hooks por su orden de llamada (ver "Las reglas de los Hooks", abajo).
+**Solución:** llámalos siempre en el nivel superior del componente y pon la condición **dentro** de lo que hagas con el valor.
 
 -----
 
 ## En TypeScript
 
-TypeScript deduce el tipo del estado a partir del valor inicial. El problema aparece cuando ese valor no le da suficiente información:
+TypeScript infiere el tipo del estado a partir del valor inicial. Hace falta anotarlo cuando ese valor no aporta suficiente información:
 
 ```tsx
 const [name, setName] = useState<string>();          // sin valor inicial: el tipo es string | undefined
@@ -302,32 +287,32 @@ type FormState = { firstName: string; password: string };
 const [form, setForm] = useState<FormState>({ firstName: '', password: '' });   // objeto: define antes su forma
 ```
 
-Por qué cada uno:
+Motivos:
 
-* **Sin valor inicial:** TypeScript no sabe qué vas a guardar. Con `<string>()` se lo dices.
-* **Lista vacía:** sin `<string[]>`, TypeScript entiende que es una lista que **no puede contener nada** (`never[]`), y te marca error apenas intentas agregar algo.
-* **Objeto:** empezar con `{}` vacío te impide después leer `form.firstName`. Definir el `type` primero y usarlo evita el problema.
+* **Sin valor inicial:** el tipo inferido sería `undefined`; con `<string>()` se declara `string | undefined`.
+* **Lista vacía:** con `strict`, `useState([])` infiere `never[]` y rechaza cualquier elemento. Se anota `<string[]>`.
+* **Objeto:** iniciar con `{}` infiere un tipo sin propiedades y `form.firstName` falla. Define el `type` y pásalo como genérico.
 
 -----
 
 ## Cuándo sí y cuándo no
 
-**Usa `useState` para** datos que cambian y que afectan lo que se ve: un contador, el texto de un campo, una lista, si un menú está abierto o cerrado.
+**Usa `useState` para** datos que cambian con el tiempo y afectan lo que se renderiza: un contador, el texto de un campo, una lista, un menú abierto o cerrado.
 
 **No lo uses para:**
 
-* **Datos que se pueden calcular a partir de otro estado o de props.** Si tienes `price` y `quantity`, el total (`price * quantity`) se calcula en cada renderizado; no hace falta guardarlo aparte. Guardar de más lleva a datos que se desincronizan.
-* **Datos que no cambian lo que se ve.** Si no afecta la pantalla, una variable común alcanza.
+* **Datos derivables de otro estado o de props.** Con `price` y `quantity`, el total (`price * quantity`) se calcula durante el render. Duplicarlo en estado genera inconsistencias.
+* **Datos que no afectan el render** (por ejemplo, un id de temporizador). Para eso sirve `useRef`, que no dispara re-renders.
 * **Lógica de actualización muy complicada**, con muchas acciones distintas sobre el mismo estado. Para eso existe [useReducer](05-useReducer.md).
 
 -----
 
 ## Resumen en 5 líneas
 
-1. `useState(valorInicial)` te devuelve `[valor, setter]`: el dato actual y la función para cambiarlo.
-2. Cambiar el estado con el setter hace que React **vuelva a ejecutar** tu componente con el valor nuevo.
-3. Si el valor nuevo depende del anterior, pasa una **función** al setter: `setCount((prev) => prev + 1)`.
-4. Con arrays y objetos, **nunca los modifiques**: crea una copia nueva con el spread (`...`).
+1. `useState(valorInicial)` devuelve `[valor, setter]`: el valor actual y la función para actualizarlo.
+2. Actualizar el estado con el setter programa un **nuevo render** del componente con el valor nuevo.
+3. Si el valor nuevo depende del anterior, usa un **updater**: `setCount((prev) => prev + 1)`.
+4. Con arrays y objetos, **no los mutes**: crea una copia nueva con spread (`...`).
 5. Datos que cambian juntos van en un objeto; datos que cambian por separado, en varios `useState`.
 
 -----
@@ -337,11 +322,11 @@ Por qué cada uno:
 <details>
 <summary>Las reglas de los Hooks</summary>
 
-Los Hooks (`useState` y todos los que vienen) tienen dos reglas. No son un estilo opcional: si las rompes, React se confunde y tu app se comporta raro.
+Los Hooks tienen dos reglas. No son de estilo: si se rompen, React asocia mal los valores y la app falla.
 
-**Regla 1: solo en componentes de función (o en otros Hooks propios).** No funcionan en componentes de clase ni en funciones comunes de JavaScript.
+**Regla 1: solo en componentes de función o en Hooks propios.** No funcionan en componentes de clase ni en funciones comunes.
 
-**Regla 2: siempre en el nivel de arriba del componente.** Nunca dentro de un `if`, un bucle (`for`, `while`) ni una función anidada.
+**Regla 2: solo en el nivel superior.** Nunca dentro de condicionales, bucles ni funciones anidadas.
 
 ```jsx
 function Profile({ isLoggedIn }) {
@@ -360,36 +345,79 @@ function Profile({ isLoggedIn }) {
 }
 ```
 
-**Por qué existe la regla 2:** React no identifica cada Hook por su nombre, sino por el **orden** en que se llaman. En el primer renderizado registra "el primer Hook es un estado, el segundo es un efecto...", y en los siguientes espera exactamente la misma secuencia. Si un `if` hace que un Hook a veces se salte, el orden se desarma y React le entrega a cada llamada el dato equivocado. El error típico es "Rendered fewer hooks than expected".
+**Por qué existe la regla 2:** React no identifica cada Hook por nombre, sino por el **orden** de las llamadas. En cada render espera la misma secuencia que en el anterior. Si un Hook se omite condicionalmente, el orden se desalinea y cada llamada recibiría el valor de otra. Un error típico es "Rendered fewer hooks than expected".
 
 </details>
 
 <details>
 <summary>Los Hooks son funciones, no componentes</summary>
 
-Un componente es una función que recibe props y devuelve JSX para dibujar. Un Hook, en cambio, es una función común que llamas **desde adentro** de un componente para usar una herramienta de React. `useState` no dibuja nada: solo le da a tu componente acceso a un valor que React recuerda. Más adelante vas a crear tus propios Hooks (los vemos en la lección de Custom Hooks), y siguen siendo funciones cuyo nombre empieza con `use`.
+Un componente es una función que recibe props y devuelve JSX. Un Hook es una función que se llama **desde dentro** de un componente (u otro Hook) para acceder a una capacidad de React. `useState` no devuelve UI: da acceso a un valor que React conserva. Los Hooks propios (lección de Custom Hooks) también son funciones cuyo nombre empieza por `use`.
 
 </details>
 
 <details>
 <summary>Valor inicial calculado (inicialización perezosa)</summary>
 
-Si el valor inicial es costoso de calcular, pásale a `useState` una **función** en lugar del valor:
+Si el valor inicial es costoso de calcular, pasa a `useState` una **función inicializadora** en lugar del valor:
 
 ```jsx
 const [data, setData] = useState(() => calcularAlgoCostoso());
 ```
 
-React ejecuta esa función **solo la primera vez**. Si escribieras `useState(calcularAlgoCostoso())`, el cálculo se repetiría en cada renderizado, aunque el resultado se ignore después del primero. Lo vas a ver, por ejemplo, para leer un valor de `localStorage` al arrancar.
+React la ejecuta **solo en el primer render**. Con `useState(calcularAlgoCostoso())`, la función se invoca en cada render, aunque el resultado se descarte después del primero. Es común al leer `localStorage` al montar. En desarrollo con `StrictMode`, React la ejecuta dos veces para detectar impurezas, por lo que debe ser pura.
 
 </details>
 
 <details>
 <summary>Por qué el estado no cambia "al instante"</summary>
 
-Cuando llamas a un setter, React no cambia el valor en ese mismo momento: **junta** los cambios pedidos dentro del mismo evento y actualiza todo junto al final, con un solo redibujo. Es una optimización (menos trabajo), y es la razón por la que `console.log(count)` justo después de `setCount(5)` todavía muestra el valor viejo, y por la que conviene usar la forma con función (`(prev) => ...`) cuando el cambio depende del valor anterior.
+Un setter no modifica la variable `count` del render actual: **encola** la actualización. React agrupa (*batching*) las actualizaciones del mismo evento y procesa todas en un solo re-render. Desde React 18 esto ocurre también en promesas, `setTimeout` y handlers nativos, no solo en eventos de React. Por eso `console.log(count)` tras `setCount(5)` muestra el valor viejo, y por eso conviene el updater (`(prev) => ...`) cuando el cambio depende del valor anterior.
 
 </details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+`useState` es un Hook de React que permite a un componente de función conservar un valor entre renders. Devuelve el valor actual y un setter. Al llamar al setter, React vuelve a renderizar el componente con el valor nuevo. Sirve para datos que cambian con el tiempo y afectan la UI, como el texto de un input o un contador.
+
+### Respuesta ampliada (semi-senior)
+
+* **Instantánea por render:** el estado es constante dentro de un render. El setter no muta la variable; encola una actualización que se aplica en el siguiente render.
+* **Batching:** React agrupa varias actualizaciones en un solo re-render. Desde React 18 es automático también en promesas, timeouts y handlers nativos.
+* **Updater:** `setX(prev => ...)` recibe el resultado de la actualización anterior en la cola. Es la forma correcta cuando el valor nuevo depende del anterior, y evita leer valores obsoletos (*stale closures*).
+* **Comparación:** React usa `Object.is`. Con la misma referencia omite el render de los hijos y los efectos; mutar un objeto o array y volver a pasarlo no dispara la actualización. Se debe crear una copia.
+* **Reemplazo, no fusión:** el setter sustituye el estado completo; con objetos hay que copiar el resto con spread. La copia es superficial.
+* **Inicialización perezosa:** `useState(() => fn())` ejecuta `fn` solo en el primer render.
+* **Trade-offs:** no guardes en estado lo derivable de props u otro estado; usa `useRef` para valores mutables que no afectan el render; usa `useReducer` cuando la lógica de actualización crece.
+* **Errores típicos:** mutar estado, leer el valor "nuevo" justo tras el setter, llamar al setter durante el render (`onClick={setCount(1)}`) y usar Hooks condicionalmente.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Por qué `setCount(count + 1)` dos veces seguidas suma solo 1?**
+Porque `count` es la misma instantánea en ambas líneas: las dos ejecutan `setCount(0 + 1)`. Con `setCount(prev => prev + 1)` cada updater recibe el resultado del anterior y suma 2.
+
+**2. ¿Por qué no se puede hacer `tasks.push(x); setTasks(tasks)`?**
+La referencia del array no cambia, y React compara con `Object.is`, así que ve el mismo valor y omite el re-render. Además, mutar el estado rompe la inmutabilidad en la que se apoyan optimizaciones como `React.memo`. Se usa `setTasks(prev => [...prev, x])`.
+
+**3. ¿El setter es síncrono o asíncrono?**
+Ni una cosa ni la otra en sentido estricto: no devuelve promesa ni bloquea. Encola la actualización y el nuevo valor solo se ve en el siguiente render; por eso un `console.log(count)` posterior muestra el valor previo.
+
+**4. ¿Qué pasa si llamas al setter con el mismo valor?**
+React lo detecta con `Object.is` y evita renderizar los hijos y ejecutar efectos. En algunos casos puede ejecutar el componente una vez más antes de descartar la actualización, así que el render en sí debe ser puro.
+
+**5. ¿Cuándo usar la inicialización perezosa?**
+Cuando el valor inicial es costoso (por ejemplo, leer y parsear `localStorage`). `useState(() => leer())` lo calcula una sola vez; `useState(leer())` lo ejecuta en cada render, aunque el resultado se ignore.
+
+**6. ¿Cómo se reinicia el estado de un componente?**
+Cambiando su `key`: React desmonta la instancia anterior y monta una nueva con estado inicial.
+
+```jsx
+<Form key={userId} />
+```
 
 -----
 

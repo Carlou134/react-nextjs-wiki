@@ -29,9 +29,7 @@ Palabras nuevas (todas están explicadas también en el [glosario](Glosario.md))
 
 ## El problema
 
-Imagina que tienes que mandar un mensaje desde el piso 15 de un edificio hasta la planta baja, pero solo puedes dárselo a la persona de cada piso, una por una. Todos los del medio lo cargan sin usarlo. Es lento y molesto.
-
-En React pasa lo mismo cuando un dato vive arriba de todo (el tema de la app, el usuario) y lo necesita un componente muy abajo:
+Un dato que vive en lo alto del árbol (el tema, el usuario) y que necesita un componente muy profundo obliga a pasarlo por props a través de todos los niveles intermedios:
 
 ```jsx
 function App() {
@@ -55,12 +53,12 @@ function Title({ theme }) {
 }
 ```
 
-Esto se llama **prop drilling**. Con 1 o 2 niveles es manejable, y en una app chica está bien. Con más niveles trae problemas:
+Esto es **prop drilling**. Con 1 o 2 niveles es aceptable. Con más niveles:
 
-* Los componentes intermedios (`Page`, `Card`) se llenan de props que no usan, y cuesta entenderlos o reutilizarlos.
-* Si la prop cambia, los intermedios se vuelven a renderizar aunque ellos no la usen.
+* Los componentes intermedios (`Page`, `Card`) declaran props que no usan, lo que los acopla al dato y dificulta reutilizarlos.
+* Cada cambio en la firma de la prop obliga a tocar toda la cadena.
 
-Necesitas una forma de que `Title` lea el dato directamente. Esa forma es Context.
+Context resuelve esto: `Title` lee el dato directamente, sin que los intermedios participen.
 
 -----
 
@@ -94,7 +92,7 @@ Se arma con una receta de pasos.
 
 ### Paso 1: definir el tipo y crear el contexto
 
-Antes de escribir lógica, pregúntate: ¿qué necesitan leer (y cambiar) los componentes que van a usar esto? Eso es tu tipo. Después creas el contexto con `createContext`:
+Primero se define el tipo: lo que los consumidores necesitan leer (y cambiar). Después se crea el contexto con `createContext`:
 
 ```tsx
 import { createContext } from 'react';
@@ -153,13 +151,13 @@ function useTheme() {
 
 `useContext(ThemeContext)` es el Hook de React que lee el valor del contexto. Si no hay ningún Provider arriba, devuelve el **valor por defecto** que le diste a `createContext` (en nuestro caso, `undefined`). Por eso el Hook propio revisa eso y lanza un error claro.
 
-Este Hook se crea **siempre**, aunque por ahora lo use un solo componente. No es cierto que "solo vale la pena cuando hay muchos consumidores". Te da tres cosas:
+Este Hook conviene crearlo siempre, aunque lo use un solo componente. Aporta tres cosas:
 
 * No repites el chequeo de `undefined` en cada componente que consume el contexto.
 * Escondes `ThemeContext` como detalle interno: nadie fuera de este archivo necesita saber que existe.
 * Si mañana cambias cómo funciona el contexto por dentro, ningún consumidor tiene que cambiar.
 
-Cuesta cuatro líneas escribirlo. No lo postergues.
+Son cuatro líneas y evitan errores difíciles de rastrear.
 
 ### Paso 4: envolver con el Provider
 
@@ -197,7 +195,7 @@ Desde ese archivo exportas solo `ThemeProvider` y `useTheme`.
 
 ### Paso 7: el error clásico, consumir en el mismo componente que crea el Provider
 
-Es tentador escribir esto, sobre todo en una demo:
+Un error frecuente, sobre todo en demos:
 
 ```tsx
 // Mal: tira "useTheme debe usarse dentro de un ThemeProvider"
@@ -265,12 +263,13 @@ El setter viaja **dentro del `value`**. Cuando un consumidor lo llama, pasa esto
 2. Cambia el estado del Provider
 3. El Provider se vuelve a renderizar y crea un value nuevo
 4. React vuelve a renderizar a TODOS los consumidores de ese contexto
+   (el value cambió de referencia)
 5. Cada uno muestra el tema nuevo
 ```
 
 ### Para qué sirve useMemo
 
-React decide si el `value` cambió comparándolo **por referencia**: pregunta "¿es el mismo objeto de antes?", no "¿tiene el mismo contenido?".
+React decide si el `value` cambió comparándolo **por referencia** (`Object.is`): evalúa si es el mismo objeto de antes, no si tiene el mismo contenido.
 
 Si escribes el objeto directamente en el Provider:
 
@@ -418,7 +417,7 @@ function App() {
 ```
 
 **Por qué pasa:** el componente que crea el Provider no es hijo de ese Provider. No es un problema del orden de las líneas, es de la jerarquía del árbol.
-**Cómo se arregla:** separalo en un componente de afuera que pone el Provider y uno de adentro que llama al Hook (paso 7 de la receta).
+**Cómo se arregla:** sepáralo en un componente de afuera que pone el Provider y uno de adentro que llama al Hook (paso 7 de la receta).
 
 ### 3. Poner varios Providers pensando que "cada componente necesita el suyo"
 
@@ -477,7 +476,7 @@ Para ver más sobre tipado de Context: [Tipado de useReducer y Context API](../1
 
 **No lo uses para:**
 
-* **Todo el estado de tu app.** Cuando el `value` cambia, se vuelven a renderizar **todos** los consumidores. Un valor que cambia muy seguido (lo que escribe el usuario en un campo, la posición del mouse) vuelve lenta la app.
+* **Todo el estado de tu app.** Cuando el `value` cambia, se vuelven a renderizar **todos** los consumidores. Un valor que cambia muy seguido (lo que escribe el usuario en un campo, la posición del mouse) puede degradar el rendimiento.
 * **Un dato que solo necesitan uno o dos niveles más abajo.** Ahí el prop drilling es más simple y más claro.
 * **Estado complejo y muy dinámico.** Para eso mira [Zustand, Redux y Context: cuándo usar cada uno](../../03-state-management-and-data/01-Zustand,%20Redux%20y%20Context%20-%20Cuando%20usar%20cada%20uno.md).
 
@@ -489,7 +488,7 @@ Para ver más sobre tipado de Context: [Tipado de useReducer y Context API](../1
 2. La receta: `createContext<T | undefined>(undefined)`, un componente Provider con `useState` y `useMemo`, y un Hook propio (`useTheme`) con la guardia de `undefined`.
 3. Envuelve con el Provider solo la parte del árbol que lo necesita, y **nunca** consumas en el mismo componente que lo crea.
 4. Cuando alguien cambia el estado, React vuelve a renderizar a **todos** los consumidores; `useMemo` en el `value` evita re-renders de más.
-5. Un solo Provider comparte un estado; cada `<Provider>` extra crea un estado nuevo y aislado.
+5. Un solo Provider comparte un estado; cada instancia extra de tu componente `ThemeProvider` crea un `useState` nuevo y aislado.
 
 -----
 
@@ -579,7 +578,7 @@ Un Provider puede estar adentro de otro Provider del mismo contexto. Los compone
 
 Cualquier cambio en cualquiera de esas propiedades vuelve a renderizar a **todos** los que consumen `AppContext`, incluso a los que solo necesitan una. Mejor dividir por dominio: un `UserContext`, un `ThemeContext` y un `CartContext` independientes. Así, un cambio en el carrito solo afecta a quienes consumen `CartContext`.
 
-**Memoiza el `value` y las funciones.** Ya viste `useMemo` para el `value`. Si el Provider además expone funciones, envolvelas con `useCallback`: una función definida en el cuerpo del componente se crea de nuevo en cada render, y eso rompe la memoización del objeto `value` que la contiene.
+**Memoiza el `value` y las funciones.** Ya viste `useMemo` para el `value`. Si el Provider además expone funciones, envuélvelas con `useCallback`: una función definida en el cuerpo del componente se crea de nuevo en cada render, y eso rompe la memoización del objeto `value` que la contiene.
 
 ```tsx
 const login = useCallback((u: User) => setUser(u), []);
@@ -589,9 +588,11 @@ const value = useMemo(() => ({ user, login, logout }), [user, login, logout]);
 
 **Envuelve `useContext` en un Hook propio.** Es el paso 3 de la receta. Oculta el objeto de contexto, lanza un error claro si se usa fuera del Provider (en vez de fallar en silencio con `undefined`), y `useTheme()` comunica mejor la intención que `useContext(ThemeContext)`.
 
-**Mide antes de optimizar.** Es tentador poner `useMemo` y `useCallback` en todos lados "por las dudas". Pero memoizar tiene su propio costo: React compara las dependencias en cada render, y el código se complica. Antes de optimizar, usa el **Profiler de React** para confirmar que hay un problema real de renders de más, que se note en la práctica. Si después de optimizar la mejora que mides es mínima, probablemente no vale la complejidad que agrega. La secuencia es: medir, optimizar, y volver a medir.
+**Mide antes de optimizar.** Poner `useMemo` y `useCallback` en todos lados "por las dudas" no es gratis: memoizar tiene su propio costo: React compara las dependencias en cada render, y el código se complica. Antes de optimizar, usa el **Profiler de React** para confirmar que hay un problema real de renders de más, que se note en la práctica. Si después de optimizar la mejora que mides es mínima, probablemente no vale la complejidad que agrega. La secuencia es: medir, optimizar, y volver a medir.
 
-**Nota histórica.** En apps React antiguas puedes ver `MyContext.Consumer` en lugar de `useContext`. Ese estilo se considera una mala práctica hoy: es más verboso y difícil de leer.
+**Nota histórica.** En código antiguo puedes ver `MyContext.Consumer` en lugar de `useContext`. Sigue funcionando, pero es una API heredada: es más verbosa y `useContext` es la forma recomendada.
+
+**React 19.** Se puede renderizar `<ThemeContext value={...}>` directamente como Provider (`.Provider` queda como forma anterior), y existe `use(ThemeContext)`, que lee el contexto igual que `useContext` pero se puede llamar de forma condicional. Todo lo anterior sigue aplicando.
 
 </details>
 
@@ -672,6 +673,49 @@ Si la lógica asíncrona empieza a dominar el contexto (reintentos, caché, inva
 Cuando el estado compartido necesita muchas operaciones relacionadas (agregar, quitar, editar), exponer un setter distinto por cada una se vuelve pesado. En esos casos es común combinar Context con `useReducer`: el contexto expone el estado y una sola función `dispatch`. Todo eso se explica en la lección [useReducer](05-useReducer.md).
 
 </details>
+
+-----
+
+## En entrevista
+
+### Respuesta corta (junior)
+
+Context es un mecanismo de React para compartir un dato con todos los componentes de una zona del árbol sin pasarlo por props en cada nivel. Un Provider define el valor y los componentes de adentro lo leen con `useContext`. Sirve para datos globales de lectura frecuente y cambio poco frecuente, como el tema, el usuario autenticado o el idioma.
+
+### Respuesta ampliada (semi-senior)
+
+* **Problema que resuelve:** el prop drilling, es decir, atravesar componentes intermedios que no usan el dato.
+* **Cómo funciona:** `useContext` devuelve el valor del Provider más cercano por encima del componente. El valor por defecto de `createContext` solo se usa cuando no hay ningún Provider.
+* **Re-renders:** cuando cambia el `value` (comparación por referencia), se re-renderizan TODOS los consumidores de ese contexto. Se mitiga con `useMemo` y `useCallback` en el `value`, dividiendo contextos por dominio, o separando estado y `dispatch` en dos contextos.
+* **Límites:** Context es un mecanismo de transporte, no una librería de estado. No reemplaza a Redux o Zustand cuando hay cambios muy frecuentes o selectores finos, ni a React Query para estado de servidor (caché, reintentos, invalidación).
+* **Patrón guard hook:** `createContext<T | undefined>(undefined)` más un Hook propio que lanza un error si el valor es `undefined`. Da un error claro y tipos limpios en los consumidores.
+* **Composición vs Context:** a veces basta con pasar componentes como `children` o props (composición) y evitar el drilling sin Context. Context se justifica cuando muchos componentes en distintos niveles necesitan el mismo dato.
+
+### Preguntas frecuentes de seguimiento
+
+**1. ¿Context vs props vs Redux/Zustand?**
+Props para datos locales o de pocos niveles. Context para datos transversales que cambian poco. Redux/Zustand para estado global complejo o de cambio frecuente, porque permiten suscribirse solo a la parte del estado que se usa.
+
+**2. ¿Por qué se re-renderizan los consumidores?**
+Porque el `value` cambió de referencia. React compara con `Object.is`, y un objeto literal `{ theme, setTheme }` es distinto en cada render del Provider. Cambiar una sola propiedad del objeto también re-renderiza a quien solo lee otra.
+
+**3. ¿Cómo evito re-renders innecesarios?**
+Memoiza el `value` con `useMemo` y las funciones con `useCallback`. Divide contextos por dominio. Separa estado y `dispatch` en dos contextos, así quien solo despacha no se re-renderiza cuando cambia el estado.
+
+**4. ¿Qué pasa si no hay Provider?**
+`useContext` devuelve el valor por defecto de `createContext`. Con `undefined` y el guard hook, se lanza un error explícito en lugar de fallar más tarde con datos inexistentes.
+
+**5. ¿Cuándo NO usar Context?**
+Para estado que cambia muy seguido (input, mouse), para estado de servidor (usa React Query u otra librería de datos remotos), y cuando el dato solo baja uno o dos niveles.
+
+**6. ¿Cómo tipas `createContext` en TypeScript?**
+Con `createContext<T | undefined>(undefined)` y un Hook que estrecha el tipo:
+
+```tsx
+const ctx = useContext(ThemeContext);
+if (ctx === undefined) throw new Error('Falta ThemeProvider');
+return ctx; // tipo: ThemeContextType
+```
 
 -----
 

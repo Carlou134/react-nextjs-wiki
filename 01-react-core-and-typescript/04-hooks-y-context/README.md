@@ -54,7 +54,8 @@ Todas las lecciones tienen la misma estructura, así sabes dónde buscar cada co
 7. **En TypeScript:** lo que cambia si tu proyecto usa TypeScript.
 8. **Cuándo sí y cuándo no:** para decidir si es la herramienta correcta.
 9. **Resumen en 5 líneas:** para repasar.
-10. **Para profundizar:** detalles avanzados, plegados. Puedes saltearlos la primera vez.
+10. **Para profundizar:** detalles avanzados, plegados. Puedes omitirlos en la primera lectura.
+11. **En entrevista:** una respuesta corta (junior), una ampliada (semi-senior) y preguntas de seguimiento frecuentes.
 
 -----
 
