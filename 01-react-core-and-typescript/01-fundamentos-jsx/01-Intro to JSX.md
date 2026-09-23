@@ -57,7 +57,31 @@ import { jsx as _jsx } from 'react/jsx-runtime';
 const heading = _jsx('h1', { className: 'title', children: 'Hola mundo' });
 ```
 
-El resultado de esa llamada es un elemento de React, es decir, un objeto que describe `<h1>`. No es un nodo del DOM. Cómo React usa esos objetos para actualizar la pantalla se explica en [El DOM virtual](02-The%20Virtual%20Dom.md).
+El resultado de esa llamada es un elemento de React: un objeto plano que describe `<h1>`, no un nodo del DOM. De forma simplificada, tiene esta forma:
+
+```js
+{
+  type: 'h1',
+  props: {
+    className: 'title',
+    children: 'Hola mundo',
+  },
+}
+```
+
+El recorrido completo, de la sintaxis al objeto, es este:
+
+```text
+JSX (sintaxis)              Compilador                 Elemento de React (objeto)
+────────────────────   →   ─────────────────────   →   ──────────────────────────
+<h1 className="title">     jsx('h1', {                  { type: 'h1',
+  Hola mundo                 className: 'title',           props: {
+</h1>                        children: 'Hola mundo'          className: 'title',
+                            })                                children: 'Hola mundo'
+                                                             } }
+```
+
+Ese objeto no es un nodo del DOM. Cómo React usa esos objetos para actualizar la pantalla se explica en [El DOM virtual](02-The%20Virtual%20Dom.md).
 
 ### Un elemento JSX es una expresión
 
