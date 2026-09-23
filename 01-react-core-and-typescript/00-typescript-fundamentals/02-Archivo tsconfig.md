@@ -68,6 +68,8 @@ npx tsc --init
 
 Es un interruptor que activa a la vez varias comprobaciones estrictas: `strictNullChecks` (`null` y `undefined` no son valores válidos de cualquier tipo), `noImplicitAny` (prohíbe que un valor quede como `any` por omisión), `strictFunctionTypes`, `strictPropertyInitialization`, `useUnknownInCatchVariables`, `noImplicitThis`, `alwaysStrict`, entre otras. Desde TypeScript 6.0 su valor por defecto es `true` (antes era `false`), pero conviene declararlo de forma explícita. Se puede desactivar una en particular después: `"strict": true, "noImplicitAny": false`.
 
+No lo confundas con `<StrictMode>` de React. Comparten nombre y nada más: `strict` de `tsconfig.json` es una opción del **compilador** que revisa tipos antes de ejecutar el código; `<StrictMode>` es un **componente** de React que, en desarrollo, ejecuta dos veces ciertas funciones (el cuerpo del componente, los efectos) para detectar código que no limpia bien. Uno actúa en compilación, el otro en tiempo de ejecución, y puedes tener cualquiera de los dos sin el otro. Se explica en [El Effect Hook](../04-hooks-y-context/02-The%20Effect%20Hook.md).
+
 **`target`**
 
 Versión de JavaScript que se **emite**. Con `"target": "ES2022"`, la sintaxis moderna se conserva; con un target más bajo, TypeScript la reescribe (por ejemplo, convierte `async/await` en código equivalente). También cambia el valor por defecto de `lib`. En una app con bundler, el target suele fijarse según los navegadores que se quieren soportar.

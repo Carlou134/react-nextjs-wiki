@@ -142,7 +142,9 @@ const paragraphs = (
 );
 ```
 
-La razón es que cada expresión JSX se convierte en una sola llamada que devuelve un solo objeto, y una función no puede devolver dos valores a la vez. Si no quieres añadir un `<div>` extra al DOM, usa un **fragmento**, que agrupa sin generar nodo:
+La razón es que cada expresión JSX se convierte en una sola llamada que devuelve un solo objeto, y una función no puede devolver dos valores a la vez.
+
+Si necesitas agrupar elementos pero no quieres añadir un `<div>` extra al DOM, usa un **fragmento**. Es un componente especial de React (`React.Fragment`) cuyo único trabajo es agrupar hijos sin crear ningún nodo en el HTML final. Tiene una forma corta, `<>...</>`, que es la que se usa casi siempre:
 
 ```jsx
 const paragraphs = (
@@ -151,6 +153,17 @@ const paragraphs = (
     <p>Yo también.</p>
   </>
 );
+```
+
+En el HTML resultante no aparece nada que represente ese fragmento: quedan los dos `<p>` directamente, sin ningún contenedor alrededor. Esto importa cuando la estructura le importa al CSS del padre (por ejemplo, un `display: grid` o `display: flex` que espera que sus hijos directos sean los elementos reales, no un `div` de más metido en el medio).
+
+La forma corta `<>` no admite atributos. Si necesitas pasarle una `key` (por ejemplo, al generar una lista de fragmentos con `.map`), tienes que usar la forma larga:
+
+```jsx
+<React.Fragment key={item.id}>
+  <dt>{item.term}</dt>
+  <dd>{item.description}</dd>
+</React.Fragment>
 ```
 
 ### Renderizar: mostrar JSX en pantalla
@@ -332,7 +345,14 @@ Para agrupar varios elementos bajo un único elemento raíz sin añadir un nodo 
 No. Es un objeto que describe lo que debería mostrarse. React lo usa para crear o actualizar el DOM real.
 
 **5. ¿Qué diferencia hay entre `JSX.Element` y `ReactNode`?**
-`JSX.Element` (`React.JSX.Element` en React 19) es el tipo de una expresión JSX. `ReactNode` es más amplio: incluye también texto, números, `null`, `undefined`, booleanos y arreglos.
+
+| | `JSX.Element` | `ReactNode` |
+| --- | --- | --- |
+| Qué es | El tipo de una expresión JSX evaluada | Todo lo que React puede renderizar como hijo |
+| Qué acepta | Solo `<Algo />` | JSX, string, number, boolean, `null`, `undefined`, arreglos de todo eso |
+| Relación | Es un subconjunto de `ReactNode` | Incluye a `JSX.Element` y mucho más |
+
+Todo `JSX.Element` es `ReactNode`, pero no al revés: un `string` es un `ReactNode` válido y no es un `JSX.Element`. Por eso `children` casi siempre se tipa como `ReactNode` (acepta texto, `null` de un `&&` condicional, arreglos), y `JSX.Element` casi no se usa salvo que necesites forzar que algo sea exactamente un elemento JSX.
 
 **6. ¿Por qué ya no hace falta importar React para usar JSX?**
 Porque la nueva transformación (React 17 en adelante) importa automáticamente `jsx` desde `react/jsx-runtime`.
