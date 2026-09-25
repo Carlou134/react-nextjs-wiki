@@ -36,7 +36,7 @@ Repositorio personal de apuntes, guías rápidas (*cheatsheets*) y patrones de d
 
 ### 4. Testing & UI (`/04-testing-and-ui`)
 
-- **01-tailwind-css** — Fundamentos utility-first, instalación (CLI, Vite, Astro, Next.js), detección de clases, tipografía/espaciado/cajas, colores y modo oscuro, diseño responsive, Flexbox y Grid, personalización del tema (v3 vs v4), plugins y buenas prácticas.
+- **01-tailwind-css** — 7 lecciones: fundamentos utility-first, instalación e integración (CLI, Vite, Astro, Next.js), detección de clases, tipografía/espaciado/colores, layout y responsive (Flexbox y Grid), tema/modo oscuro/plugins (v3 vs v4) y buenas prácticas.
 - **02-shadcn-ui** — Qué es (código abierto en tu proyecto), instalación y CLI, anatomía de un componente (`cva`, `cn`, `asChild`), temas con variables CSS y modo oscuro, composición y formularios (React Hook Form + Zod), buenas prácticas y mantenimiento.
 - *Próximamente:* pruebas unitarias e integración de UI con **Vitest / Jest** y **React Testing Library**.
 

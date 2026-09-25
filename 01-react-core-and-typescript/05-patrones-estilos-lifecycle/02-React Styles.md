@@ -194,7 +194,7 @@ export default { plugins: [tailwindcss()] };
 
 En Next.js se usa el plugin de PostCSS (`@tailwindcss/postcss`) en lugar del de Vite. En Tailwind v3 el proceso era distinto (archivo `tailwind.config.js` y directivas `@tailwind base/components/utilities`).
 
-Más detalle en el módulo de Tailwind del wiki: [Fundamentos de Tailwind](../../04-testing-and-ui/01-tailwind-css/01-Fundamentos%20de%20Tailwind.md) e [Instalación y compilación](../../04-testing-and-ui/01-tailwind-css/02-Instalaci%C3%B3n%20y%20Compilaci%C3%B3n.md). Para componentes construidos sobre Tailwind, ver [Qué es shadcn/ui](../../04-testing-and-ui/02-shadcn-ui/01-Qu%C3%A9%20es%20shadcn-ui.md).
+Más detalle en el módulo de Tailwind del wiki: [Fundamentos de Tailwind](../../04-testing-and-ui/01-tailwind-css/01-Fundamentos%20de%20Tailwind.md) e [Instalación e integración](../../04-testing-and-ui/01-tailwind-css/02-Instalaci%C3%B3n%20e%20Integraci%C3%B3n.md). Para componentes construidos sobre Tailwind, ver [Qué es shadcn/ui](../../04-testing-and-ui/02-shadcn-ui/01-Qu%C3%A9%20es%20shadcn-ui.md).
 
 -----
 
