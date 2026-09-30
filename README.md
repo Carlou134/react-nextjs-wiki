@@ -15,7 +15,7 @@ Repositorio personal de apuntes, guías rápidas (*cheatsheets*) y patrones de d
 - **04-hooks-y-context** — useState, useEffect, useLayoutEffect, Custom Hooks y Context API.
 - **05-patrones-estilos-lifecycle** — HOC, Render Props, composición, estilos (CSS/Sass/styled-components/Tailwind) y ciclo de vida de clases.
 - **06-forms** — Formularios controlados, componentes no controlados, y React Hook Form + Zod.
-- **07-routing** — React Router v6.
+- **07-routing** — 2 lecciones: fundamentos de routing y React Router (versión vigente), rutas dinámicas, anidadas y navegación.
 - **08-manejo-de-errores** — Error Boundaries.
 - **09-performance** — React Profiler, memoización y técnicas de optimización.
 - **10-fetching-de-datos** — Fetch con useEffect, estados de carga/error, re-fetch por dependencias.
