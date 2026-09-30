@@ -23,6 +23,7 @@ Las lecciones se apoyan una en la otra, así que conviene leerlas en este orden:
 | --- | --- | --- |
 | [1. Crear una app de React](01-Creating%20a%20React%20App.md) | Crear un proyecto con Vite, recorrer su estructura y usar el servidor de desarrollo | Componentes y Node.js |
 | [2. React Developer Tools](02-React%20Developer%20Tools.md) | Inspeccionar el árbol de componentes, sus props, estado y Hooks desde el navegador | Un proyecto corriendo y nociones de props y estado |
+| [3. Calidad de código y git hooks](03-Calidad%20de%20C%C3%B3digo%20y%20Git%20Hooks.md) | Automatizar formato, lint, typecheck y mensajes de commit con Prettier, ESLint, commitlint, Lefthook y CI | Un proyecto corriendo y nociones de git |
 
 -----
 
@@ -32,6 +33,7 @@ Las lecciones se apoyan una en la otra, así que conviene leerlas en este orden:
 1. Crear el proyecto   ->  npm create vite@latest (React + TypeScript)
 2. Estructura y dev    ->  npm install, npm run dev, cambios al guardar (HMR)
 3. Depurar             ->  React DevTools: Components (árbol) y Profiler (rendimiento)
+4. Calidad             ->  Prettier, ESLint, commitlint y Lefthook en hooks; CI en cada PR
 ```
 
 -----
